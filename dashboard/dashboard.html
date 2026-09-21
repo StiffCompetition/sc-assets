@@ -524,6 +524,7 @@ function openDrawer(r) {
     field('notes', 'Notes', 'textarea', r.notes) +
     '<div class="drawer-actions">' +
       '<button class="btn" id="saveBtn">Save</button>' +
+      '<button class="btn danger" id="postNowBtn">Post Now</button>' +
       '<button class="btn secondary" id="closeBtn">Close</button>' +
     '</div>' +
     '<div class="save-status" id="saveStatus"></div>';
@@ -531,6 +532,7 @@ function openDrawer(r) {
   document.getElementById('overlay').classList.add('open');
   document.getElementById('closeBtn').addEventListener('click', closeDrawer);
   document.getElementById('saveBtn').addEventListener('click', () => saveRow(r.id));
+  document.getElementById('postNowBtn').addEventListener('click', () => postNow(r.id));
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
@@ -560,6 +562,23 @@ function statusField(current) {
 
 function closeDrawer() {
   document.getElementById('overlay').classList.remove('open');
+}
+
+async function postNow(id) {
+  const statusEl = document.getElementById('saveStatus');
+  if (!confirm('Post this now to all platforms immediately?')) return;
+  statusEl.textContent = 'Posting...';
+  try {
+    const res = await fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-post-now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowId: id })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Posted.';
+  } catch (e) {
+    statusEl.textContent = 'Failed: ' + e.message;
+  }
 }
 
 async function saveRow(id) {
