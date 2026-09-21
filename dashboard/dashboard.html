@@ -531,7 +531,7 @@ function openDrawer(r) {
 
   document.getElementById('overlay').classList.add('open');
   document.getElementById('closeBtn').addEventListener('click', closeDrawer);
-  document.getElementById('saveBtn').addEventListener('click', () => saveRow(r.id));
+  document.getElementById('saveBtn').addEventListener('click', () => saveRow(r));
   document.getElementById('postNowBtn').addEventListener('click', () => postNow(r.id));
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -581,9 +581,14 @@ async function postNow(id) {
   }
 }
 
-async function saveRow(id) {
+async function saveRow(r) {
+  const id = r.id;
   const payload = {
     id: id,
+    post_date: r.post_date,
+    day_of_week: r.day_of_week,
+    character: r.character,
+    format: r.format,
     text_content: document.getElementById('f_text_content').value,
     image_url: document.getElementById('f_image_url').value,
     video_url: document.getElementById('f_video_url').value,
