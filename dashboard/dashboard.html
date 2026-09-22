@@ -244,6 +244,11 @@
   .os-card-line { font-size: 12px; font-weight: 700; margin-top: -2px; }
   .os-card-line .os-setup-hint { font-weight: 400; color: #9a927a; font-size: 10px; }
   .os-card-line.empty { font-weight: 400; font-style: italic; color: #9a927a; }
+.brief-part{white-space:pre-wrap;font-size:13px;line-height:1.45;padding:8px 10px;border:1px solid var(--line);background:#fafafa}
+.panel-box{margin:10px 0;padding:10px 12px;border:1px solid var(--line);font-size:13px}
+.panel-box.ok{background:#eef8ee;border-color:#9ccc9c}
+.panel-box.bad{background:#fdeceb;border-color:#e0a9a4}
+.panel-fails{white-space:pre-wrap;margin-top:6px;font-size:12px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -505,6 +510,55 @@ function onScreenPreviewHtml(notes) {
   '</div>';
 }
 
+
+function briefPart(notes, label) {
+  if (!notes) return '';
+  const LABELS = ['Appearance','Scene','End frame','On-screen','Sound','Motion','Source','ID','NFT'];
+  const lower = notes.toLowerCase();
+  const hits = [];
+  LABELS.forEach(function(L) {
+    const needle = (L + ':').toLowerCase();
+    let from = 0;
+    while (true) {
+      const at = lower.indexOf(needle, from);
+      if (at === -1) break;
+      hits.push({ label: L, start: at, valueStart: at + needle.length });
+      from = at + needle.length;
+    }
+  });
+  hits.sort(function(a, b) { return a.start - b.start; });
+  for (let i = 0; i < hits.length; i++) {
+    if (hits[i].label.toLowerCase() === label.toLowerCase()) {
+      const end = (i + 1 < hits.length) ? hits[i + 1].start : notes.length;
+      return notes.slice(hits[i].valueStart, end).trim();
+    }
+  }
+  return '';
+}
+
+function briefField(notes, label, display) {
+  const v = briefPart(notes, label);
+  if (!v) return '';
+  return '<div class="field"><label>' + display + '</label><div class="brief-part">' + escapeHtml(v) + '</div></div>';
+}
+
+function sourceBox(notes) {
+  const id = briefPart(notes, 'Source');
+  if (!id) return '';
+  return '<div class="field"><label>Source fact</label><div class="brief-part">' + escapeHtml(id) +
+    ' &middot; <a href="https://docs.google.com/spreadsheets/d/1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60/edit" target="_blank">Facts Master</a></div></div>';
+}
+
+function panelBox(r) {
+  if (!r.panel_status) return '';
+  const cleared = r.panel_status === 'cleared';
+  const fails = (r.panel_notes || '').split('Remaining rules:')[0].trim();
+  return '<div class="panel-box ' + (cleared ? 'ok' : 'bad') + '">' +
+    '<strong>Panel: ' + escapeHtml(r.panel_status) + '</strong>' +
+    (cleared ? '' : '<div class="panel-fails">' + escapeHtml(fails) + '</div>') +
+  '</div>';
+}
+
 function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -514,15 +568,23 @@ function openDrawer(r) {
   drawer.innerHTML =
     '<h2>' + r.day_of_week + '</h2>' +
     '<div class="sub">' + fmtDate(r.post_date) + ' · ' + r.character + ' · ' + r.format + '</div>' +
+    panelBox(r) +
+    sourceBox(r.notes) +
     '<div class="field"><label>On-Screen Text (what actually renders in the video)</label></div>' +
     onScreenPreviewHtml(r.notes) +
-    field('text_content', 'Caption / Social Text (separate from video, not word-capped)', 'textarea', r.text_content) +
+    briefField(r.notes, 'Scene', 'Start frame (image prompt)') +
+    briefField(r.notes, 'End frame', 'End frame (image prompt)') +
+    briefField(r.notes, 'Motion', 'Motion (one change, sent to Kling)') +
+    briefField(r.notes, 'Sound', 'Sound (two cues, sent to ElevenLabs)') +
+    field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
+    field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
+    field('caption_facebook', 'Facebook caption (no hashtags)', 'textarea', r.caption_facebook) +
     videoPreview(r.video_url) +
     field('image_url', 'Image URL', 'input', r.image_url) +
     field('video_url', 'Video URL', 'input', r.video_url) +
     field('platforms', 'Platforms', 'input', r.platforms) +
     statusField(r.status) +
-    field('notes', 'Notes', 'textarea', r.notes) +
+    field('notes', 'Full brief (raw)', 'textarea', r.notes) +
     '<div class="drawer-actions">' +
       '<button class="btn" id="saveBtn">Save</button>' +
       '<button class="btn danger" id="postNowBtn">Post Now</button>' +
@@ -595,7 +657,10 @@ async function saveRow(r) {
     video_url: document.getElementById('f_video_url').value,
     platforms: document.getElementById('f_platforms').value,
     status: (document.querySelector('.status-btn.active') || {}).dataset ? document.querySelector('.status-btn.active').dataset.value : 'draft',
-    notes: document.getElementById('f_notes').value
+    notes: document.getElementById('f_notes').value,
+    caption_instagram: (document.getElementById('f_caption_instagram') || {}).value,
+    caption_x: (document.getElementById('f_caption_x') || {}).value,
+    caption_facebook: (document.getElementById('f_caption_facebook') || {}).value
   };
   const statusEl = document.getElementById('saveStatus');
   statusEl.textContent = 'Saving...';
