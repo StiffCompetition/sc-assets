@@ -359,6 +359,7 @@ function filteredRows() {
   const p = document.getElementById('filterPlatform').value;
   const q = document.getElementById('filterSearch').value.trim().toLowerCase();
   return ROWS.filter(r =>
+    r.panel_status === 'cleared' &&
     (!c || r.character === c) &&
     (!f || r.format === f) &&
     (!s || r.status === s) &&
