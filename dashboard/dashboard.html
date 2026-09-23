@@ -364,7 +364,7 @@ function filteredRows() {
   const p = document.getElementById('filterPlatform').value;
   const q = document.getElementById('filterSearch').value.trim().toLowerCase();
   return ROWS.filter(r =>
-    r.panel_status === 'cleared' &&
+    (r.panel_status === 'cleared' || r.panel_status === 'ready') &&
     (!c || r.character === c) &&
     (!f || r.format === f) &&
     (!s || r.status === s) &&
@@ -551,10 +551,10 @@ function sourceBox(notes) {
 
 function panelBox(r) {
   if (!r.panel_status) return '';
-  const cleared = r.panel_status === 'cleared';
+  const cleared = r.panel_status === 'cleared' || r.panel_status === 'ready';
   const fails = (r.panel_notes || '').split('Remaining rules:')[0].trim();
   return '<div class="panel-box ' + (cleared ? 'ok' : 'bad') + '">' +
-    '<strong>Panel: ' + escapeHtml(r.panel_status) + '</strong>' +
+    '<strong>' + (r.panel_status === 'ready' ? 'Ready for your review' : 'Panel: ' + escapeHtml(r.panel_status)) + '</strong>' +
     (cleared ? '' : '<div class="panel-fails">' + escapeHtml(fails) + '</div>') +
   '</div>';
 }
@@ -574,8 +574,8 @@ function openDrawer(r) {
     onScreenPreviewHtml(r.notes) +
     briefField(r.notes, 'Scene', 'Start frame (image prompt)') +
     briefField(r.notes, 'End frame', 'End frame (image prompt)') +
-    briefField(r.notes, 'Motion', 'Motion (one change, sent to Kling)') +
-    briefField(r.notes, 'Sound', 'Sound (two cues, sent to ElevenLabs)') +
+    briefField(r.notes, 'Motion', 'Motion (the one change, sent to Kling)') +
+    briefField(r.notes, 'Sound', 'Sound (payoff sound, sent to ElevenLabs)') +
     field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
     field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
     field('caption_facebook', 'Facebook caption (no hashtags)', 'textarea', r.caption_facebook) +
@@ -620,7 +620,7 @@ function videoPreview(url) {
 function statusField(current) {
   const options = ['draft', 'text approved', 'approved', 'scheduled', 'posted', 'paused'];
   let opts = options.map(o => '<button type="button" class="status-btn' + (o === current ? ' active' : '') + '" data-value="' + o + '">' + o + '</button>').join('');
-  return '<div class="field"><label>Status</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
+  return '<div class="field"><label>Status &mdash; selecting "text approved" and saving starts image + video generation (one clip spend)</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
 }
 
 function closeDrawer() {
