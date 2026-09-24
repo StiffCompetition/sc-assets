@@ -478,7 +478,7 @@ function makeCard(r) {
     (r.video_url ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">&#9654; video ready</span>' : '') +
     (r.panel_status === 'concepts' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">pick a concept</span>' : '') +
     (r.status === 'image ready' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">check start image</span>' : '') +
-    (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">making concepts...</span>' : '') +
+    (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">writing brief...</span>' : '') +
     (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">concepts failed</span>' : '') +
     (r.post_time ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">custom ' + escapeHtml(r.post_time) + '</span>' : '');
   card.addEventListener('click', () => openDrawer(r));
@@ -565,7 +565,7 @@ function sourceBox(notes) {
 
 function panelBox(r) {
   if (!r.panel_status || r.panel_status === 'concepts') return '';
-  if (r.panel_status === 'creating') return '<div class="panel-box" style="margin-bottom:12px"><strong>Concepts are being made for this post.</strong><div class="brief-part">About a minute per post. The calendar refreshes itself.</div></div>';
+  if (r.panel_status === 'creating') return '<div class="panel-box" style="margin-bottom:12px"><strong>The brief for this post is being written.</strong><div class="brief-part">About a minute per post. The calendar refreshes itself.</div></div>';
   const cleared = r.panel_status === 'cleared' || r.panel_status === 'ready';
   const fails = (r.panel_notes || '').split('Remaining rules:')[0].trim();
   return '<div class="panel-box ' + (cleared ? 'ok' : 'bad') + '">' +
@@ -581,7 +581,10 @@ function conceptData(r) {
 
 function conceptPicker(r) {
   const c = conceptData(r);
-  if (!c) return '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="newConceptsBtn">Make 3 new concepts</button></div>';
+  if (!c) {
+    const done = r.video_url || ['approved', 'scheduled', 'posted', 'text approved', 'image approved'].indexOf(r.status) !== -1 || r.panel_status === 'creating';
+    return done ? '' : '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="newConceptsBtn">Make a new concept</button></div>';
+  }
   const cards = (c.options || []).map(o =>
     '<div class="panel-box ok" style="margin-bottom:10px">' +
       '<strong>Concept ' + o.n + '</strong>' +
@@ -592,7 +595,7 @@ function conceptPicker(r) {
       '<button class="btn pick-btn" data-n="' + o.n + '">Use concept ' + o.n + '</button>' +
     '</div>').join('');
   return '<div class="field"><label>Pick one concept (no spend). Line: ' + escapeHtml(c.line || '') + '</label></div>' + cards +
-    '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="newConceptsBtn">None of these - make 3 new concepts</button></div>';
+    '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="newConceptsBtn">None of these - make a new concept</button></div>';
 }
 
 async function pickConcept(r, n) {
@@ -613,7 +616,7 @@ async function pickConcept(r, n) {
 
 async function newConcepts(r) {
   const statusEl = document.getElementById('saveStatus');
-  statusEl.textContent = 'Making 3 new concepts (about a minute)...';
+  statusEl.textContent = 'Making a new concept (about a minute)...';
   try {
     const res = await fetch(CONCEPT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ row_id: r.id }) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -802,7 +805,7 @@ function slotState(row) {
   if (row.status === 'image ready') return { gap: false, label: 'start image ready', color: '#2a5db0' };
   if (row.status === 'text approved' || row.status === 'image approved') return { gap: false, label: 'rendering', color: '#2a5db0' };
   if (row.panel_status === 'concepts') return { gap: false, label: 'concepts to pick', color: '#2a5db0' };
-  if (row.panel_status === 'creating') return { gap: false, label: 'making concepts', color: '#777' };
+  if (row.panel_status === 'creating') return { gap: false, label: 'writing brief', color: '#777' };
   if (row.panel_status === 'ready') return { gap: false, label: 'brief ready', color: '#2a5db0' };
   if (row.panel_status === 'failed') return { gap: true, label: 'concepts failed', color: '#b00' };
   return { gap: true, label: 'old draft', color: '#777' };
@@ -821,12 +824,12 @@ document.getElementById('planOverlay').addEventListener('click', (e) => { if (e.
 async function openPlanner() {
   const panel = document.getElementById('planPanel');
   const t = new Date(); t.setUTCDate(t.getUTCDate() + ((8 - t.getUTCDay()) % 7 || 7));
-  panel.innerHTML = '<h2>Plan content</h2><div class="sub">Choose what to create. Each post gets three concepts to pick from. No image or video is made until you approve it.</div>' +
+  panel.innerHTML = '<h2>Plan content</h2><div class="sub">Choose what to create. Each post gets one brief for you to approve. No image or video is made until you approve it.</div>' +
     '<div class="field"><label>Start date</label><input type="date" id="planStart" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>How long</label><select id="planDays"><option value="7">1 week</option><option value="14">2 weeks</option></select></div>' +
     '<div id="planDaysBox"><div class="loading">Loading products...</div></div>' +
     '<div class="drawer-actions"><button class="btn secondary" id="planFill">Fill empty slots</button><button class="btn secondary" id="planNone">Select none</button></div>' +
-    '<div class="drawer-actions"><button class="btn" id="planGo">Create concepts</button><button class="btn secondary" id="planClose">Close</button></div>' +
+    '<div class="drawer-actions"><button class="btn" id="planGo">Create briefs</button><button class="btn secondary" id="planClose">Close</button></div>' +
     '<div class="save-status" id="planStatus"></div>';
   document.getElementById('planOverlay').classList.add('open');
   document.getElementById('planClose').addEventListener('click', closePlan);
@@ -937,7 +940,7 @@ async function sendPlan(plan, statusEl) {
   try {
     const res = await fetch(PLAN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: plan }) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    statusEl.textContent = 'Started: ' + plan.length + ' post(s). Concepts take about a minute each; the calendar refreshes every 30 seconds.';
+    statusEl.textContent = 'Started: ' + plan.length + ' post(s). Each brief takes about a minute; the calendar refreshes every 30 seconds.';
     startAutoRefresh();
   } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
 }
@@ -955,13 +958,13 @@ function submitPlan() {
 async function openAdhoc() {
   const panel = document.getElementById('planPanel');
   const t = new Date(); t.setUTCDate(t.getUTCDate() + 1);
-  panel.innerHTML = '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets three concepts like any other post.</div>' +
+  panel.innerHTML = '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
     '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
     '<div class="field"><label>Post type</label><select id="adFormat"><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option></select></div>' +
     '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('Major Wood') + '</select></div>' +
     '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
-    '<div class="drawer-actions"><button class="btn" id="adGo">Create concepts</button><button class="btn secondary" id="adClose">Close</button></div>' +
+    '<div class="drawer-actions"><button class="btn" id="adGo">Create brief</button><button class="btn secondary" id="adClose">Close</button></div>' +
     '<div class="save-status" id="adStatus"></div>';
   document.getElementById('planOverlay').classList.add('open');
   document.getElementById('adClose').addEventListener('click', closePlan);
