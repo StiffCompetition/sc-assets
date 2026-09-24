@@ -258,7 +258,7 @@
   <div class="logo">SC</div>
   <div>
     <h1>Content Calendar</h1>
-    <p>Plan content → pick a concept → text approved (start image) → image approved (video) → approved (scheduled)</p>
+    <p>Plan content → brief ready → text approved (start image) → image approved (video) → approved (scheduled)</p>
   </div>
 </header>
 
@@ -479,6 +479,8 @@ function makeCard(r) {
     (r.panel_status === 'concepts' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">pick a concept</span>' : '') +
     (r.status === 'image ready' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">check start image</span>' : '') +
     (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">writing brief...</span>' : '') +
+    (!r.video_url && r.status === 'text approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">making start image...</span>' : '') +
+    (!r.video_url && r.status === 'image approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + (r.kling_job ? 'video rendering at Kling...' : 'video queued / rendering...') + '</span>' : '') +
     (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">concepts failed</span>' : '') +
     (r.post_time ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">custom ' + escapeHtml(r.post_time) + '</span>' : '');
   card.addEventListener('click', () => openDrawer(r));
@@ -803,7 +805,8 @@ function slotState(row) {
   if (['approved', 'scheduled'].indexOf(row.status) !== -1) return { gap: false, done: true, label: row.status, color: '#2a7a2a' };
   if (row.video_url) return { gap: false, done: true, label: 'clip ready for your approval', color: '#2a5db0' };
   if (row.status === 'image ready') return { gap: false, label: 'start image ready', color: '#2a5db0' };
-  if (row.status === 'text approved' || row.status === 'image approved') return { gap: false, label: 'rendering', color: '#2a5db0' };
+  if (row.status === 'text approved') return { gap: false, label: 'making start image (1-3 min)', color: '#2a5db0' };
+  if (row.status === 'image approved') return { gap: false, label: row.kling_job ? 'video rendering at Kling (up to 30 min)' : 'video queued / rendering (5-15 min)', color: '#2a5db0' };
   if (row.panel_status === 'concepts') return { gap: false, label: 'concepts to pick', color: '#2a5db0' };
   if (row.panel_status === 'creating') return { gap: false, label: 'writing brief', color: '#777' };
   if (row.panel_status === 'ready') return { gap: false, label: 'brief ready', color: '#2a5db0' };
