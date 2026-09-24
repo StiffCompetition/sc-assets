@@ -208,6 +208,11 @@
     overflow-y: auto;
     border-left: 4px solid var(--red);
   }
+  .drawer.full { width: 100vw; max-width: 100vw; border-left: none; padding: 0 max(22px, calc((100vw - 920px) / 2)) 40px; }
+  .drawer.full .field textarea { min-height: 150px; font-size: 16px; line-height: 1.45; padding: 12px; }
+  .drawer.full .field label { font-size: 12.5px; }
+  .drawer.full h2 { font-size: 22px; }
+  .brief-topbar { position: sticky; top: 0; z-index: 2; background: var(--panel); display: flex; justify-content: space-between; align-items: center; padding: 12px 0; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
   .drawer h2 { margin: 0 0 2px; font-size: 17px; }
   .drawer .sub { font-family: var(--mono); font-size: 12px; color: #6a6f52; margin-bottom: 16px; }
   .field { margin-bottom: 14px; }
@@ -350,7 +355,7 @@ async function loadRows() {
 function populateFilters() {
   const chars = [...new Set(ROWS.map(r => r.character))].sort();
   const formats = [...new Set(ROWS.map(r => r.format))].sort();
-  const statuses = [...new Set(ROWS.map(r => r.status))].sort();
+  const statuses = STATE_NAMES;
   const platforms = [...new Set(ROWS.flatMap(r => (r.platforms || '').split(',').map(p => p.trim()).filter(Boolean)))].sort();
   const fill = (id, values) => {
     const el = document.getElementById(id);
@@ -376,7 +381,7 @@ function filteredRows() {
     ['cleared', 'ready', 'concepts', 'creating', 'failed'].indexOf(r.panel_status) !== -1 &&
     (!c || r.character === c) &&
     (!f || r.format === f) &&
-    (!s || r.status === s) &&
+    (!s || stateName(r) === s) &&
     (!p || (r.platforms || '').split(',').map(x => x.trim()).includes(p)) &&
     (!q || (r.text_content || '').toLowerCase().includes(q))
   );
@@ -529,7 +534,7 @@ function onScreenPreviewHtml(notes) {
 
 function briefPart(notes, label) {
   if (!notes) return '';
-  const LABELS = ['Appearance','Scene','End frame','On-screen','Sound','Motion','Source','ID','NFT'];
+  const LABELS = ['Appearance','Scene','End frame','End','On-screen','Sound','Motion','Source','ID','NFT'];
   const lower = notes.toLowerCase();
   const hits = [];
   LABELS.forEach(function(L) {
@@ -558,6 +563,18 @@ function briefField(notes, label, display) {
   return '<div class="field"><label>' + display + '</label><div class="brief-part">' + escapeHtml(v) + '</div></div>';
 }
 
+function briefEdit(notes, key, label, id) {
+  const v = briefPart(notes, key);
+  return '<div class="field"><label>' + label + '</label><textarea id="b_' + id + '">' + escapeHtml(v || '') + '</textarea></div>';
+}
+function composeNotes(orig) {
+  const g = id => { const el = document.getElementById('b_' + id); return el ? el.value.trim() : null; };
+  if (g('scene') === null) return orig;
+  const idPart = briefPart(orig, 'ID'), src = briefPart(orig, 'Source');
+  const sound = (g('sound') || '').replace(/[.]+$/, '');
+  return 'Scene: ' + g('scene') + ' On-screen: ' + g('onscreen') + ' Sound: ' + sound + '. Motion: ' + g('motion') +
+    (idPart ? ' ID: ' + idPart.replace(/[.]+$/, '') + '.' : '') + (src ? ' Source: ' + src : '') + (g('end') ? ' End: ' + g('end') : '');
+}
 function sourceBox(notes) {
   const id = briefPart(notes, 'Source');
   if (!id) return '';
@@ -632,7 +649,10 @@ function escapeHtml(s) {
 
 function openDrawer(r) {
   const drawer = document.getElementById('drawer');
+  drawer.classList.add('full');
+  const canPost = !!r.video_url && ['approved', 'scheduled'].indexOf(r.status) !== -1;
   drawer.innerHTML =
+    '<div class="brief-topbar"><button class="btn secondary" id="backBtn">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">' + escapeHtml(stateName(r)) + '</span><button class="btn secondary" id="closeTopBtn">Close &times;</button></div>' +
     '<h2>' + r.day_of_week + '</h2>' +
     '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + r.character + ' · ' + r.format + '</div>' +
     conceptPicker(r) +
@@ -640,10 +660,11 @@ function openDrawer(r) {
     sourceBox(r.notes) +
     '<div class="field"><label>On-Screen Text (what actually renders in the video)</label></div>' +
     onScreenPreviewHtml(r.notes) +
-    briefField(r.notes, 'Scene', 'Start frame (image prompt)') +
-    briefField(r.notes, 'End frame', 'End frame (image prompt)') +
-    briefField(r.notes, 'Motion', 'Motion (the one change, sent to Kling)') +
-    briefField(r.notes, 'Sound', 'Sound (payoff sound, sent to ElevenLabs)') +
+    briefEdit(r.notes, 'On-screen', 'On-screen text (setup. delivery; *word* = emphasis)', 'onscreen') +
+    briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
+    (r.format === 'Travel the World' ? '' : briefEdit(r.notes, 'End', 'End frame (sent to Gemini with the start image)', 'end')) +
+    briefEdit(r.notes, 'Motion', 'Motion (sent to Kling)', 'motion') +
+    briefEdit(r.notes, 'Sound', 'Payoff sound (sent to ElevenLabs)', 'sound') +
     field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
     field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
     field('caption_facebook', 'Facebook caption (no hashtags)', 'textarea', r.caption_facebook) +
@@ -653,20 +674,26 @@ function openDrawer(r) {
     field('video_url', 'Video URL', 'input', r.video_url) +
     field('platforms', 'Platforms', 'input', r.platforms) +
     statusField(r.status) +
-    field('notes', 'Full brief (raw)', 'textarea', r.notes) +
+    '<input type="hidden" id="f_notes" value="' + escapeHtml(r.notes || '').replace(/"/g, '&quot;') + '">' +
     '<div class="drawer-actions">' +
       '<button class="btn" id="saveBtn">Save</button>' +
-      '<button class="btn danger" id="postNowBtn">Post Now</button>' +
+      (canPost ? '<button class="btn danger" id="postNowBtn">Post Now</button>' : '') +
       '<button class="btn secondary" id="closeBtn">Close</button>' +
     '</div>' +
     '<div class="save-status" id="saveStatus"></div>';
 
   document.getElementById('overlay').classList.add('open');
+  // Grow every text box to fit its content so nothing is hidden in a small box.
+  const grow = t => { t.style.height = 'auto'; t.style.height = Math.max(150, t.scrollHeight + 4) + 'px'; };
+  drawer.querySelectorAll('textarea').forEach(t => { grow(t); t.addEventListener('input', () => grow(t)); });
+  drawer.scrollTop = 0;
   document.getElementById('closeBtn').addEventListener('click', closeDrawer);
+  document.getElementById('backBtn').addEventListener('click', closeDrawer);
+  document.getElementById('closeTopBtn').addEventListener('click', closeDrawer);
   document.getElementById('saveBtn').addEventListener('click', () => saveRow(r));
   document.querySelectorAll('.pick-btn').forEach(b => b.addEventListener('click', () => pickConcept(r, Number(b.dataset.n))));
   const nc = document.getElementById('newConceptsBtn'); if (nc) nc.addEventListener('click', () => newConcepts(r));
-  document.getElementById('postNowBtn').addEventListener('click', () => postNow(r.id));
+  const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
@@ -734,7 +761,7 @@ async function saveRow(r) {
     video_url: document.getElementById('f_video_url').value,
     platforms: document.getElementById('f_platforms').value,
     status: (document.querySelector('.status-btn.active') || {}).dataset ? document.querySelector('.status-btn.active').dataset.value : 'draft',
-    notes: document.getElementById('f_notes').value,
+    notes: composeNotes(r.notes || ''),
     caption_instagram: (document.getElementById('f_caption_instagram') || {}).value,
     caption_x: (document.getElementById('f_caption_x') || {}).value,
     caption_facebook: (document.getElementById('f_caption_facebook') || {}).value
@@ -798,6 +825,18 @@ function existingRow(date, slot, time) {
     slot === 'custom' ? r.post_time === time :
     slot === '12pm' ? (!r.post_time && r.format === 'Product') :
     (!r.post_time && r.format !== 'Product' && r.format !== 'Advice')));
+}
+const STATE_NAMES = ['writing brief', 'brief ready', 'brief needs attention', 'making start image', 'start image ready', 'video queued / rendering', 'video rendering at Kling', 'clip ready for approval', 'approved', 'scheduled', 'posted', 'paused'];
+function stateName(r) {
+  if (r.status === 'posted' || r.status === 'scheduled' || r.status === 'paused') return r.status;
+  if (r.status === 'approved') return 'approved';
+  if (r.video_url) return 'clip ready for approval';
+  if (r.status === 'image ready') return 'start image ready';
+  if (r.status === 'text approved') return 'making start image';
+  if (r.status === 'image approved') return r.kling_job ? 'video rendering at Kling' : 'video queued / rendering';
+  if (r.panel_status === 'creating') return 'writing brief';
+  if (r.panel_status === 'failed') return 'brief needs attention';
+  return 'brief ready';
 }
 function slotState(row) {
   if (!row) return { gap: true, label: 'EMPTY', color: '#b06a00' };
