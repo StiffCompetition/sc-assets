@@ -258,7 +258,7 @@
   <div class="logo">SC</div>
   <div>
     <h1>Content Calendar</h1>
-    <p>One row per post · text approved = concept OK, generate video · approved = final, ready to schedule</p>
+    <p>Plan content → pick a concept → text approved (start image) → image approved (video) → approved (scheduled)</p>
   </div>
 </header>
 
@@ -272,6 +272,8 @@
   <select id="filterStatus"><option value="">All statuses</option></select>
   <select id="filterPlatform"><option value="">All platforms</option></select>
   <input type="search" id="filterSearch" placeholder="search text...">
+  <button class="btn" id="btnPlan">Plan content</button>
+  <button class="btn secondary" id="btnAdhoc">Add a post</button>
   <div class="counts" id="counts"></div>
 </div>
 </div>
@@ -284,9 +286,16 @@
   <div class="drawer" id="drawer"></div>
 </div>
 
+<div class="overlay" id="planOverlay" style="justify-content:center;align-items:flex-start;overflow-y:auto">
+  <div class="drawer" id="planPanel" style="width:min(760px,96vw);height:auto;margin:30px 0;border-left:4px solid var(--olive)"></div>
+</div>
+
 <script>
 const LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-list';
 const UPDATE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-update';
+const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-concept-creator';
+const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
+const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 // JS getDay(): 0=Sun,1=Mon,...,6=Sat. Map to our 0=Mon..6=Sun index:
@@ -302,7 +311,7 @@ const STATUS_CLASS = (s) => {
   if (!s) return 'draft';
   if (s.startsWith('draft - format')) return 'notdesigned';
   if (s.startsWith('draft')) return 'draft';
-  if (s === 'text approved') return 'textapproved';
+  if (s === 'text approved' || s === 'image ready' || s === 'image approved') return 'textapproved';
   if (s === 'approved') return 'approved';
   if (s === 'scheduled') return 'scheduled';
   if (s === 'posted') return 'posted';
@@ -364,7 +373,7 @@ function filteredRows() {
   const p = document.getElementById('filterPlatform').value;
   const q = document.getElementById('filterSearch').value.trim().toLowerCase();
   return ROWS.filter(r =>
-    (r.panel_status === 'cleared' || r.panel_status === 'ready') &&
+    ['cleared', 'ready', 'concepts', 'creating', 'failed'].indexOf(r.panel_status) !== -1 &&
     (!c || r.character === c) &&
     (!f || r.format === f) &&
     (!s || r.status === s) &&
@@ -466,7 +475,12 @@ function makeCard(r) {
     osLine +
     '<div class="snippet' + (r.text_content ? '' : ' empty') + '">' + (r.text_content ? escapeHtml(r.text_content) : 'no caption yet') + '</div>' +
     '<span class="badge ' + STATUS_CLASS(r.status) + '">' + STATUS_LABEL(r.status) + '</span>' +
-    (r.video_url ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">&#9654; video ready</span>' : '');
+    (r.video_url ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">&#9654; video ready</span>' : '') +
+    (r.panel_status === 'concepts' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">pick a concept</span>' : '') +
+    (r.status === 'image ready' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">check start image</span>' : '') +
+    (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">making concepts...</span>' : '') +
+    (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">concepts failed</span>' : '') +
+    (r.post_time ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">custom ' + escapeHtml(r.post_time) + '</span>' : '');
   card.addEventListener('click', () => openDrawer(r));
   return card;
 }
@@ -550,13 +564,61 @@ function sourceBox(notes) {
 }
 
 function panelBox(r) {
-  if (!r.panel_status) return '';
+  if (!r.panel_status || r.panel_status === 'concepts') return '';
+  if (r.panel_status === 'creating') return '<div class="panel-box" style="margin-bottom:12px"><strong>Concepts are being made for this post.</strong><div class="brief-part">About a minute per post. The calendar refreshes itself.</div></div>';
   const cleared = r.panel_status === 'cleared' || r.panel_status === 'ready';
   const fails = (r.panel_notes || '').split('Remaining rules:')[0].trim();
   return '<div class="panel-box ' + (cleared ? 'ok' : 'bad') + '">' +
     '<strong>' + (r.panel_status === 'ready' ? 'Ready for your review' : 'Panel: ' + escapeHtml(r.panel_status)) + '</strong>' +
     (cleared ? '' : '<div class="panel-fails">' + escapeHtml(fails) + '</div>') +
   '</div>';
+}
+
+function conceptData(r) {
+  if (r.panel_status !== 'concepts') return null;
+  try { return JSON.parse(r.panel_notes || '{}'); } catch (e) { return null; }
+}
+
+function conceptPicker(r) {
+  const c = conceptData(r);
+  if (!c) return '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="newConceptsBtn">Make 3 new concepts</button></div>';
+  const cards = (c.options || []).map(o =>
+    '<div class="panel-box ok" style="margin-bottom:10px">' +
+      '<strong>Concept ' + o.n + '</strong>' +
+      '<div class="brief-part"><b>' + escapeHtml(o.concept || '') + '</b></div>' +
+      '<div class="brief-part"><em>Says the line: ' + escapeHtml(o.says_the_line || '') + '</em></div>' +
+      '<div class="brief-part">' + escapeHtml(o.notes || '') + '</div>' +
+      '<div class="brief-part" style="white-space:pre-wrap">' + escapeHtml(o.caption_instagram || '') + '</div>' +
+      '<button class="btn pick-btn" data-n="' + o.n + '">Use concept ' + o.n + '</button>' +
+    '</div>').join('');
+  return '<div class="field"><label>Pick one concept (no spend). Line: ' + escapeHtml(c.line || '') + '</label></div>' + cards +
+    '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="newConceptsBtn">None of these - make 3 new concepts</button></div>';
+}
+
+async function pickConcept(r, n) {
+  const c = conceptData(r); if (!c) return;
+  const o = (c.options || []).find(x => x.n === n); if (!o) return;
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = 'Saving concept ' + n + '...';
+  const payload = { id: r.id, notes: o.notes, text_content: o.text_content, caption_instagram: o.caption_instagram,
+    caption_x: o.caption_x, caption_facebook: o.caption_facebook, panel_status: 'ready', panel_notes: 'Concept ' + n + ' picked: ' + o.concept };
+  try {
+    const res = await fetch(UPDATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const row = ROWS.find(x => x.id === r.id); if (row) Object.assign(row, payload);
+    statusEl.textContent = 'Concept ' + n + ' saved. Review the brief, then set "text approved" to render.';
+    render(); setTimeout(() => openDrawer(row || r), 400);
+  } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
+}
+
+async function newConcepts(r) {
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = 'Making 3 new concepts (about a minute)...';
+  try {
+    const res = await fetch(CONCEPT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ row_id: r.id }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Done - reloading.'; setTimeout(() => location.reload(), 800);
+  } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
 }
 
 function escapeHtml(s) {
@@ -567,7 +629,8 @@ function openDrawer(r) {
   const drawer = document.getElementById('drawer');
   drawer.innerHTML =
     '<h2>' + r.day_of_week + '</h2>' +
-    '<div class="sub">' + fmtDate(r.post_date) + ' · ' + r.character + ' · ' + r.format + '</div>' +
+    '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + r.character + ' · ' + r.format + '</div>' +
+    conceptPicker(r) +
     panelBox(r) +
     sourceBox(r.notes) +
     '<div class="field"><label>On-Screen Text (what actually renders in the video)</label></div>' +
@@ -579,6 +642,7 @@ function openDrawer(r) {
     field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
     field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
     field('caption_facebook', 'Facebook caption (no hashtags)', 'textarea', r.caption_facebook) +
+    imagePreview(r) +
     videoPreview(r.video_url) +
     field('image_url', 'Image URL', 'input', r.image_url) +
     field('video_url', 'Video URL', 'input', r.video_url) +
@@ -595,6 +659,8 @@ function openDrawer(r) {
   document.getElementById('overlay').classList.add('open');
   document.getElementById('closeBtn').addEventListener('click', closeDrawer);
   document.getElementById('saveBtn').addEventListener('click', () => saveRow(r));
+  document.querySelectorAll('.pick-btn').forEach(b => b.addEventListener('click', () => pickConcept(r, Number(b.dataset.n))));
+  const nc = document.getElementById('newConceptsBtn'); if (nc) nc.addEventListener('click', () => newConcepts(r));
   document.getElementById('postNowBtn').addEventListener('click', () => postNow(r.id));
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -612,15 +678,21 @@ function field(name, label, type, value) {
   return '<div class="field"><label>' + label + '</label><input id="f_' + name + '" value="' + v + '"></div>';
 }
 
+function imagePreview(r) {
+  if (!r.image_url || r.video_url) return '';
+  const label = r.status === 'image ready' ? 'Start image - check it, then select "image approved" to make the video' : 'Image';
+  return '<div class="field"><label>' + label + '</label><img style="width:100%;border:1px solid var(--line)" src="' + String(r.image_url).replace(/"/g, '&quot;') + '"></div>';
+}
+
 function videoPreview(url) {
   if (!url) return '';
   return '<div class="field"><label>Video Preview</label><video controls preload="metadata" style="width:100%;border:1px solid var(--line);background:#000" src="' + url.replace(/"/g, '&quot;') + '"></video></div>';
 }
 
 function statusField(current) {
-  const options = ['draft', 'text approved', 'approved', 'scheduled', 'posted', 'paused'];
+  const options = ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'scheduled', 'posted', 'paused'];
   let opts = options.map(o => '<button type="button" class="status-btn' + (o === current ? ' active' : '') + '" data-value="' + o + '">' + o + '</button>').join('');
-  return '<div class="field"><label>Status &mdash; selecting "text approved" and saving starts image + video generation (one clip spend)</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
+  return '<div class="field"><label>Status &mdash; "text approved" makes the start image only (small spend) and comes back as "image ready". "image approved" makes the video from that exact image (one clip spend). "approved" signs off the finished clip.</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
 }
 
 function closeDrawer() {
@@ -652,7 +724,7 @@ async function saveRow(r) {
     day_of_week: r.day_of_week,
     character: r.character,
     format: r.format,
-    text_content: document.getElementById('f_text_content').value,
+    text_content: (document.getElementById('f_caption_instagram') || {}).value || r.text_content || '',
     image_url: document.getElementById('f_image_url').value,
     video_url: document.getElementById('f_video_url').value,
     platforms: document.getElementById('f_platforms').value,
@@ -701,6 +773,161 @@ function updateTopbarHeight() {
 }
 window.addEventListener('resize', updateTopbarHeight);
 updateTopbarHeight();
+
+// ---------- Planner (Playbook 7.6) ----------
+const DAY_CHAR = { 1: 'Major Wood', 2: "Hammerin' Hanky", 3: 'The Grip', 4: 'The Velvet Python', 5: 'Slick Willy', 6: 'The Rear Admiral', 0: 'SC Logo' };
+const CHARACTERS = ['Major Wood', "Hammerin' Hanky", 'The Grip', 'The Velvet Python', 'Slick Willy', 'The Rear Admiral'];
+const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+let PRODUCTS = null;
+let LEFT = {};
+let DRAFTS = 0;
+function ymd(d) { return d.toISOString().slice(0, 10); }
+function londonYmd(v) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(v)); }
+async function loadProducts() {
+  if (PRODUCTS) return PRODUCTS;
+  try { const res = await fetch(OPTIONS_URL); const j = await res.json(); PRODUCTS = j.products || []; LEFT = j.left || {}; DRAFTS = j.drafts_awaiting_approval || 0; } catch (e) { PRODUCTS = []; }
+  return PRODUCTS;
+}
+function existingRow(date, slot, time) {
+  return ROWS.find(r => londonYmd(r.post_date) === date && (
+    slot === 'custom' ? r.post_time === time :
+    slot === '12pm' ? (!r.post_time && r.format === 'Product') :
+    (!r.post_time && r.format !== 'Product' && r.format !== 'Advice')));
+}
+function slotNote(row) {
+  if (!row) return '';
+  if (row.video_url || ['approved', 'scheduled', 'posted'].indexOf(row.status) !== -1) return '<span style="color:#b00">has a finished clip - will be kept</span>';
+  return '<span style="color:#777">replaces existing draft</span>';
+}
+function productOptions(sel) {
+  return '<option value="">No product post</option>' + (PRODUCTS || []).map(p => '<option value="' + escapeHtml(p.handle) + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(p.title) + '</option>').join('');
+}
+function charOptions(sel) { return CHARACTERS.map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
+function closePlan() { document.getElementById('planOverlay').classList.remove('open'); }
+document.getElementById('planOverlay').addEventListener('click', (e) => { if (e.target.id === 'planOverlay') closePlan(); });
+
+async function openPlanner() {
+  const panel = document.getElementById('planPanel');
+  const t = new Date(); t.setUTCDate(t.getUTCDate() + 1);
+  panel.innerHTML = '<h2>Plan content</h2><div class="sub">Choose what to create. Each post gets three concepts to pick from. No image or video is made until you approve it.</div>' +
+    '<div class="field"><label>Start date</label><input type="date" id="planStart" value="' + ymd(t) + '"></div>' +
+    '<div class="field"><label>How long</label><select id="planDays"><option value="7">1 week</option><option value="14">2 weeks</option></select></div>' +
+    '<div id="planDaysBox"><div class="loading">Loading products...</div></div>' +
+    '<div class="drawer-actions"><button class="btn" id="planGo">Create concepts</button><button class="btn secondary" id="planClose">Close</button></div>' +
+    '<div class="save-status" id="planStatus"></div>';
+  document.getElementById('planOverlay').classList.add('open');
+  document.getElementById('planClose').addEventListener('click', closePlan);
+  document.getElementById('planStart').addEventListener('change', drawPlanDays);
+  document.getElementById('planDays').addEventListener('change', drawPlanDays);
+  document.getElementById('planGo').addEventListener('click', submitPlan);
+  await loadProducts();
+  drawPlanDays();
+}
+function leftFor(ch, f) { return (LEFT[ch] && LEFT[ch][f] != null) ? LEFT[ch][f] : null; }
+function formatSelect(date, dow, i) {
+  const ch = DAY_CHAR[dow];
+  const types = dow === 0 ? ['Brand Lore'] : ['Wisdom', 'Character Lore', 'Travel the World'];
+  const withLeft = types.map(f => ({ f: f, n: leftFor(ch, f) }));
+  const pref = dow === 0 ? ['Brand Lore'] : (i % 3 === 0 ? ['Wisdom', 'Character Lore', 'Travel the World'] : i % 3 === 1 ? ['Character Lore', 'Travel the World', 'Wisdom'] : ['Travel the World', 'Wisdom', 'Character Lore']);
+  const def = pref.find(f => { const n = leftFor(ch, f); return n === null || n > 0; }) || '';
+  const opts = withLeft.map(o => '<option value="' + o.f + '"' + (o.f === def ? ' selected' : '') + (o.n === 0 ? ' disabled' : '') + '>' + o.f + (o.n === null ? '' : ' (' + o.n + ' left)') + '</option>').join('');
+  return '<select data-date="' + date + '" class="plan7">' + opts + '<option value=""' + (def ? '' : ' selected') + '>None</option></select>';
+}
+function drawPlanDays() {
+  const start = document.getElementById('planStart').value;
+  const n = Number(document.getElementById('planDays').value);
+  if (!start) return;
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left">Day</th><th align="left">7am post</th><th align="left">12pm product post</th></tr>';
+  for (let i = 0; i < n; i++) {
+    const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i);
+    const date = ymd(d); const dow = d.getUTCDay();
+    const e7 = existingRow(date, '7am');
+    const main = formatSelect(date, dow, i);
+    let prod = '';
+    if ([3, 5, 6].indexOf(dow) !== -1) {
+      const e12 = existingRow(date, '12pm');
+      prod = '<select data-date="' + date + '" class="plan12">' + productOptions('') + '</select> <select data-date="' + date + '" class="plan12c">' + charOptions(DAY_CHAR[dow]) + '</select><br>' + slotNote(e12);
+    }
+    html += '<tr style="border-top:1px solid var(--line)"><td>' + WEEKDAY[dow] + ' ' + date.slice(8) + '/' + date.slice(5, 7) + '<br><em>' + escapeHtml(DAY_CHAR[dow]) + '</em></td><td>' + main + '<br>' + slotNote(e7) + '</td><td>' + prod + '</td></tr>';
+  }
+  html += '</table>';
+  if (DRAFTS) html += '<div class="brief-part" style="margin-top:8px">' + DRAFTS + ' new lines are waiting for your approval in the Facts Master (set Status to APPROVED to use them).</div>';
+  document.getElementById('planDaysBox').innerHTML = html;
+  document.querySelectorAll('.plan12').forEach(sel => sel.addEventListener('change', () => {
+    const p = (PRODUCTS || []).find(x => x.handle === sel.value);
+    const c = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
+    if (p && p.character && c) c.value = p.character;
+  }));
+}
+async function sendPlan(plan, statusEl) {
+  if (!plan.length) { statusEl.textContent = 'Nothing selected.'; return; }
+  statusEl.textContent = 'Sending...';
+  try {
+    const res = await fetch(PLAN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: plan }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Started: ' + plan.length + ' post(s). Concepts take about a minute each; the calendar refreshes every 30 seconds.';
+    startAutoRefresh();
+  } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
+}
+function submitPlan() {
+  const plan = [];
+  document.querySelectorAll('.plan7').forEach(sel => { if (sel.value) plan.push({ date: sel.dataset.date, format: sel.value }); });
+  document.querySelectorAll('.plan12').forEach(sel => {
+    if (!sel.value) return;
+    const p = (PRODUCTS || []).find(x => x.handle === sel.value) || {};
+    const c = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
+    plan.push({ date: sel.dataset.date, format: 'Product', product_handle: sel.value, product_title: p.title || '', character: c ? c.value : '' });
+  });
+  sendPlan(plan, document.getElementById('planStatus'));
+}
+async function openAdhoc() {
+  const panel = document.getElementById('planPanel');
+  const t = new Date(); t.setUTCDate(t.getUTCDate() + 1);
+  panel.innerHTML = '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets three concepts like any other post.</div>' +
+    '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
+    '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
+    '<div class="field"><label>Post type</label><select id="adFormat"><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option></select></div>' +
+    '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('Major Wood') + '</select></div>' +
+    '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
+    '<div class="drawer-actions"><button class="btn" id="adGo">Create concepts</button><button class="btn secondary" id="adClose">Close</button></div>' +
+    '<div class="save-status" id="adStatus"></div>';
+  document.getElementById('planOverlay').classList.add('open');
+  document.getElementById('adClose').addEventListener('click', closePlan);
+  await loadProducts();
+  document.getElementById('adProduct').innerHTML = productOptions('');
+  const refresh = () => {
+    const f = document.getElementById('adFormat').value;
+    const dow = new Date(document.getElementById('adDate').value + 'T12:00:00Z').getUTCDay();
+    document.getElementById('adProductBox').style.display = f === 'Product' ? 'block' : 'none';
+    const n = leftFor(DAY_CHAR[dow], f);
+    const info = f === 'Product' ? 'Chosen below with the product.' : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    document.getElementById('adCharInfo').textContent = info;
+  };
+  ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
+  document.getElementById('adProduct').addEventListener('change', () => {
+    const p = (PRODUCTS || []).find(x => x.handle === document.getElementById('adProduct').value);
+    if (p && p.character) document.getElementById('adChar').value = p.character;
+  });
+  refresh();
+  document.getElementById('adGo').addEventListener('click', () => {
+    const f = document.getElementById('adFormat').value;
+    const item = { date: document.getElementById('adDate').value, time: document.getElementById('adTime').value, format: f };
+    if (f === 'Product') {
+      const h = document.getElementById('adProduct').value;
+      const p = (PRODUCTS || []).find(x => x.handle === h) || {};
+      item.product_handle = h; item.product_title = p.title || ''; item.character = document.getElementById('adChar').value;
+    }
+    sendPlan([item], document.getElementById('adStatus'));
+  });
+}
+let AUTO = null;
+function startAutoRefresh() {
+  if (AUTO) clearInterval(AUTO);
+  let n = 0;
+  AUTO = setInterval(() => { n++; if (!document.getElementById('overlay').classList.contains('open')) loadRows(); if (n > 40) clearInterval(AUTO); }, 30000);
+}
+document.getElementById('btnPlan').addEventListener('click', openPlanner);
+document.getElementById('btnAdhoc').addEventListener('click', openAdhoc);
 
 loadRows();
 </script>
