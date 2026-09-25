@@ -486,7 +486,8 @@ function makeCard(r) {
     (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">writing brief...</span>' : '') +
     (!r.video_url && r.status === 'text approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">making start image...</span>' : '') +
     (!r.video_url && r.status === 'image approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + (r.kling_job ? 'video rendering at Kling...' : 'video queued / rendering...') + '</span>' : '') +
-    (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">concepts failed</span>' : '') +
+    (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">needs attention</span>' : '') +
+    (isMissed(r) ? '<span class="badge" style="border-color:#b00;color:#b00;">slot missed - reschedule or Post Now</span>' : '') +
     (r.post_time ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">custom ' + escapeHtml(r.post_time) + '</span>' : '');
   card.addEventListener('click', () => openDrawer(r));
   return card;
@@ -543,7 +544,7 @@ function briefPart(notes, label) {
     while (true) {
       const at = lower.indexOf(needle, from);
       if (at === -1) break;
-      hits.push({ label: L, start: at, valueStart: at + needle.length });
+      if (!(L === 'NFT' && /source:\s*$/.test(lower.slice(Math.max(0, at - 12), at)))) hits.push({ label: L, start: at, valueStart: at + needle.length });
       from = at + needle.length;
     }
   });
@@ -570,8 +571,11 @@ function briefEdit(notes, key, label, id) {
 function composeNotes(orig) {
   const g = id => { const el = document.getElementById('b_' + id); return el ? el.value.trim() : null; };
   if (g('scene') === null) return orig;
-  const idPart = briefPart(orig, 'ID'), src = briefPart(orig, 'Source');
+  const idPart = briefPart(orig, 'ID');
   const sound = (g('sound') || '').replace(/[.]+$/, '');
+  let src = briefPart(orig, 'Source');
+  // Rows from the spreadsheet carry Payoff (the sound the pipeline makes) inside the Source part: an edited Sound replaces it.
+  if (src && /Payoff:/i.test(src) && sound) src = src.replace(/Payoff:\s*[\s\S]*$/i, 'Payoff: ' + sound + '.');
   return 'Scene: ' + g('scene') + ' On-screen: ' + g('onscreen') + ' Sound: ' + sound + '. Motion: ' + g('motion') +
     (idPart ? ' ID: ' + idPart.replace(/[.]+$/, '') + '.' : '') + (src ? ' Source: ' + src : '') + (g('end') ? ' End: ' + g('end') : '');
 }
@@ -828,8 +832,22 @@ function existingRow(date, slot, time) {
     slot === '6am' ? (!r.post_time && r.format === 'Day Greeting') :
     (!r.post_time && r.format !== 'Product' && r.format !== 'Advice' && r.format !== 'Day Greeting')));
 }
-const STATE_NAMES = ['writing brief', 'brief ready', 'brief needs attention', 'making start image', 'start image ready', 'video queued / rendering', 'video rendering at Kling', 'clip ready for approval', 'approved', 'scheduled', 'posted', 'paused'];
+const STATE_NAMES = ['slot missed', 'writing brief', 'brief ready', 'brief needs attention', 'making start image', 'start image ready', 'video queued / rendering', 'video rendering at Kling', 'clip ready for approval', 'approved', 'scheduled', 'posted', 'paused'];
+// A clip approved after its publish time never posts: flag it so it can be rescheduled or sent with Post Now.
+function londonToUtc(dateStr, hhmm) {
+  const guess = new Date(dateStr + 'T' + hhmm + ':00Z');
+  const lon = new Date(guess.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  const utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return new Date(guess.getTime() - (lon - utc));
+}
+function slotDue(r) {
+  const d = londonYmd(r.post_date);
+  const t = r.post_time ? String(r.post_time).padStart(5, '0') : (r.format === 'Day Greeting' ? '06:00' : (r.format === 'Product' ? '12:00' : (r.format === 'Advice' ? '10:00' : '07:00')));
+  return londonToUtc(d, t);
+}
+function isMissed(r) { return r.status === 'approved' && r.video_url && (Date.now() - slotDue(r).getTime()) > 20 * 60000; }
 function stateName(r) {
+  if (isMissed(r)) return 'slot missed';
   if (r.status === 'posted' || r.status === 'scheduled' || r.status === 'paused') return r.status;
   if (r.status === 'approved') return 'approved';
   if (r.video_url) return 'clip ready for approval';
@@ -842,6 +860,7 @@ function stateName(r) {
 }
 function slotState(row) {
   if (!row) return { gap: true, label: 'EMPTY', color: '#b06a00' };
+  if (isMissed(row)) return { gap: false, done: true, label: 'slot missed - reschedule or Post Now', color: '#b00' };
   if (row.status === 'posted') return { gap: false, done: true, label: 'posted', color: '#2a7a2a' };
   if (['approved', 'scheduled'].indexOf(row.status) !== -1) return { gap: false, done: true, label: row.status, color: '#2a7a2a' };
   if (row.video_url) return { gap: false, done: true, label: 'clip ready for your approval', color: '#2a5db0' };
@@ -851,7 +870,7 @@ function slotState(row) {
   if (row.panel_status === 'concepts') return { gap: false, label: 'concepts to pick', color: '#2a5db0' };
   if (row.panel_status === 'creating') return { gap: false, label: 'writing brief', color: '#777' };
   if (row.panel_status === 'ready') return { gap: false, label: 'brief ready', color: '#2a5db0' };
-  if (row.panel_status === 'failed') return { gap: true, label: 'concepts failed', color: '#b00' };
+  if (row.panel_status === 'failed') return { gap: true, label: 'needs attention', color: '#b00' };
   return { gap: true, label: 'old draft', color: '#777' };
 }
 function stateTag(row) {
