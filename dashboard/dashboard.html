@@ -811,20 +811,22 @@ const DAY_CHAR = { 1: 'Major Wood', 2: "Hammerin' Hanky", 3: 'The Grip', 4: 'The
 const CHARACTERS = ['Major Wood', "Hammerin' Hanky", 'The Grip', 'The Velvet Python', 'Slick Willy', 'The Rear Admiral'];
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 let PRODUCTS = null;
+let PROMOS = [];
 let LEFT = {};
 let DRAFTS = 0;
 function ymd(d) { return d.toISOString().slice(0, 10); }
 function londonYmd(v) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(v)); }
 async function loadProducts() {
   if (PRODUCTS) return PRODUCTS;
-  try { const res = await fetch(OPTIONS_URL); const j = await res.json(); PRODUCTS = j.products || []; LEFT = j.left || {}; DRAFTS = j.drafts_awaiting_approval || 0; } catch (e) { PRODUCTS = []; }
+  try { const res = await fetch(OPTIONS_URL); const j = await res.json(); PRODUCTS = j.products || []; PROMOS = j.promos || []; LEFT = j.left || {}; DRAFTS = j.drafts_awaiting_approval || 0; } catch (e) { PRODUCTS = []; }
   return PRODUCTS;
 }
 function existingRow(date, slot, time) {
   return ROWS.find(r => londonYmd(r.post_date) === date && (
     slot === 'custom' ? r.post_time === time :
     slot === '12pm' ? (!r.post_time && r.format === 'Product') :
-    (!r.post_time && r.format !== 'Product' && r.format !== 'Advice')));
+    slot === '6am' ? (!r.post_time && r.format === 'Day Greeting') :
+    (!r.post_time && r.format !== 'Product' && r.format !== 'Advice' && r.format !== 'Day Greeting')));
 }
 const STATE_NAMES = ['writing brief', 'brief ready', 'brief needs attention', 'making start image', 'start image ready', 'video queued / rendering', 'video rendering at Kling', 'clip ready for approval', 'approved', 'scheduled', 'posted', 'paused'];
 function stateName(r) {
@@ -857,9 +859,11 @@ function stateTag(row) {
   return '<span style="font-weight:600;color:' + st.color + '">' + (row ? escapeHtml(row.format) + ': ' : '') + st.label + '</span>';
 }
 function productOptions(sel) {
-  return '<option value="">No product post</option>' + (PRODUCTS || []).map(p => '<option value="' + escapeHtml(p.handle) + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(p.title) + '</option>').join('');
+  return '<option value="">No product post</option>' +
+    ((PROMOS || []).length ? '<optgroup label="Promotable items">' + PROMOS.map(p => '<option value="promo:' + escapeHtml(p.item) + '"' + ('promo:' + p.item === sel ? ' selected' : '') + '>' + escapeHtml(p.item) + '</option>').join('') + '</optgroup>' : '') +
+    '<optgroup label="Shop products">' + (PRODUCTS || []).map(p => '<option value="' + escapeHtml(p.handle) + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(p.title) + '</option>').join('') + '</optgroup>';
 }
-function charOptions(sel) { return CHARACTERS.map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
+function charOptions(sel) { return '<option value=""' + (sel ? '' : ' selected') + '>Rotate (all six)</option>' + CHARACTERS.map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
 function closePlan() { document.getElementById('planOverlay').classList.remove('open'); }
 document.getElementById('planOverlay').addEventListener('click', (e) => { if (e.target.id === 'planOverlay') closePlan(); });
 
@@ -904,6 +908,8 @@ function planDefaults(start, n) {
     days.forEach(x => { const r = existingRow(x.date, '7am'); if (r && !slotState(r).gap && counts[r.format] != null) counts[r.format]++; });
     days.forEach(x => {
       const ch = DAY_CHAR[x.dow];
+      const r6 = existingRow(x.date, '6am');
+      if ((!r6 || slotState(r6).gap) && leftFor(ch, 'Day Greeting') !== 0) picks[x.date + '|6am'] = 'Day Greeting';
       const r7 = existingRow(x.date, '7am');
       if (!r7 || slotState(r7).gap) {
         if (x.dow === 0) { picks[x.date + '|7am'] = (leftFor('SC Logo', 'Brand Lore') === 0) ? '' : 'Brand Lore'; }
@@ -944,10 +950,16 @@ function drawPlanDays(useDefaults) {
   if (!start) return;
   const picks = useDefaults === false ? {} : planDefaults(start, n);
   let slots = 0, gaps = 0; const gapList = [];
-  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left">Day</th><th align="left">7am</th><th align="left">12pm product</th></tr>';
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left">Day</th><th align="left">6am greeting</th><th align="left">7am</th><th align="left">12pm product</th></tr>';
   for (let i = 0; i < n; i++) {
     const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i);
     const date = ymd(d); const dow = d.getUTCDay();
+    const e6 = existingRow(date, '6am');
+    slots++; if (slotState(e6).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 6am'); }
+    const n6 = leftFor(DAY_CHAR[dow], 'Day Greeting');
+    const greet = stateTag(e6) + '<br>' + (slotState(e6).gap
+      ? '<select data-date="' + date + '" class="plan6"><option value="Day Greeting"' + (picks[date + '|6am'] ? ' selected' : '') + (n6 === 0 ? ' disabled' : '') + '>Day Greeting' + (n6 === null ? '' : ' (' + n6 + ')') + '</option><option value=""' + (picks[date + '|6am'] ? '' : ' selected') + '>None</option></select>'
+      : '<em>Keep</em>');
     const e7 = existingRow(date, '7am');
     slots++; if (slotState(e7).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 7am'); }
     const main = stateTag(e7) + '<br>' + formatSelect(date, dow, e7, picks[date + '|7am']);
@@ -959,21 +971,21 @@ function drawPlanDays(useDefaults) {
       const pk = picks[date + '|12pm'] || '';
       const pp = (PRODUCTS || []).find(x => x.handle === pk);
       prod = stateTag(e12) + '<br>' + (st12.gap
-        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character) || DAY_CHAR[dow]) + '</select>'
+        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character) || '') + '</select>'
         : '<em>Keep</em>');
     }
-    const bg = (slotState(e7).gap || ([3, 5, 6].indexOf(dow) !== -1 && slotState(existingRow(date, '12pm')).gap)) ? 'background:rgba(176,106,0,0.07);' : '';
-    html += '<tr style="border-top:1px solid var(--line);' + bg + '"><td>' + WEEKDAY[dow] + ' ' + date.slice(8) + '/' + date.slice(5, 7) + '<br><em>' + escapeHtml(DAY_CHAR[dow]) + '</em></td><td>' + main + '</td><td>' + prod + '</td></tr>';
+    const bg = (slotState(e6).gap || slotState(e7).gap || ([3, 5, 6].indexOf(dow) !== -1 && slotState(existingRow(date, '12pm')).gap)) ? 'background:rgba(176,106,0,0.07);' : '';
+    html += '<tr style="border-top:1px solid var(--line);' + bg + '"><td>' + WEEKDAY[dow] + ' ' + date.slice(8) + '/' + date.slice(5, 7) + '<br><em>' + escapeHtml(DAY_CHAR[dow]) + '</em></td><td>' + greet + '</td><td>' + main + '</td><td>' + prod + '</td></tr>';
   }
   html += '</table>';
   const summary = '<div class="brief-part" style="margin-bottom:8px"><b>' + (slots - gaps) + ' of ' + slots + ' slots filled.</b> ' + (gaps ? 'Empty: ' + gapList.join(', ') + '. Empty slots are pre-filled with a balanced mix below - change anything, then Create.' : 'Nothing missing.') + '</div>';
   let foot = '';
-  if (DRAFTS) foot += '<div class="brief-part" style="margin-top:8px">' + DRAFTS + ' new lines are waiting for your approval in the Facts Master (set Status to APPROVED to use them).</div>';
+  if (DRAFTS) foot += '<div class="brief-part" style="margin-top:8px">' + DRAFTS + ' rows in the content spreadsheet are not yet approved (set status to approved to use them).</div>';
   document.getElementById('planDaysBox').innerHTML = summary + html + foot;
   document.querySelectorAll('.plan12').forEach(sel => sel.addEventListener('change', () => {
     const p = (PRODUCTS || []).find(x => x.handle === sel.value);
     const c = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
-    if (p && p.character && c) c.value = p.character;
+    if (c) c.value = (p && p.character) ? p.character : '';
   }));
 }
 async function sendPlan(plan, statusEl) {
@@ -988,9 +1000,12 @@ async function sendPlan(plan, statusEl) {
 }
 function submitPlan() {
   const plan = [];
+  document.querySelectorAll('.plan6').forEach(sel => { if (sel.value) plan.push({ date: sel.dataset.date, format: 'Day Greeting' }); });
   document.querySelectorAll('.plan7').forEach(sel => { if (sel.value) plan.push({ date: sel.dataset.date, format: sel.value }); });
   document.querySelectorAll('.plan12').forEach(sel => {
     if (!sel.value) return;
+    const c0 = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
+    if (sel.value.indexOf('promo:') === 0) { plan.push({ date: sel.dataset.date, format: 'Product', promo_item: sel.value.slice(6), character: c0 ? c0.value : '' }); return; }
     const p = (PRODUCTS || []).find(x => x.handle === sel.value) || {};
     const c = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
     plan.push({ date: sel.dataset.date, format: 'Product', product_handle: sel.value, product_title: p.title || '', character: c ? c.value : '' });
@@ -1003,8 +1018,8 @@ async function openAdhoc() {
   panel.innerHTML = '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
     '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
-    '<div class="field"><label>Post type</label><select id="adFormat"><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option></select></div>' +
-    '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('Major Wood') + '</select></div>' +
+    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option></select></div>' +
+    '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('') + '</select></div>' +
     '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
     '<div class="drawer-actions"><button class="btn" id="adGo">Create brief</button><button class="btn secondary" id="adClose">Close</button></div>' +
     '<div class="save-status" id="adStatus"></div>';
@@ -1017,13 +1032,13 @@ async function openAdhoc() {
     const dow = new Date(document.getElementById('adDate').value + 'T12:00:00Z').getUTCDay();
     document.getElementById('adProductBox').style.display = f === 'Product' ? 'block' : 'none';
     const n = leftFor(DAY_CHAR[dow], f);
-    const info = f === 'Product' ? 'Chosen below with the product.' : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
   document.getElementById('adProduct').addEventListener('change', () => {
     const p = (PRODUCTS || []).find(x => x.handle === document.getElementById('adProduct').value);
-    if (p && p.character) document.getElementById('adChar').value = p.character;
+    document.getElementById('adChar').value = (p && p.character) ? p.character : '';
   });
   refresh();
   document.getElementById('adGo').addEventListener('click', () => {
@@ -1031,8 +1046,10 @@ async function openAdhoc() {
     const item = { date: document.getElementById('adDate').value, time: document.getElementById('adTime').value, format: f };
     if (f === 'Product') {
       const h = document.getElementById('adProduct').value;
-      const p = (PRODUCTS || []).find(x => x.handle === h) || {};
-      item.product_handle = h; item.product_title = p.title || ''; item.character = document.getElementById('adChar').value;
+      if (!h) { document.getElementById('adStatus').textContent = 'Pick a product or promotable item.'; return; }
+      item.character = document.getElementById('adChar').value;
+      if (h.indexOf('promo:') === 0) item.promo_item = h.slice(6);
+      else { const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; }
     }
     sendPlan([item], document.getElementById('adStatus'));
   });
