@@ -291,8 +291,8 @@
   <div class="drawer" id="drawer"></div>
 </div>
 
-<div class="overlay" id="planOverlay" style="justify-content:center;align-items:flex-start;overflow-y:auto">
-  <div class="drawer" id="planPanel" style="width:min(760px,96vw);height:auto;margin:30px 0;border-left:4px solid var(--olive)"></div>
+<div class="overlay" id="planOverlay" style="justify-content:center;align-items:stretch">
+  <div class="drawer full" id="planPanel" style="padding:0 max(22px, calc((100vw - 1200px) / 2)) 40px"></div>
 </div>
 
 <script>
@@ -865,12 +865,15 @@ function productOptions(sel) {
 }
 function charOptions(sel) { return '<option value=""' + (sel ? '' : ' selected') + '>Rotate (all six)</option>' + CHARACTERS.map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
 function closePlan() { document.getElementById('planOverlay').classList.remove('open'); }
+document.getElementById('planPanel').addEventListener('click', (e) => { if (e.target.classList && e.target.classList.contains('plan-back')) closePlan(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('planOverlay').classList.contains('open')) closePlan(); });
 document.getElementById('planOverlay').addEventListener('click', (e) => { if (e.target.id === 'planOverlay') closePlan(); });
 
 async function openPlanner() {
   const panel = document.getElementById('planPanel');
   const t = new Date(); t.setUTCDate(t.getUTCDate() + ((8 - t.getUTCDay()) % 7 || 7));
-  panel.innerHTML = '<h2>Plan content</h2><div class="sub">Choose what to create. Each post gets one brief for you to approve. No image or video is made until you approve it.</div>' +
+  panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Plan content</span><button class="btn secondary plan-back">Close &times;</button></div>' +
+    '<h2>Plan content</h2><div class="sub">Choose what to create. Each post gets one brief for you to approve. No image or video is made until you approve it.</div>' +
     '<div class="field"><label>Start date</label><input type="date" id="planStart" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>How long</label><select id="planDays"><option value="7">1 week</option><option value="14">2 weeks</option></select></div>' +
     '<div id="planDaysBox"><div class="loading">Loading products...</div></div>' +
@@ -1058,7 +1061,8 @@ function submitPlan() {
 async function openAdhoc() {
   const panel = document.getElementById('planPanel');
   const t = new Date(); t.setUTCDate(t.getUTCDate() + 1);
-  panel.innerHTML = '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
+  panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Add a post</span><button class="btn secondary plan-back">Close &times;</button></div>' +
+    '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
     '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
     '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option></select></div>' +
