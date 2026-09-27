@@ -301,6 +301,7 @@ const UPDATE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calend
 const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-concept-creator';
 const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
 const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
+const PRODUCTBOX_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-productbox';
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 // JS getDay(): 0=Sun,1=Mon,...,6=Sat. Map to our 0=Mon..6=Sun index:
@@ -673,6 +674,7 @@ function openDrawer(r) {
     field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
     field('caption_facebook', 'Facebook caption (no hashtags)', 'textarea', r.caption_facebook) +
     imagePreview(r) +
+    productBoxField(r) +
     videoPreview(r.video_url) +
     field('image_url', 'Image URL', 'input', r.image_url) +
     field('video_url', 'Video URL', 'input', r.video_url) +
@@ -698,6 +700,7 @@ function openDrawer(r) {
   document.querySelectorAll('.pick-btn').forEach(b => b.addEventListener('click', () => pickConcept(r, Number(b.dataset.n))));
   const nc = document.getElementById('newConceptsBtn'); if (nc) nc.addEventListener('click', () => newConcepts(r));
   const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
+  loadProductBox(r);
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
@@ -720,6 +723,49 @@ function imagePreview(r) {
   return '<div class="field"><label>' + label + '</label><img style="width:100%;border:1px solid var(--line)" src="' + String(r.image_url).replace(/"/g, '&quot;') + '"></div>';
 }
 
+function productBoxKey(r) {
+  if (r.format !== 'Product') return null;
+  const notes = r.notes || '';
+  const promo = (notes.match(/Promo:\s*([^.|]+)/i) || [])[1];
+  if (promo) return 'promo:' + promo.trim().toLowerCase();
+  const handle = (notes.match(/products\/([a-z0-9-]+)/i) || [])[1];
+  return handle || null;
+}
+function productBoxField(r) {
+  const key = productBoxKey(r);
+  if (!key) return '';
+  return '<div class="field"><label>Product image (shown in the on-screen box)</label>' +
+    '<div id="pbCurrent" style="margin-bottom:6px;color:var(--dim);font-size:12px">Loading&hellip;</div>' +
+    '<div id="pbOptions" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>' +
+    '<input id="pbUrl" placeholder="Paste an image URL, or pick one above" style="width:100%">' +
+    '<button type="button" class="btn secondary" id="pbSaveBtn" style="margin-top:6px">Use this image</button>' +
+    '<div id="pbStatus" style="font-size:12px;color:var(--dim);margin-top:4px"></div></div>';
+}
+async function loadProductBox(r) {
+  const key = productBoxKey(r);
+  if (!key) return;
+  const cur = document.getElementById('pbCurrent'), opts = document.getElementById('pbOptions'), urlBox = document.getElementById('pbUrl'), btn = document.getElementById('pbSaveBtn'), status = document.getElementById('pbStatus');
+  if (!cur) return;
+  try {
+    const res = await fetch(PRODUCTBOX_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) }).then(x => x.json());
+    if (!res || !res.ok) { cur.textContent = 'Could not load (row not yet in the Product Box tab).'; return; }
+    cur.innerHTML = res.current ? ('Current: <img src="' + String(res.current).replace(/"/g, '&quot;') + '" style="height:60px;vertical-align:middle;border:1px solid var(--line);margin-left:6px">') : 'No image set yet.';
+    urlBox.value = res.current || '';
+    (res.options || []).forEach(u => {
+      const img = document.createElement('img');
+      img.src = u; img.style.cssText = 'height:60px;border:2px solid ' + (u === res.current ? 'var(--accent)' : 'var(--line)') + ';cursor:pointer';
+      img.addEventListener('click', () => { urlBox.value = u; });
+      opts.appendChild(img);
+    });
+  } catch (e) { cur.textContent = 'Could not load.'; }
+  btn.addEventListener('click', async () => {
+    status.textContent = 'Saving...';
+    try {
+      const res = await fetch(PRODUCTBOX_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'set', key, photo: urlBox.value.trim() }) }).then(x => x.json());
+      status.textContent = res && res.ok ? 'Saved. Make a new concept to use this image in the on-screen box.' : 'Could not save.';
+    } catch (e) { status.textContent = 'Could not save.'; }
+  });
+}
 function videoPreview(url) {
   if (!url) return '';
   return '<div class="field"><label>Video Preview</label><video controls preload="metadata" style="width:100%;border:1px solid var(--line);background:#000" src="' + url.replace(/"/g, '&quot;') + '"></video></div>';
