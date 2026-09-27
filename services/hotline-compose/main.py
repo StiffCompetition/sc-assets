@@ -175,10 +175,10 @@ def hotline_gfx(g: Gfx):
         tframes.append(fr)
     ticker_url = write_video(tframes, 1080, 178)
     # product box over the desk front: slides in (0.5 s), the product slowly pushes in, one light sheen
-    RX, RY, RW, RH = 0, 1210, 660, 470
+    RX, RY, RW, RH = 0, 1170, 660, 470
     setimg = Image.open(io.BytesIO(requests.get(g.set_url, timeout=60).content)).convert('RGB').resize((1080, 1920))
     bg = setimg.crop((RX, RY, RX + RW, RY + RH))
-    BW, BH, BX, BY = 560, 420, 56, 1229
+    BW, BH, BX, BY = 560, 420, 56, 1189
     prod = None
     if g.box_url:
         prod = Image.open(io.BytesIO(requests.get(g.box_url, timeout=60).content)).convert('RGBA')
@@ -218,7 +218,7 @@ def hotline_gfx(g: Gfx):
         fr.paste(framed, (BX - 5 - RX + off, BY - 5 - RY))
         bframes.append(fr)
     box_url = write_video(bframes, RW, RH)
-    return {'ok': bool(ticker_url and box_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1742, 1080, 178], 'box_url': box_url, 'box_xywh': [RX, RY, RW, RH]}
+    return {'ok': bool(ticker_url and box_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': box_url, 'box_xywh': [RX, RY, RW, RH]}
 
 # ---------- Travel the World: keep the original NFT artwork pixel for pixel inside the 9:16 extension ----------
 class Merge(BaseModel):
