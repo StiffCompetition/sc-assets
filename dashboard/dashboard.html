@@ -279,6 +279,7 @@
   <input type="search" id="filterSearch" placeholder="search text...">
   <button class="btn" id="btnPlan">Plan content</button>
   <button class="btn secondary" id="btnAdhoc">Add a post</button>
+  <button class="btn secondary" id="btnPress">Press coverage</button>
   <div class="counts" id="counts"></div>
 </div>
 </div>
@@ -302,6 +303,7 @@ const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-conce
 const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
 const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
 const PRODUCTBOX_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-productbox';
+const COVERAGE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-coverage-list';
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 // JS getDay(): 0=Sun,1=Mon,...,6=Sat. Map to our 0=Mon..6=Sun index:
@@ -1166,6 +1168,24 @@ async function openAdhoc() {
     sendPlan([item], document.getElementById('adStatus'));
   });
 }
+async function openPress() {
+  const panel = document.getElementById('planPanel');
+  panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Press coverage</span><button class="btn secondary plan-back">Close &times;</button></div>' +
+    '<h2>Press coverage</h2><div class="sub">Each feature and where it has got to on every channel. Read-only.</div><div id="pressBox"><div class="loading">Loading...</div></div>';
+  document.getElementById('planOverlay').classList.add('open');
+  const box = document.getElementById('pressBox');
+  try {
+    const res = await fetch(COVERAGE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json());
+    const rows = (res && res.rows) || [];
+    if (!rows.length) { box.innerHTML = '<div class="brief-part">No coverage rows yet.</div>'; return; }
+    const col = st => st === 'posted' ? '#2a7a2a' : (st.indexOf('held') === 0 ? '#b06a00' : (st === 'sent to you' ? '#2a5db0' : '#777'));
+    box.innerHTML = rows.map(r =>
+      '<div class="panel-box" style="margin-bottom:14px"><div style="font-weight:700">' + escapeHtml(r.headline || '') + '</div>' +
+      '<div style="font-size:12px;margin-bottom:8px">' + escapeHtml(r.outlet || '') + ' &middot; <a href="' + escapeHtml(r.url || '#') + '" target="_blank">article</a></div>' +
+      r.channels.map(c => '<div style="display:flex;justify-content:space-between;padding:3px 0;border-top:1px solid var(--line)"><span>' + escapeHtml(c.name) + '</span><span style="font-weight:600;color:' + col(c.state) + '">' + escapeHtml(c.state) + '</span></div>').join('') +
+      '</div>').join('');
+  } catch (e) { box.innerHTML = '<div class="error-state">Could not load press coverage.</div>'; }
+}
 let AUTO = null;
 function startAutoRefresh() {
   if (AUTO) clearInterval(AUTO);
@@ -1174,6 +1194,7 @@ function startAutoRefresh() {
 }
 document.getElementById('btnPlan').addEventListener('click', openPlanner);
 document.getElementById('btnAdhoc').addEventListener('click', openAdhoc);
+document.getElementById('btnPress').addEventListener('click', openPress);
 
 loadRows();
 </script>
