@@ -531,11 +531,14 @@ function extractOnScreen(notes) {
   const raw = m ? m[1].trim() : '';
   if (!raw) return { hasText: false };
   const flattened = raw.includes('/') ? raw.split('/').map(s => s.trim()).filter(Boolean).join(' ') : raw;
-  const sentences = flattened.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  // Same split as the video step: at the last sentence, or at the slash when there is no sentence break.
+  let sentences = flattened.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  if (sentences.length < 2 && raw.includes('/')) sentences = raw.split('/').map(s => s.trim()).filter(Boolean);
   const isSplit = sentences.length > 1;
   const setupText = isSplit ? sentences.slice(0, -1).join(' ') : '';
   const deliveryText = isSplit ? sentences[sentences.length - 1] : flattened;
-  return { hasText: true, isSplit, setupText, deliveryText };
+  const words = (setupText + ' ' + deliveryText).split(/\s+/).filter(Boolean).length;
+  return { hasText: true, isSplit, setupText, deliveryText, words };
 }
 
 function renderOsWords(text) {
@@ -550,17 +553,18 @@ function renderOsWords(text) {
 function onScreenPreviewHtml(notes) {
   const p = extractOnScreen(notes);
   if (!p.hasText) return '<div class="onscreen-preview empty">No On-screen: text found in Notes.</div>';
-  if (p.isSplit) {
+  // Same rule as the video step: 8 words or fewer appear one by one and all stay; longer text shows the setup phrase, then the delivery phrase.
+  if (p.isSplit && p.words > 8) {
     return '<div class="onscreen-preview">' +
-      '<span class="os-tag">SETUP — fades out around 1.9s</span>' +
+      '<span class="os-tag">SETUP — words appear one by one, then fade out by about 2s</span>' +
       '<div class="os-setup">' + renderOsWords(p.setupText) + '</div>' +
-      '<span class="os-tag">DELIVERY — holds to end of clip (5s)</span>' +
+      '<span class="os-tag">DELIVERY — words appear one by one from about 2.2s and stay to the end of the clip (5s)</span>' +
       '<div class="os-delivery">' + renderOsWords(p.deliveryText) + '</div>' +
     '</div>';
   }
   return '<div class="onscreen-preview">' +
-    '<span class="os-tag">HOLDS TO END OF CLIP (5s) — no setup/delivery split</span>' +
-    '<div class="os-delivery">' + renderOsWords(p.deliveryText) + '</div>' +
+    '<span class="os-tag">WORDS APPEAR ONE BY ONE OVER THE FIRST 3s AND ALL STAY TO THE END OF THE CLIP (5s)</span>' +
+    '<div class="os-delivery">' + renderOsWords((p.setupText ? p.setupText + ' ' : '') + p.deliveryText) + '</div>' +
   '</div>';
 }
 
