@@ -21,9 +21,9 @@ def isblue(p):
 class Req(BaseModel):
     set_url: str
     seat_b64: str
-    head_y: int = 470
-    desk_top: int = 1085
-    front: int = 1135
+    head_y: int = 430
+    desk_top: int = 1045
+    front: int = 1095
 
 @app.get('/health')
 def health():
@@ -34,14 +34,14 @@ def compose(r: Req):
     PA = load_set(r.set_url)
     DT, FR, HY = r.desk_top, r.front, r.head_y
     O = np.array(Image.open(io.BytesIO(base64.b64decode(r.seat_b64))).convert('RGB').resize((1080, 1920), Image.LANCZOS)).astype(np.float32)
-    side = np.zeros((1920, 1080), bool); side[340:DT - 10, 0:30] = True; side[FR + 40:1700, :] = True
+    side = np.zeros((1920, 1080), bool); side[300:DT - 10, 0:30] = True; side[FR + 40:1700, :] = True
     O += (PA[side].mean(axis=0) - O[side].mean(axis=0)); np.clip(O, 0, 255, out=O)
     diff = np.sqrt(((O - PA) ** 2).sum(axis=2))
     sd = float(diff[side].mean())
     if sd > 14:
         return {'ok': False, 'reason': f'set moved ({sd:.1f})'}
     m = (diff > 38).astype(np.uint8) * 255
-    m[:330] = 0; m[FR + 30:] = 0; m[:, :100] = 0; m[:, 980:] = 0
+    m[:290] = 0; m[FR + 30:] = 0; m[:, :100] = 0; m[:, 980:] = 0
     m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8)); m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
     n, lab, st, _ = cv2.connectedComponentsWithStats(m)
     if n < 2:
@@ -49,7 +49,7 @@ def compose(r: Req):
     m = np.where(lab == 1 + np.argmax(st[1:, cv2.CC_STAT_AREA]), 255, 0).astype(np.uint8)
     cnts, _ = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE); mf = np.zeros_like(m); cv2.drawContours(mf, cnts, -1, 255, -1)
     ys, xs = np.nonzero(mf); top = int(ys.min())
-    if not (340 <= top <= 760): return {'ok': False, 'reason': f'head out of range ({top})'}
+    if not (300 <= top <= 720): return {'ok': False, 'reason': f'head out of range ({top})'}
     if ys.max() < DT - 40: return {'ok': False, 'reason': 'not seated at the desk'}
     if len(ys) < 60000: return {'ok': False, 'reason': 'presenter too small'}
     if xs.min() < 110 or xs.max() > 970: return {'ok': False, 'reason': 'presenter too wide'}
@@ -64,8 +64,8 @@ def compose(r: Req):
     A = cv2.GaussianBlur(cv2.warpAffine(mf.astype(np.float32), M, (1080, 1920)), (5, 5), 0) / 255
     # the SC sign and the palm always stay exactly as in the set
     prot = np.zeros((1920, 1080), np.uint8)
-    prot[380:720, 0:360] = (~isblue(PA[380:720, 0:360])).astype(np.uint8) * 255
-    prot[330:DT, 640:1080] = (~isblue(PA[330:DT, 640:1080])).astype(np.uint8) * 255
+    prot[340:680, 0:360] = (~isblue(PA[340:680, 0:360])).astype(np.uint8) * 255
+    prot[290:DT, 640:1080] = (~isblue(PA[290:DT, 640:1080])).astype(np.uint8) * 255
     prot = cv2.dilate(prot, np.ones((9, 9), np.uint8)).astype(np.float32) / 255
     A = A * (1 - prot)
     comp = PA * (1 - A[..., None]) + L * A[..., None]; comp[FR:] = PA[FR:]
@@ -153,7 +153,7 @@ class Gfx(BaseModel):
     tick: str
     box_url: str = ''
     box_name: str = ''
-    set_url: str = 'https://res.cloudinary.com/dkapdtxek/image/upload/v1790454966/SCSMAuto/sc_hotline_set_locked_v1.png'
+    set_url: str = 'https://res.cloudinary.com/dkapdtxek/image/upload/v1790557122/SCSMAuto/sc_hotline_set_locked_v2.png'
 
 @app.post('/hotline-gfx')
 def hotline_gfx(g: Gfx):
