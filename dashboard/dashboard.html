@@ -313,6 +313,7 @@ function dayIndex(dateStr) {
 }
 
 let ROWS = [];
+let PRESS_ITEMS = [];
 let VIEW = 'grid';
 
 const STATUS_CLASS = (s) => {
@@ -347,6 +348,11 @@ async function loadRows() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     ROWS = (Array.isArray(data) ? data : []).sort((a, b) => isoDate(a.post_date).localeCompare(isoDate(b.post_date)));
+    try {
+      const pr = await fetch(COVERAGE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json());
+      PRESS_ITEMS = [];
+      ((pr && pr.rows) || []).forEach(row => (row.channels || []).forEach(c => PRESS_ITEMS.push({ _press: true, id: 'press-' + row.record_id + '-' + c.name, post_date: c.date, channel: c.name, state: c.state, headline: row.headline, outlet: row.outlet, url: row.url })));
+    } catch (e) { PRESS_ITEMS = []; }
     populateFilters();
     render();
   } catch (e) {
@@ -358,6 +364,7 @@ async function loadRows() {
 function populateFilters() {
   const chars = [...new Set(ROWS.map(r => r.character))].sort();
   const formats = [...new Set(ROWS.map(r => r.format))].sort();
+  if (PRESS_ITEMS.length) formats.push('Press');
   const statuses = STATE_NAMES;
   const platforms = [...new Set(ROWS.flatMap(r => (r.platforms || '').split(',').map(p => p.trim()).filter(Boolean)))].sort();
   const fill = (id, values) => {
@@ -390,6 +397,28 @@ function filteredRows() {
   );
 }
 
+// Press coverage cards (read-only, from SC - Coverage List API). Shown when no other filter is set, or when Format = Press.
+function pressCards() {
+  const other = ['filterCharacter', 'filterStatus', 'filterPlatform'].some(id => document.getElementById(id).value) || document.getElementById('filterSearch').value.trim();
+  const f = document.getElementById('filterFormat').value;
+  if (other || (f && f !== 'Press')) return [];
+  return PRESS_ITEMS;
+}
+function makePressCard(p) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.borderLeftColor = '#7a3db0';
+  const col = p.state === 'posted' ? '#2a7a2a' : (p.state.indexOf('held') === 0 ? '#b06a00' : (p.state === 'sent to you' ? '#2a5db0' : '#777'));
+  card.innerHTML =
+    '<div class="date">' + fmtDate(p.post_date) + '</div>' +
+    '<span class="badge" style="border-color:#7a3db0;color:#fff;background:#7a3db0">PRESS</span>' +
+    '<div class="character">' + escapeHtml(p.channel) + '</div>' +
+    '<div class="snippet">' + escapeHtml((p.outlet || '') + ': ' + (p.headline || '')) + '</div>' +
+    '<span class="badge" style="border-color:' + col + ';color:' + col + '">' + escapeHtml(p.state) + '</span>';
+  card.addEventListener('click', () => openPress());
+  return card;
+}
+
 function render() {
   const rows = filteredRows();
   document.getElementById('counts').textContent = rows.length + ' / ' + ROWS.length + ' posts';
@@ -399,7 +428,7 @@ function render() {
   if (VIEW === 'grid') {
     // Group rows by week (Mon as week start)
     const weeks = {};
-    rows.forEach(r => {
+    rows.concat(pressCards()).forEach(r => {
       const iso = isoDate(r.post_date);
       const d = new Date(iso + 'T00:00:00');
       const weekStart = new Date(d);
@@ -435,7 +464,7 @@ function render() {
       cols.forEach((dayRows, i) => {
         const col = document.createElement('div');
         col.className = 'day-col' + (dayRows.length === 0 ? ' empty' : '');
-        dayRows.forEach(r => col.appendChild(makeCard(r)));
+        dayRows.forEach(r => col.appendChild(r._press ? makePressCard(r) : makeCard(r)));
         grid.appendChild(col);
       });
 
@@ -443,7 +472,7 @@ function render() {
       main.appendChild(group);
     });
 
-    if (!rows.length) main.innerHTML = '<div class="loading">No posts match these filters.</div>';
+    if (!rows.length && !pressCards().length) main.innerHTML = '<div class="loading">No posts match these filters.</div>';
   } else {
     const table = document.createElement('table');
     table.innerHTML = '<thead><tr><th>Date</th><th>Day / Character</th><th>Format</th><th>Text</th><th>Platforms</th><th>Status</th><th></th></tr></thead>';
