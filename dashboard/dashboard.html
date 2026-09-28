@@ -531,9 +531,11 @@ function extractOnScreen(notes) {
   const raw = m ? m[1].trim() : '';
   if (!raw) return { hasText: false };
   const flattened = raw.includes('/') ? raw.split('/').map(s => s.trim()).filter(Boolean).join(' ') : raw;
-  // Same split as the video step: at the last sentence, or at the slash when there is no sentence break.
-  let sentences = flattened.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
-  if (sentences.length < 2 && raw.includes('/')) sentences = raw.split('/').map(s => s.trim()).filter(Boolean);
+  // Fixed 29 Sep 2026 to match the video step (SC - Video Generation Pipeline, Build Text Elements): the row's own
+  // "/" marker is always authoritative when present - never guessed from sentence punctuation, which previously
+  // split in the wrong place whenever punctuation did not fall exactly at the "/". Punctuation is only a fallback
+  // for text with no "/" at all.
+  let sentences = raw.includes('/') ? raw.split('/').map(s => s.trim()).filter(Boolean) : flattened.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
   const isSplit = sentences.length > 1;
   const setupText = isSplit ? sentences.slice(0, -1).join(' ') : '';
   const deliveryText = isSplit ? sentences[sentences.length - 1] : flattened;
