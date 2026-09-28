@@ -1,0 +1,1020 @@
+
+const LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-list';
+const UPDATE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-update';
+const DELETE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-delete';
+const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-concept-creator';
+const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
+const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
+const PRODUCTBOX_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-productbox';
+const COVERAGE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-coverage-list';
+
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+// JS getDay(): 0=Sun,1=Mon,...,6=Sat. Map to our 0=Mon..6=Sun index:
+function dayIndex(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return (d.getDay() + 6) % 7; // Mon=0 ... Sun=6
+}
+
+let ROWS = [];
+let PRESS_ITEMS = [];
+let VIEW = 'grid';
+
+const STATUS_CLASS = (s) => {
+  if (!s) return 'draft';
+  if (s.startsWith('draft - format')) return 'notdesigned';
+  if (s.startsWith('draft')) return 'draft';
+  if (s === 'text approved' || s === 'image ready' || s === 'image approved') return 'textapproved';
+  if (s === 'approved') return 'approved';
+  if (s === 'scheduled') return 'scheduled';
+  if (s === 'posted') return 'posted';
+  if (s === 'paused') return 'paused';
+  if (s === 'rejected') return 'rejected';
+  return 'draft';
+};
+const STATUS_LABEL = (s) => {
+  if (!s) return 'draft';
+  if (s.startsWith('draft - format')) return 'not designed';
+  return s;
+};
+
+function fmtDate(raw) {
+  const d = new Date(raw);
+  return d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+function isoDate(raw) {
+  const d = new Date(raw);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+
+async function loadRows() {
+  try {
+    const res = await fetch(LIST_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    ROWS = (Array.isArray(data) ? data : []).sort((a, b) => isoDate(a.post_date).localeCompare(isoDate(b.post_date)));
+    try {
+      const pr = await fetch(COVERAGE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json());
+      PRESS_ITEMS = [];
+      ((pr && pr.rows) || []).forEach(row => (row.channels || []).forEach(c => PRESS_ITEMS.push({ _press: true, id: 'press-' + row.record_id + '-' + c.name, post_date: c.date, channel: c.name, state: c.state, headline: row.headline, outlet: row.outlet, url: row.url })));
+    } catch (e) { PRESS_ITEMS = []; }
+    populateFilters();
+    render();
+  } catch (e) {
+    document.getElementById('main').innerHTML =
+      '<div class="error-state">Could not load the calendar (' + e.message + '). The n8n webhook may need a moment after publish, or check the workflow is active.</div>';
+  }
+}
+
+function buildTickDropdown(id, values) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const label = el.dataset.label || 'items';
+  const prevChecked = new Set(Array.from(el.querySelectorAll('input[type=checkbox]:checked')).map(x => x.value));
+  el.style.position = 'relative';
+  el.style.display = 'inline-block';
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'btn secondary tickdrop-btn';
+  const panel = document.createElement('div');
+  panel.className = 'tickdrop-panel';
+  panel.style.cssText = 'display:none;position:absolute;top:100%;left:0;z-index:50;background:#fff;border:1px solid #ccc;border-radius:6px;padding:8px;max-height:260px;overflow:auto;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,.15);';
+  values.forEach(v => {
+    const row = document.createElement('label');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:13px;white-space:nowrap;cursor:pointer;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.value = v; cb.checked = prevChecked.has(v);
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(' ' + v));
+    panel.appendChild(row);
+  });
+  el.innerHTML = '';
+  el.appendChild(btn); el.appendChild(panel);
+  const updateLabel = () => {
+    const n = panel.querySelectorAll('input:checked').length;
+    btn.textContent = n === 0 ? ('All ' + label) : (n + ' ' + label + ' selected');
+  };
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.tickdrop-panel').forEach(p => { if (p !== panel) p.style.display = 'none'; });
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  });
+  panel.addEventListener('click', (e) => e.stopPropagation());
+  panel.addEventListener('change', updateLabel);
+  updateLabel();
+}
+document.addEventListener('click', () => document.querySelectorAll('.tickdrop-panel').forEach(p => p.style.display = 'none'));
+
+function populateFilters() {
+  const chars = [...new Set(ROWS.map(r => r.character))].sort();
+  const formats = [...new Set(ROWS.map(r => r.format))].sort();
+  if (PRESS_ITEMS.length) formats.push('Press');
+  const statuses = STATE_NAMES;
+  const platforms = [...new Set(ROWS.flatMap(r => (r.platforms || '').split(',').map(p => p.trim()).filter(Boolean)))].sort();
+  buildTickDropdown('filterCharacter', chars);
+  buildTickDropdown('filterFormat', formats);
+  buildTickDropdown('filterStatus', statuses);
+  buildTickDropdown('filterPlatform', platforms);
+}
+
+function getSelected(id) {
+  const el = document.getElementById(id);
+  return el ? Array.from(el.querySelectorAll('input[type=checkbox]:checked')).map(x => x.value) : [];
+}
+function filteredRows() {
+  const c = getSelected('filterCharacter');
+  const f = getSelected('filterFormat');
+  const s = getSelected('filterStatus');
+  const p = getSelected('filterPlatform');
+  const q = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const showPosted = document.getElementById('showPosted').checked;
+  return ROWS.filter(r =>
+    ['cleared', 'ready', 'concepts', 'creating', 'failed'].indexOf(r.panel_status) !== -1 &&
+    (showPosted || (r.status !== 'posted' && r.status !== 'rejected')) &&
+    (!c.length || c.includes(r.character)) &&
+    (!f.length || f.includes(r.format)) &&
+    (!s.length || s.includes(stateName(r))) &&
+    (!p.length || (r.platforms || '').split(',').map(x => x.trim()).some(x => p.includes(x))) &&
+    (!q || (r.text_content || '').toLowerCase().includes(q))
+  );
+}
+
+// Press coverage cards (read-only, from SC - Coverage List API). Shown when no other filter is set, or when Format = Press.
+function pressCards() {
+  const other = ['filterCharacter', 'filterStatus', 'filterPlatform'].some(id => getSelected(id).length) || document.getElementById('filterSearch').value.trim();
+  const f = getSelected('filterFormat');
+  if (other || (f.length && !f.includes('Press'))) return [];
+  return PRESS_ITEMS;
+}
+function makePressCard(p) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.borderLeftColor = '#7a3db0';
+  const col = p.state === 'posted' ? '#2a7a2a' : (p.state.indexOf('held') === 0 ? '#b06a00' : (p.state === 'sent to you' ? '#2a5db0' : '#777'));
+  card.innerHTML =
+    '<div class="date">' + fmtDate(p.post_date) + '</div>' +
+    '<span class="badge" style="border-color:#7a3db0;color:#fff;background:#7a3db0">PRESS</span>' +
+    '<div class="character">' + escapeHtml(p.channel) + '</div>' +
+    '<div class="snippet">' + escapeHtml((p.outlet || '') + ': ' + (p.headline || '')) + '</div>' +
+    '<span class="badge" style="border-color:' + col + ';color:' + col + '">' + escapeHtml(p.state) + '</span>';
+  card.addEventListener('click', () => openPress());
+  return card;
+}
+
+function render() {
+  const rows = filteredRows();
+  document.getElementById('counts').textContent = rows.length + ' / ' + ROWS.length + ' posts';
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+
+  if (VIEW === 'grid') {
+    // Group rows by week (Mon as week start)
+    const weeks = {};
+    rows.concat(pressCards()).forEach(r => {
+      const iso = isoDate(r.post_date);
+      const d = new Date(iso + 'T00:00:00');
+      const weekStart = new Date(d);
+      weekStart.setDate(d.getDate() - dayIndex(iso)); // back to Monday
+      const sortKey = weekStart.toISOString().slice(0, 10);
+      const label = weekStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (!weeks[sortKey]) weeks[sortKey] = { label, cols: Array.from({length:7}, ()=>[]) };
+      weeks[sortKey].cols[dayIndex(iso)].push(r);
+    });
+
+    Object.keys(weeks).sort().forEach(sortKey => {
+      const { label, cols } = weeks[sortKey];
+      const group = document.createElement('div');
+      group.className = 'week-group';
+
+      const weekLabel = document.createElement('div');
+      weekLabel.className = 'week-label';
+      weekLabel.textContent = 'Week of ' + label;
+      group.appendChild(weekLabel);
+
+      const grid = document.createElement('div');
+      grid.className = 'day-grid';
+
+      // Header row
+      DAYS.forEach((d, i) => {
+        const h = document.createElement('div');
+        h.className = 'day-header' + (i === 6 ? ' sunday' : '');
+        h.textContent = d;
+        grid.appendChild(h);
+      });
+
+      // Card columns
+      cols.forEach((dayRows, i) => {
+        const col = document.createElement('div');
+        col.className = 'day-col' + (dayRows.length === 0 ? ' empty' : '');
+        dayRows.forEach(r => col.appendChild(r._press ? makePressCard(r) : makeCard(r)));
+        grid.appendChild(col);
+      });
+
+      group.appendChild(grid);
+      main.appendChild(group);
+    });
+
+    if (!rows.length && !pressCards().length) main.innerHTML = '<div class="loading">No posts match these filters.</div>';
+  } else {
+    const table = document.createElement('table');
+    table.innerHTML = '<thead><tr><th>Date</th><th>Day / Character</th><th>Format</th><th>Text</th><th>Platforms</th><th>Status</th><th></th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + fmtDate(r.post_date) + '</td>' +
+        '<td>' + r.day_of_week + '<br><em>' + r.character + '</em></td>' +
+        '<td>' + r.format + '</td>' +
+        '<td class="text-cell">' + (r.text_content ? escapeHtml(r.text_content) : '<span class="snippet empty">no text yet</span>') + '</td>' +
+        '<td>' + (r.platforms || '') + '</td>' +
+        '<td><span class="badge ' + STATUS_CLASS(r.status) + '">' + STATUS_LABEL(r.status) + '</span></td>' +
+        '<td><button class="row-btn" data-id="' + r.id + '">Edit</button></td>';
+      tr.querySelector('.row-btn').addEventListener('click', () => openDrawer(r));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    const wrap = document.createElement('div');
+    wrap.className = 'list-view';
+    wrap.appendChild(table);
+    main.appendChild(wrap);
+  }
+}
+
+function makeCard(r) {
+  const card = document.createElement('div');
+  card.className = 'card' + (r.character === 'SC Logo' ? ' sunday' : '');
+  const os = extractOnScreen(r.notes);
+  const osLine = os.hasText
+    ? '<div class="os-card-line"><b>' + escapeHtml((os.deliveryText).replace(/\*/g, '').toUpperCase()) + '</b>' + (os.isSplit ? ' <span class="os-setup-hint">(+ setup)</span>' : '') + '</div>'
+    : '<div class="os-card-line empty">no on-screen text</div>';
+  card.innerHTML =
+    '<div class="date">' + fmtDate(r.post_date) + '</div>' +
+    '<div class="character">' + r.character + '</div>' +
+    '<div class="format">' + r.format + '</div>' +
+    osLine +
+    '<div class="snippet' + (r.text_content ? '' : ' empty') + '">' + (r.text_content ? escapeHtml(r.text_content) : 'no caption yet') + '</div>' +
+    '<span class="badge ' + STATUS_CLASS(r.status) + '">' + STATUS_LABEL(r.status) + '</span>' +
+    (r.video_url ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">&#9654; video ready</span>' : '') +
+    (r.panel_status === 'concepts' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">pick a concept</span>' : '') +
+    (r.status === 'image ready' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">check start image</span>' : '') +
+    (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">writing brief...</span>' : '') +
+    (!r.video_url && r.status === 'text approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">making start image...</span>' : '') +
+    (!r.video_url && r.status === 'image approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + (r.kling_job ? 'video rendering at Kling...' : 'video queued / rendering...') + '</span>' : '') +
+    (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">needs attention</span>' : '') +
+    (isMissed(r) ? '<span class="badge" style="border-color:#b00;color:#b00;">slot missed - reschedule or Post Now</span>' : '') +
+    (r.post_time ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">custom ' + escapeHtml(r.post_time) + '</span>' : '');
+  card.addEventListener('click', () => openDrawer(r));
+  return card;
+}
+
+function extractOnScreen(notes) {
+  if (!notes) return { hasText: false };
+  const m = notes.match(/On-screen:\s*([\s\S]+?)\s*(?:Sound:|Motion:|ID:|$)/i);
+  const raw = m ? m[1].trim() : '';
+  if (!raw) return { hasText: false };
+  const flattened = raw.includes('/') ? raw.split('/').map(s => s.trim()).filter(Boolean).join(' ') : raw;
+  // Fixed 29 Sep 2026 to match the video step (SC - Video Generation Pipeline, Build Text Elements): the row's own
+  // "/" marker is always authoritative when present - never guessed from sentence punctuation, which previously
+  // split in the wrong place whenever punctuation did not fall exactly at the "/". Punctuation is only a fallback
+  // for text with no "/" at all.
+  let sentences = raw.includes('/') ? raw.split('/').map(s => s.trim()).filter(Boolean) : flattened.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  const isSplit = sentences.length > 1;
+  const setupText = isSplit ? sentences.slice(0, -1).join(' ') : '';
+  const deliveryText = isSplit ? sentences[sentences.length - 1] : flattened;
+  const words = (setupText + ' ' + deliveryText).split(/\s+/).filter(Boolean).length;
+  return { hasText: true, isSplit, setupText, deliveryText, words };
+}
+
+function renderOsWords(text) {
+  return text.split(/\s+/).filter(Boolean).map(w => {
+    const important = /^\*.+\*[^\w]*$/.test(w);
+    const clean = w.replace(/\*/g, '').replace(/[\u2018\u2019]/g, "'").replace(/[.,!?;:"]/g, '');
+    const disp = escapeHtml(clean.toUpperCase());
+    return important ? '<b>' + disp + '</b>' : disp;
+  }).join(' ');
+}
+
+function onScreenPreviewHtml(notes) {
+  const p = extractOnScreen(notes);
+  if (!p.hasText) return '<div class="onscreen-preview empty">No On-screen: text found in Notes.</div>';
+  // Same rule as the video step: 8 words or fewer appear one by one and all stay; longer text shows the setup phrase, then the delivery phrase.
+  if (p.isSplit && p.words > 8) {
+    return '<div class="onscreen-preview">' +
+      '<span class="os-tag">SETUP — words appear one by one, then fade out by about 2s</span>' +
+      '<div class="os-setup">' + renderOsWords(p.setupText) + '</div>' +
+      '<span class="os-tag">DELIVERY — words appear one by one from about 2.2s and stay to the end of the clip (5s)</span>' +
+      '<div class="os-delivery">' + renderOsWords(p.deliveryText) + '</div>' +
+    '</div>';
+  }
+  return '<div class="onscreen-preview">' +
+    '<span class="os-tag">WORDS APPEAR ONE BY ONE OVER THE FIRST 3s AND ALL STAY TO THE END OF THE CLIP (5s)</span>' +
+    '<div class="os-delivery">' + renderOsWords((p.setupText ? p.setupText + ' ' : '') + p.deliveryText) + '</div>' +
+  '</div>';
+}
+
+
+function briefPart(notes, label) {
+  if (!notes) return '';
+  const LABELS = ['Appearance','Scene','End frame','End','On-screen','Sound','Motion','Source','ID','NFT'];
+  const lower = notes.toLowerCase();
+  const hits = [];
+  LABELS.forEach(function(L) {
+    const needle = (L + ':').toLowerCase();
+    let from = 0;
+    while (true) {
+      const at = lower.indexOf(needle, from);
+      if (at === -1) break;
+      if (!(L === 'NFT' && /source:\s*$/.test(lower.slice(Math.max(0, at - 12), at)))) hits.push({ label: L, start: at, valueStart: at + needle.length });
+      from = at + needle.length;
+    }
+  });
+  hits.sort(function(a, b) { return a.start - b.start; });
+  for (let i = 0; i < hits.length; i++) {
+    if (hits[i].label.toLowerCase() === label.toLowerCase()) {
+      const end = (i + 1 < hits.length) ? hits[i + 1].start : notes.length;
+      return notes.slice(hits[i].valueStart, end).trim();
+    }
+  }
+  return '';
+}
+
+function briefField(notes, label, display) {
+  const v = briefPart(notes, label);
+  if (!v) return '';
+  return '<div class="field"><label>' + display + '</label><div class="brief-part">' + escapeHtml(v) + '</div></div>';
+}
+
+function briefEdit(notes, key, label, id) {
+  const v = briefPart(notes, key);
+  return '<div class="field"><label>' + label + '</label><textarea id="b_' + id + '">' + escapeHtml(v || '') + '</textarea></div>';
+}
+function composeNotes(orig) {
+  const g = id => { const el = document.getElementById('b_' + id); return el ? el.value.trim() : null; };
+  if (g('scene') === null) return orig;
+  const idPart = briefPart(orig, 'ID');
+  const sound = (g('sound') || '').replace(/[.]+$/, '');
+  let src = briefPart(orig, 'Source');
+  // Rows from the spreadsheet carry Payoff (the sound the pipeline makes) inside the Source part: an edited Sound replaces it.
+  if (src && /Payoff:/i.test(src) && sound) src = src.replace(/Payoff:\s*[\s\S]*$/i, 'Payoff: ' + sound + '.');
+  return 'Scene: ' + g('scene') + ' On-screen: ' + g('onscreen') + ' Sound: ' + sound + '. Motion: ' + g('motion') +
+    (idPart ? ' ID: ' + idPart.replace(/[.]+$/, '') + '.' : '') + (src ? ' Source: ' + src : '') + (g('end') ? ' End: ' + g('end') : '');
+}
+function sourceBox(notes) {
+  const id = briefPart(notes, 'Source');
+  if (!id) return '';
+  return '<div class="field"><label>Source fact</label><div class="brief-part">' + escapeHtml(id) +
+    ' &middot; <a href="https://docs.google.com/spreadsheets/d/1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60/edit" target="_blank">Facts Master</a></div></div>';
+}
+
+function panelBox(r) {
+  if (!r.panel_status || r.panel_status === 'concepts') return '';
+  if (r.panel_status === 'creating') return '<div class="panel-box" style="margin-bottom:12px"><strong>The brief for this post is being written.</strong><div class="brief-part">About a minute per post. The calendar refreshes itself.</div></div>';
+  const cleared = r.panel_status === 'cleared' || r.panel_status === 'ready';
+  const fails = (r.panel_notes || '').split('Remaining rules:')[0].trim();
+  return '<div class="panel-box ' + (cleared ? 'ok' : 'bad') + '">' +
+    '<strong>' + (r.panel_status === 'ready' ? 'Ready for your review' : 'Panel: ' + escapeHtml(r.panel_status)) + '</strong>' +
+    (cleared ? '' : '<div class="panel-fails">' + escapeHtml(fails) + '</div>') +
+  '</div>';
+}
+
+function conceptData(r) {
+  if (r.panel_status !== 'concepts') return null;
+  try { return JSON.parse(r.panel_notes || '{}'); } catch (e) { return null; }
+}
+
+function conceptPicker(r) {
+  const c = conceptData(r);
+  if (!c) {
+    const done = r.video_url || ['approved', 'scheduled', 'posted', 'text approved', 'image approved'].indexOf(r.status) !== -1 || r.panel_status === 'creating';
+    return done ? '' : '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="newConceptsBtn">Make a new concept</button></div>';
+  }
+  const cards = (c.options || []).map(o =>
+    '<div class="panel-box ok" style="margin-bottom:10px">' +
+      '<strong>Concept ' + o.n + '</strong>' +
+      '<div class="brief-part"><b>' + escapeHtml(o.concept || '') + '</b></div>' +
+      '<div class="brief-part"><em>Says the line: ' + escapeHtml(o.says_the_line || '') + '</em></div>' +
+      '<div class="brief-part">' + escapeHtml(o.notes || '') + '</div>' +
+      '<div class="brief-part" style="white-space:pre-wrap">' + escapeHtml(o.caption_instagram || '') + '</div>' +
+      '<button class="btn pick-btn" data-n="' + o.n + '">Use concept ' + o.n + '</button>' +
+    '</div>').join('');
+  return '<div class="field"><label>Pick one concept (no spend). Line: ' + escapeHtml(c.line || '') + '</label></div>' + cards +
+    '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="newConceptsBtn">None of these - make a new concept</button></div>';
+}
+
+async function pickConcept(r, n) {
+  const c = conceptData(r); if (!c) return;
+  const o = (c.options || []).find(x => x.n === n); if (!o) return;
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = 'Saving concept ' + n + '...';
+  const payload = { id: r.id, notes: o.notes, text_content: o.text_content, caption_instagram: o.caption_instagram,
+    caption_x: o.caption_x, caption_facebook: o.caption_facebook, panel_status: 'ready', panel_notes: 'Concept ' + n + ' picked: ' + o.concept };
+  try {
+    const res = await fetch(UPDATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const row = ROWS.find(x => x.id === r.id); if (row) Object.assign(row, payload);
+    statusEl.textContent = 'Concept ' + n + ' saved. Review the brief, then set "text approved" to render.';
+    render(); setTimeout(() => openDrawer(row || r), 400);
+  } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
+}
+
+async function newConcepts(r) {
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = 'Making a new concept (about a minute)...';
+  try {
+    const res = await fetch(CONCEPT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ row_id: r.id }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Done - reloading.'; setTimeout(() => location.reload(), 800);
+  } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function openDrawer(r) {
+  const drawer = document.getElementById('drawer');
+  drawer.classList.add('full');
+  const canPost = !!r.video_url && ['approved', 'scheduled'].indexOf(r.status) !== -1;
+  drawer.innerHTML =
+    '<div class="brief-topbar"><button class="btn secondary" id="backBtn">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">' + escapeHtml(stateName(r)) + '</span><button class="btn secondary" id="closeTopBtn">Close &times;</button></div>' +
+    '<h2>' + r.day_of_week + '</h2>' +
+    '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + r.character + ' · ' + r.format + '</div>' +
+    conceptPicker(r) +
+    panelBox(r) +
+    sourceBox(r.notes) +
+    '<div class="field"><label>On-Screen Text (what actually renders in the video)</label></div>' +
+    onScreenPreviewHtml(r.notes) +
+    briefEdit(r.notes, 'On-screen', 'On-screen text (setup. delivery; *word* = emphasis)', 'onscreen') +
+    briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
+    (r.format === 'Travel the World' ? '' : briefEdit(r.notes, 'End', 'End frame (sent to Gemini with the start image)', 'end')) +
+    briefEdit(r.notes, 'Motion', 'Motion (sent to Kling)', 'motion') +
+    briefEdit(r.notes, 'Sound', 'Payoff sound (sent to ElevenLabs)', 'sound') +
+    field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
+    field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
+    field('caption_facebook', 'Facebook caption (no hashtags)', 'textarea', r.caption_facebook) +
+    imagePreview(r) +
+    productBoxField(r) +
+    videoPreview(r.video_url) +
+    field('image_url', 'Image URL', 'input', r.image_url) +
+    field('video_url', 'Video URL', 'input', r.video_url) +
+    field('platforms', 'Platforms', 'input', r.platforms) +
+    statusField(r.status) +
+    '<input type="hidden" id="f_notes" value="' + escapeHtml(r.notes || '').replace(/"/g, '&quot;') + '">' +
+    '<div class="drawer-actions">' +
+      '<button class="btn" id="saveBtn">Save</button>' +
+      (canPost ? '<button class="btn danger" id="postNowBtn">Post Now</button>' : '') +
+      (r.status !== 'rejected' && r.status !== 'posted' ? '<button class="btn secondary" id="rejectBtn">Reject with reason</button>' : '') +
+      (r.status !== 'posted' ? '<button class="btn danger" id="deleteBtn">Delete</button>' : '') +
+      '<button class="btn secondary" id="closeBtn">Close</button>' +
+    '</div>'+
+    '<div class="save-status" id="saveStatus"></div>';
+
+  document.getElementById('overlay').classList.add('open');
+  // Grow every text box to fit its content so nothing is hidden in a small box.
+  const grow = t => { t.style.height = 'auto'; t.style.height = Math.max(150, t.scrollHeight + 4) + 'px'; };
+  drawer.querySelectorAll('textarea').forEach(t => { grow(t); t.addEventListener('input', () => grow(t)); });
+  drawer.scrollTop = 0;
+  document.getElementById('closeBtn').addEventListener('click', closeDrawer);
+  document.getElementById('backBtn').addEventListener('click', closeDrawer);
+  document.getElementById('closeTopBtn').addEventListener('click', closeDrawer);
+  document.getElementById('saveBtn').addEventListener('click', () => saveRow(r));
+  document.querySelectorAll('.pick-btn').forEach(b => b.addEventListener('click', () => pickConcept(r, Number(b.dataset.n))));
+  const nc = document.getElementById('newConceptsBtn'); if (nc) nc.addEventListener('click', () => newConcepts(r));
+  const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
+  const rb = document.getElementById('rejectBtn'); if (rb) rb.addEventListener('click', () => rejectRow(r));
+  const db = document.getElementById('deleteBtn'); if (db) db.addEventListener('click', () => deleteRow(r));
+  loadProductBox(r);
+  document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+function field(name, label, type, value) {
+  const v = value ? escapeHtml(value) : '';
+  if (type === 'textarea') {
+    return '<div class="field"><label>' + label + '</label><textarea id="f_' + name + '">' + v + '</textarea></div>';
+  }
+  return '<div class="field"><label>' + label + '</label><input id="f_' + name + '" value="' + v + '"></div>';
+}
+
+function imagePreview(r) {
+  if (!r.image_url || r.video_url) return '';
+  const label = r.status === 'image ready' ? 'Start image - check it, then select "image approved" to make the video' : 'Image';
+  return '<div class="field"><label>' + label + '</label><img style="width:100%;border:1px solid var(--line)" src="' + String(r.image_url).replace(/"/g, '&quot;') + '"></div>';
+}
+
+function productBoxKey(r) {
+  if (r.format !== 'Product') return null;
+  const notes = r.notes || '';
+  const promo = (notes.match(/Promo:\s*([^.|]+)/i) || [])[1];
+  if (promo) return 'promo:' + promo.trim().toLowerCase();
+  const handle = (notes.match(/products\/([a-z0-9-]+)/i) || [])[1];
+  return handle || null;
+}
+function productBoxField(r) {
+  const key = productBoxKey(r);
+  if (!key) return '';
+  return '<div class="field"><label>Product image (shown in the on-screen box)</label>' +
+    '<div id="pbCurrent" style="margin-bottom:6px;color:var(--dim);font-size:12px">Loading&hellip;</div>' +
+    '<div id="pbOptions" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>' +
+    '<input id="pbUrl" placeholder="Paste an image URL, or pick one above" style="width:100%">' +
+    '<button type="button" class="btn secondary" id="pbSaveBtn" style="margin-top:6px">Use this image</button>' +
+    '<div id="pbStatus" style="font-size:12px;color:var(--dim);margin-top:4px"></div></div>';
+}
+async function loadProductBox(r) {
+  const key = productBoxKey(r);
+  if (!key) return;
+  const cur = document.getElementById('pbCurrent'), opts = document.getElementById('pbOptions'), urlBox = document.getElementById('pbUrl'), btn = document.getElementById('pbSaveBtn'), status = document.getElementById('pbStatus');
+  if (!cur) return;
+  try {
+    const res = await fetch(PRODUCTBOX_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) }).then(x => x.json());
+    if (!res || !res.ok) { cur.textContent = 'Could not load (row not yet in the Product Box tab).'; return; }
+    cur.innerHTML = res.current ? ('Current: <img src="' + String(res.current).replace(/"/g, '&quot;') + '" style="height:60px;vertical-align:middle;border:1px solid var(--line);margin-left:6px">') : 'No image set yet.';
+    urlBox.value = res.current || '';
+    (res.options || []).forEach(u => {
+      const img = document.createElement('img');
+      img.src = u; img.style.cssText = 'height:60px;border:2px solid ' + (u === res.current ? 'var(--accent)' : 'var(--line)') + ';cursor:pointer';
+      img.addEventListener('click', () => { urlBox.value = u; });
+      opts.appendChild(img);
+    });
+  } catch (e) { cur.textContent = 'Could not load.'; }
+  btn.addEventListener('click', async () => {
+    status.textContent = 'Saving...';
+    try {
+      const res = await fetch(PRODUCTBOX_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'set', key, photo: urlBox.value.trim() }) }).then(x => x.json());
+      status.textContent = res && res.ok ? 'Saved. Make a new concept to use this image in the on-screen box.' : 'Could not save.';
+    } catch (e) { status.textContent = 'Could not save.'; }
+  });
+}
+function videoPreview(url) {
+  if (!url) return '';
+  return '<div class="field"><label>Video Preview</label><video controls preload="metadata" style="width:100%;border:1px solid var(--line);background:#000" src="' + url.replace(/"/g, '&quot;') + '"></video></div>';
+}
+
+function statusField(current) {
+  const options = ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'scheduled', 'posted', 'paused'];
+  let opts = options.map(o => '<button type="button" class="status-btn' + (o === current ? ' active' : '') + '" data-value="' + o + '">' + o + '</button>').join('');
+  return '<div class="field"><label>Status &mdash; "text approved" makes the start image only (small spend) and comes back as "image ready". "image approved" makes the video from that exact image (one clip spend). "approved" signs off the finished clip.</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
+}
+
+function closeDrawer() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+async function postNow(id) {
+  const statusEl = document.getElementById('saveStatus');
+  if (!confirm('Post this now to all platforms immediately?')) return;
+  statusEl.textContent = 'Posting...';
+  try {
+    const res = await fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-post-now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowId: id })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Posted.';
+  } catch (e) {
+    statusEl.textContent = 'Failed: ' + e.message;
+  }
+}
+
+async function rejectRow(r) {
+  const reason = prompt('Reason for rejecting this post?');
+  if (reason === null) return;
+  const statusEl = document.getElementById('saveStatus');
+  if (statusEl) statusEl.textContent = 'Rejecting...';
+  try {
+    const res = await fetch(UPDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id, status: 'rejected', panel_notes: (reason || '').trim() })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const row = ROWS.find(x => x.id === r.id);
+    if (row) { row.status = 'rejected'; row.panel_notes = (reason || '').trim(); }
+    render();
+    closeDrawer();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed: ' + e.message;
+  }
+}
+
+async function deleteRow(r) {
+  if (r.status === 'posted') { alert('Posted content cannot be deleted.'); return; }
+  if (!confirm('Delete this post permanently? This cannot be undone.')) return;
+  const statusEl = document.getElementById('saveStatus');
+  if (statusEl) statusEl.textContent = 'Deleting...';
+  try {
+    const res = await fetch(DELETE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    ROWS = ROWS.filter(x => x.id !== r.id);
+    render();
+    closeDrawer();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed: ' + e.message;
+  }
+}
+
+async function saveRow(r) {
+  const id = r.id;
+  const payload = {
+    id: id,
+    post_date: r.post_date,
+    day_of_week: r.day_of_week,
+    character: r.character,
+    format: r.format,
+    text_content: (document.getElementById('f_caption_instagram') || {}).value || r.text_content || '',
+    image_url: document.getElementById('f_image_url').value,
+    video_url: document.getElementById('f_video_url').value,
+    platforms: document.getElementById('f_platforms').value,
+    status: (document.querySelector('.status-btn.active') || {}).dataset ? document.querySelector('.status-btn.active').dataset.value : 'draft',
+    notes: composeNotes(r.notes || ''),
+    caption_instagram: (document.getElementById('f_caption_instagram') || {}).value,
+    caption_x: (document.getElementById('f_caption_x') || {}).value,
+    caption_facebook: (document.getElementById('f_caption_facebook') || {}).value
+  };
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = 'Saving...';
+  try {
+    const res = await fetch(UPDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Saved.';
+    const row = ROWS.find(r => r.id === id);
+    if (row) Object.assign(row, payload);
+    render();
+    setTimeout(closeDrawer, 500);
+  } catch (e) {
+    statusEl.textContent = 'Failed to save: ' + e.message;
+  }
+}
+
+document.getElementById('overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'overlay') closeDrawer();
+});
+document.getElementById('btnGrid').addEventListener('click', () => { VIEW = 'grid'; setViewButtons(); render(); });
+document.getElementById('btnList').addEventListener('click', () => { VIEW = 'list'; setViewButtons(); render(); });
+function setViewButtons() {
+  document.getElementById('btnGrid').classList.toggle('active', VIEW === 'grid');
+  document.getElementById('btnList').classList.toggle('active', VIEW === 'list');
+}
+['filterCharacter', 'filterFormat', 'filterStatus', 'filterPlatform'].forEach(id =>
+  document.getElementById(id).addEventListener('change', render)
+);
+document.getElementById('filterSearch').addEventListener('input', render);
+
+function updateTopbarHeight() {
+  const topbar = document.getElementById('topbar');
+  if (topbar) document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
+}
+window.addEventListener('resize', updateTopbarHeight);
+updateTopbarHeight();
+
+// ---------- Planner (Playbook 7.6) ----------
+const DAY_CHAR = { 1: 'Major Wood', 2: "Hammerin' Hanky", 3: 'The Grip', 4: 'The Velvet Python', 5: 'Slick Willy', 6: 'The Rear Admiral', 0: 'SC Logo' };
+const CHARACTERS = ['Major Wood', "Hammerin' Hanky", 'The Grip', 'The Velvet Python', 'Slick Willy', 'The Rear Admiral'];
+const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+let PRODUCTS = null;
+let PROMOS = [];
+let LEFT = {};
+let DRAFTS = 0;
+function ymd(d) { return d.toISOString().slice(0, 10); }
+function londonYmd(v) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(v)); }
+async function loadProducts() {
+  if (PRODUCTS) return PRODUCTS;
+  try { const res = await fetch(OPTIONS_URL); const j = await res.json(); PRODUCTS = j.products || []; PROMOS = j.promos || []; LEFT = j.left || {}; DRAFTS = j.drafts_awaiting_approval || 0; } catch (e) { PRODUCTS = []; }
+  return PRODUCTS;
+}
+function existingRow(date, slot, time) {
+  return ROWS.find(r => londonYmd(r.post_date) === date && (
+    slot === 'custom' ? r.post_time === time :
+    slot === '12pm' ? (!r.post_time && r.format === 'Product') :
+    slot === '6am' ? (!r.post_time && r.format === 'Day Greeting') :
+    (!r.post_time && r.format !== 'Product' && r.format !== 'Advice' && r.format !== 'Day Greeting')));
+}
+const STATE_NAMES = ['slot missed', 'writing brief', 'brief ready', 'brief needs attention', 'making start image', 'start image ready', 'video queued / rendering', 'video rendering at Kling', 'clip ready for approval', 'approved', 'scheduled', 'posted', 'paused', 'rejected'];
+// A clip approved after its publish time never posts: flag it so it can be rescheduled or sent with Post Now.
+function londonToUtc(dateStr, hhmm) {
+  const guess = new Date(dateStr + 'T' + hhmm + ':00Z');
+  const lon = new Date(guess.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  const utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return new Date(guess.getTime() - (lon - utc));
+}
+function slotDue(r) {
+  const d = londonYmd(r.post_date);
+  const t = r.post_time ? String(r.post_time).padStart(5, '0') : (r.format === 'Day Greeting' ? '06:00' : (r.format === 'Product' ? '12:00' : (r.format === 'Advice' ? '10:00' : '07:00')));
+  return londonToUtc(d, t);
+}
+function isMissed(r) { return r.status === 'approved' && r.video_url && (Date.now() - slotDue(r).getTime()) > 20 * 60000; }
+function stateName(r) {
+  if (isMissed(r)) return 'slot missed';
+  if (r.status === 'rejected') return 'rejected';
+  if (r.status === 'posted' || r.status === 'scheduled' || r.status === 'paused') return r.status;
+  if (r.status === 'approved') return 'approved';
+  if (r.video_url) return 'clip ready for approval';
+  if (r.status === 'image ready') return 'start image ready';
+  if (r.status === 'text approved') return 'making start image';
+  if (r.status === 'image approved') return r.kling_job ? 'video rendering at Kling' : 'video queued / rendering';
+  if (r.panel_status === 'creating') return 'writing brief';
+  if (r.panel_status === 'failed') return 'brief needs attention';
+  return 'brief ready';
+}
+function slotState(row) {
+  if (!row) return { gap: true, label: 'EMPTY', color: '#b06a00' };
+  if (isMissed(row)) return { gap: false, done: true, label: 'slot missed - reschedule or Post Now', color: '#b00' };
+  if (row.status === 'posted') return { gap: false, done: true, label: 'posted', color: '#2a7a2a' };
+  if (['approved', 'scheduled'].indexOf(row.status) !== -1) return { gap: false, done: true, label: row.status, color: '#2a7a2a' };
+  if (row.video_url) return { gap: false, done: true, label: 'clip ready for your approval', color: '#2a5db0' };
+  if (row.status === 'image ready') return { gap: false, label: 'start image ready', color: '#2a5db0' };
+  if (row.status === 'text approved') return { gap: false, label: 'making start image (1-3 min)', color: '#2a5db0' };
+  if (row.status === 'image approved') return { gap: false, label: row.kling_job ? 'video rendering at Kling (up to 30 min)' : 'video queued / rendering (5-15 min)', color: '#2a5db0' };
+  if (row.panel_status === 'concepts') return { gap: false, label: 'concepts to pick', color: '#2a5db0' };
+  if (row.panel_status === 'creating') return { gap: false, label: 'writing brief', color: '#777' };
+  if (row.panel_status === 'ready') return { gap: false, label: 'brief ready', color: '#2a5db0' };
+  if (row.panel_status === 'failed') return { gap: true, label: 'needs attention', color: '#b00' };
+  return { gap: true, label: 'old draft', color: '#777' };
+}
+function stateTag(row) {
+  const st = slotState(row);
+  return '<span style="font-weight:600;color:' + st.color + '">' + (row ? escapeHtml(row.format) + ': ' : '') + st.label + '</span>';
+}
+function productOptions(sel) {
+  return '<option value="">No product post</option>' +
+    ((PROMOS || []).length ? '<optgroup label="Promotable items">' + PROMOS.map(p => '<option value="promo:' + escapeHtml(p.item) + '"' + ('promo:' + p.item === sel ? ' selected' : '') + '>' + escapeHtml(p.item) + '</option>').join('') + '</optgroup>' : '') +
+    '<optgroup label="Shop products">' + (PRODUCTS || []).map(p => '<option value="' + escapeHtml(p.handle) + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(p.title) + '</option>').join('') + '</optgroup>';
+}
+function charOptions(sel) { return '<option value=""' + (sel ? '' : ' selected') + '>Rotate (all six)</option>' + CHARACTERS.map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
+function closePlan() { document.getElementById('planOverlay').classList.remove('open'); }
+document.getElementById('planPanel').addEventListener('click', (e) => { if (e.target.classList && e.target.classList.contains('plan-back')) closePlan(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('planOverlay').classList.contains('open')) closePlan(); });
+document.getElementById('planOverlay').addEventListener('click', (e) => { if (e.target.id === 'planOverlay') closePlan(); });
+
+async function openPlanner() {
+  const panel = document.getElementById('planPanel');
+  const t = new Date(); t.setUTCDate(t.getUTCDate() + ((8 - t.getUTCDay()) % 7 || 7));
+  panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Plan content</span><button class="btn secondary plan-back">Close &times;</button></div>' +
+    '<h2>Plan content</h2><div class="sub">Choose what to create. Each post gets one brief for you to approve. No image or video is made until you approve it.</div>' +
+    '<div class="field"><label>Start date</label><input type="date" id="planStart" value="' + ymd(t) + '"></div>' +
+    '<div class="field"><label>How long</label><select id="planDays"><option value="7">1 week</option><option value="14">2 weeks</option></select></div>' +
+    '<div id="planDaysBox"><div class="loading">Loading products...</div></div>' +
+    '<div class="drawer-actions"><button class="btn secondary" id="planFill">Fill empty slots</button><button class="btn secondary" id="planNone">Select none</button></div>' +
+    '<div class="drawer-actions"><button class="btn" id="planGo">Create briefs</button><button class="btn secondary" id="planClose">Close</button></div>' +
+    '<div class="save-status" id="planStatus"></div>';
+  document.getElementById('planOverlay').classList.add('open');
+  document.getElementById('planClose').addEventListener('click', closePlan);
+  document.getElementById('planStart').addEventListener('change', () => drawPlanDays(true));
+  document.getElementById('planDays').addEventListener('change', () => drawPlanDays(true));
+  document.getElementById('planFill').addEventListener('click', () => drawPlanDays(true));
+  document.getElementById('planNone').addEventListener('click', () => drawPlanDays(false));
+  document.getElementById('planGo').addEventListener('click', submitPlan);
+  await loadProducts();
+  drawPlanDays(true);
+}
+function leftFor(ch, f) { return (LEFT[ch] && LEFT[ch][f] != null) ? LEFT[ch][f] : null; }
+const ROT_TYPES = ['Wisdom', 'Character Lore', 'Travel the World'];
+function recentProductHandles() {
+  const out = [];
+  ROWS.forEach(r => { const m = String(r.notes || '').match(/products\/([a-z0-9-]+)/i) || String(r.notes || '').match(/SHOP:([a-z0-9-]+)/i); if (m) out.push(m[1]); });
+  return out;
+}
+// Balanced defaults for empty slots only (Playbook 7.6): Mon-Sat spread Wisdom / Character Lore / Travel evenly,
+// skipping any type with no lines left; Sunday = Brand Lore; Wed/Fri/Sat 12pm = a product, rotating product and character.
+function planDefaults(start, n) {
+  const left = JSON.parse(JSON.stringify(LEFT || {}));
+  const used = recentProductHandles();
+  const picks = {};
+  let lastChar = '';
+  for (let w = 0; w < n; w += 7) {
+    const counts = { 'Wisdom': 0, 'Character Lore': 0, 'Travel the World': 0 };
+    const days = [];
+    for (let i = w; i < Math.min(n, w + 7); i++) { const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i); days.push({ date: ymd(d), dow: d.getUTCDay(), i: i }); }
+    days.forEach(x => { const r = existingRow(x.date, '7am'); if (r && !slotState(r).gap && counts[r.format] != null) counts[r.format]++; });
+    days.forEach(x => {
+      const ch = DAY_CHAR[x.dow];
+      const r6 = existingRow(x.date, '6am');
+      if ((!r6 || slotState(r6).gap) && leftFor(ch, 'Day Greeting') !== 0) picks[x.date + '|6am'] = 'Day Greeting';
+      const r7 = existingRow(x.date, '7am');
+      if (!r7 || slotState(r7).gap) {
+        if (x.dow === 0) { picks[x.date + '|7am'] = (leftFor('SC Logo', 'Brand Lore') === 0) ? '' : 'Brand Lore'; }
+        else {
+          const cand = ROT_TYPES.filter(f => { const k = left[ch] && left[ch][f]; return k == null || k > 0; });
+          cand.sort((p, q) => (counts[p] - counts[q]) || (((ROT_TYPES.indexOf(p) - x.i) % 3 + 3) % 3 - ((ROT_TYPES.indexOf(q) - x.i) % 3 + 3) % 3));
+          const f = cand[0] || '';
+          picks[x.date + '|7am'] = f;
+          if (f) { counts[f]++; if (left[ch] && left[ch][f] != null) left[ch][f]--; }
+        }
+      }
+      if ([3, 5, 6].indexOf(x.dow) !== -1) {
+        const r12 = existingRow(x.date, '12pm');
+        if (!r12 || slotState(r12).gap) {
+          const pool = (PRODUCTS || []).slice();
+          pool.sort((p, q) => ((used.indexOf(p.handle) !== -1) - (used.indexOf(q.handle) !== -1)) || (((p.character || DAY_CHAR[x.dow]) === lastChar) - ((q.character || DAY_CHAR[x.dow]) === lastChar)));
+          const p = pool[0];
+          if (p) { picks[x.date + '|12pm'] = p.handle; used.push(p.handle); lastChar = p.character || DAY_CHAR[x.dow]; }
+        }
+      }
+    });
+  }
+  return picks;
+}
+function formatSelect(date, dow, row, pick) {
+  const ch = DAY_CHAR[dow];
+  const st = slotState(row);
+  const types = dow === 0 ? ['Brand Lore'] : ROT_TYPES;
+  let opts = '';
+  if (!st.gap) opts += '<option value="" selected>Keep</option>';
+  opts += types.map(f => { const n = leftFor(ch, f); return '<option value="' + f + '"' + (st.gap && f === pick ? ' selected' : '') + (n === 0 || st.done ? ' disabled' : '') + '>' + (st.gap ? '' : 'Replace with ') + f + (n === null ? '' : ' (' + n + ' left)') + '</option>'; }).join('');
+  if (st.gap) opts += '<option value=""' + (pick ? '' : ' selected') + '>None</option>';
+  return '<select data-date="' + date + '" class="plan7">' + opts + '</select>';
+}
+// Extra posts (Playbook 7.6): any number per day, each at its own London time; published by the custom-time schedule.
+function extraCell(date, dow) {
+  const have = ROWS.filter(r => londonYmd(r.post_date) === date && r.post_time).sort((a, b) => String(a.post_time).localeCompare(String(b.post_time)));
+  const list = have.map(r => '<div>' + escapeHtml(r.post_time) + ' ' + stateTag(r) + '</div>').join('');
+  return list + '<div class="extra-box" data-date="' + date + '" data-dow="' + dow + '"></div><button type="button" class="btn secondary extra-add" data-date="' + date + '" data-dow="' + dow + '" style="padding:2px 10px;font-size:12px;margin-top:4px">+ Add post</button>';
+}
+function extraTypes(dow) {
+  const t = ['Day Greeting', 'Wisdom', 'Character Lore', 'Travel the World', 'Product'];
+  if (dow === 0) return ['Day Greeting', 'Brand Lore', 'Product'];
+  return t;
+}
+function addExtraLine(box) {
+  const dow = Number(box.dataset.dow);
+  const ch = DAY_CHAR[dow];
+  const line = document.createElement('div');
+  line.className = 'extra-line';
+  line.style.cssText = 'margin-top:4px;padding:4px;border:1px solid var(--line);border-radius:6px';
+  line.innerHTML = '<input type="time" class="ex-time" value="18:00" step="900" style="width:95px"> ' +
+    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = leftFor(f === 'Brand Lore' || dow === 0 ? 'SC Logo' : ch, f); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + f + (n === null || f === 'Product' ? '' : ' (' + n + ')') + '</option>'; }).join('') + '</select> ' +
+    '<span class="ex-prod" style="display:none"><select class="ex-product">' + productOptions('') + '</select> <select class="ex-char">' + charOptions('') + '</select></span> ' +
+    '<button type="button" class="btn secondary ex-remove" style="padding:0 8px;font-size:12px">x</button>';
+  box.appendChild(line);
+  const fmt = line.querySelector('.ex-format');
+  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = fmt.value === 'Product' ? 'inline' : 'none'; });
+  line.querySelector('.ex-product').addEventListener('change', (e) => { const p = (PRODUCTS || []).find(x => x.handle === e.target.value); line.querySelector('.ex-char').value = (p && p.character) ? p.character : ''; });
+  line.querySelector('.ex-remove').addEventListener('click', () => line.remove());
+}
+function drawPlanDays(useDefaults) {
+  const start = document.getElementById('planStart').value;
+  const n = Number(document.getElementById('planDays').value);
+  if (!start) return;
+  const picks = useDefaults === false ? {} : planDefaults(start, n);
+  let slots = 0, gaps = 0; const gapList = [];
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left">Day</th><th align="left">6am greeting</th><th align="left">7am</th><th align="left">12pm product</th><th align="left">Extra posts</th></tr>';
+  for (let i = 0; i < n; i++) {
+    const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i);
+    const date = ymd(d); const dow = d.getUTCDay();
+    const e6 = existingRow(date, '6am');
+    slots++; if (slotState(e6).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 6am'); }
+    const n6 = leftFor(DAY_CHAR[dow], 'Day Greeting');
+    const greet = stateTag(e6) + '<br>' + (slotState(e6).gap
+      ? '<select data-date="' + date + '" class="plan6"><option value="Day Greeting"' + (picks[date + '|6am'] ? ' selected' : '') + (n6 === 0 ? ' disabled' : '') + '>Day Greeting' + (n6 === null ? '' : ' (' + n6 + ')') + '</option><option value=""' + (picks[date + '|6am'] ? '' : ' selected') + '>None</option></select>'
+      : '<em>Keep</em>');
+    const e7 = existingRow(date, '7am');
+    slots++; if (slotState(e7).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 7am'); }
+    const main = stateTag(e7) + '<br>' + formatSelect(date, dow, e7, picks[date + '|7am']);
+    let prod = '';
+    if ([3, 5, 6].indexOf(dow) !== -1) {
+      const e12 = existingRow(date, '12pm');
+      slots++; if (slotState(e12).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 12pm'); }
+      const st12 = slotState(e12);
+      const pk = picks[date + '|12pm'] || '';
+      const pp = (PRODUCTS || []).find(x => x.handle === pk);
+      prod = stateTag(e12) + '<br>' + (st12.gap
+        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character) || '') + '</select>'
+        : '<em>Keep</em>');
+    }
+    const bg = (slotState(e6).gap || slotState(e7).gap || ([3, 5, 6].indexOf(dow) !== -1 && slotState(existingRow(date, '12pm')).gap)) ? 'background:rgba(176,106,0,0.07);' : '';
+    html += '<tr style="border-top:1px solid var(--line);' + bg + '"><td>' + WEEKDAY[dow] + ' ' + date.slice(8) + '/' + date.slice(5, 7) + '<br><em>' + escapeHtml(DAY_CHAR[dow]) + '</em></td><td>' + greet + '</td><td>' + main + '</td><td>' + prod + '</td><td>' + extraCell(date, dow) + '</td></tr>';
+  }
+  html += '</table>';
+  const summary = '<div class="brief-part" style="margin-bottom:8px"><b>' + (slots - gaps) + ' of ' + slots + ' slots filled.</b> ' + (gaps ? 'Empty: ' + gapList.join(', ') + '. Empty slots are pre-filled with a balanced mix below - change anything, then Create.' : 'Nothing missing.') + '</div>';
+  let foot = '';
+  if (DRAFTS) foot += '<div class="brief-part" style="margin-top:8px">' + DRAFTS + ' rows in the content spreadsheet are not yet approved (set status to approved to use them).</div>';
+  document.getElementById('planDaysBox').innerHTML = summary + html + foot;
+  document.querySelectorAll('.extra-add').forEach(b => b.addEventListener('click', () => addExtraLine(document.querySelector('.extra-box[data-date="' + b.dataset.date + '"]'))));
+  document.querySelectorAll('.plan12').forEach(sel => sel.addEventListener('change', () => {
+    const p = (PRODUCTS || []).find(x => x.handle === sel.value);
+    const c = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
+    if (c) c.value = (p && p.character) ? p.character : '';
+  }));
+}
+async function sendPlan(plan, statusEl) {
+  if (!plan.length) { statusEl.textContent = 'Nothing selected.'; return; }
+  statusEl.textContent = 'Sending...';
+  try {
+    const res = await fetch(PLAN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: plan }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Started: ' + plan.length + ' post(s). Each brief takes about a minute; the calendar refreshes every 30 seconds.';
+    startAutoRefresh();
+  } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
+}
+function submitPlan() {
+  const plan = [];
+  document.querySelectorAll('.plan6').forEach(sel => { if (sel.value) plan.push({ date: sel.dataset.date, format: 'Day Greeting' }); });
+  let extraError = '';
+  document.querySelectorAll('.extra-box').forEach(box => box.querySelectorAll('.extra-line').forEach(line => {
+    const f = line.querySelector('.ex-format').value;
+    const item = { date: box.dataset.date, time: line.querySelector('.ex-time').value, format: f };
+    if (!item.time) { extraError = 'Every extra post needs a time.'; return; }
+    if (f === 'Product') {
+      const h = line.querySelector('.ex-product').value;
+      if (!h) { extraError = 'Pick a product or promotable item for each extra Product post.'; return; }
+      item.character = line.querySelector('.ex-char').value;
+      if (h.indexOf('promo:') === 0) item.promo_item = h.slice(6);
+      else { const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; }
+    }
+    plan.push(item);
+  }));
+  if (extraError) { document.getElementById('planStatus').textContent = extraError; return; }
+  document.querySelectorAll('.plan7').forEach(sel => { if (sel.value) plan.push({ date: sel.dataset.date, format: sel.value }); });
+  document.querySelectorAll('.plan12').forEach(sel => {
+    if (!sel.value) return;
+    const c0 = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
+    if (sel.value.indexOf('promo:') === 0) { plan.push({ date: sel.dataset.date, format: 'Product', promo_item: sel.value.slice(6), character: c0 ? c0.value : '' }); return; }
+    const p = (PRODUCTS || []).find(x => x.handle === sel.value) || {};
+    const c = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
+    plan.push({ date: sel.dataset.date, format: 'Product', product_handle: sel.value, product_title: p.title || '', character: c ? c.value : '' });
+  });
+  sendPlan(plan, document.getElementById('planStatus'));
+}
+async function openAdhoc() {
+  const panel = document.getElementById('planPanel');
+  const t = new Date(); t.setUTCDate(t.getUTCDate() + 1);
+  panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Add a post</span><button class="btn secondary plan-back">Close &times;</button></div>' +
+    '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
+    '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
+    '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
+    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option></select></div>' +
+    '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('') + '</select></div>' +
+    '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
+    '<div class="drawer-actions"><button class="btn" id="adGo">Create brief</button><button class="btn secondary" id="adClose">Close</button></div>' +
+    '<div class="save-status" id="adStatus"></div>';
+  document.getElementById('planOverlay').classList.add('open');
+  document.getElementById('adClose').addEventListener('click', closePlan);
+  await loadProducts();
+  document.getElementById('adProduct').innerHTML = productOptions('');
+  const refresh = () => {
+    const f = document.getElementById('adFormat').value;
+    const dow = new Date(document.getElementById('adDate').value + 'T12:00:00Z').getUTCDay();
+    document.getElementById('adProductBox').style.display = f === 'Product' ? 'block' : 'none';
+    const n = leftFor(DAY_CHAR[dow], f);
+    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    document.getElementById('adCharInfo').textContent = info;
+  };
+  ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
+  document.getElementById('adProduct').addEventListener('change', () => {
+    const p = (PRODUCTS || []).find(x => x.handle === document.getElementById('adProduct').value);
+    document.getElementById('adChar').value = (p && p.character) ? p.character : '';
+  });
+  refresh();
+  document.getElementById('adGo').addEventListener('click', () => {
+    const f = document.getElementById('adFormat').value;
+    const item = { date: document.getElementById('adDate').value, time: document.getElementById('adTime').value, format: f };
+    if (f === 'Product') {
+      const h = document.getElementById('adProduct').value;
+      if (!h) { document.getElementById('adStatus').textContent = 'Pick a product or promotable item.'; return; }
+      item.character = document.getElementById('adChar').value;
+      if (h.indexOf('promo:') === 0) item.promo_item = h.slice(6);
+      else { const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; }
+    }
+    sendPlan([item], document.getElementById('adStatus'));
+  });
+}
+async function openPress() {
+  const panel = document.getElementById('planPanel');
+  panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Press coverage</span><button class="btn secondary plan-back">Close &times;</button></div>' +
+    '<h2>Press coverage</h2><div class="sub">Each feature and where it has got to on every channel. Read-only.</div><div id="pressBox"><div class="loading">Loading...</div></div>';
+  document.getElementById('planOverlay').classList.add('open');
+  const box = document.getElementById('pressBox');
+  try {
+    const res = await fetch(COVERAGE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json());
+    const rows = (res && res.rows) || [];
+    if (!rows.length) { box.innerHTML = '<div class="brief-part">No coverage rows yet.</div>'; return; }
+    const col = st => st === 'posted' ? '#2a7a2a' : (st.indexOf('held') === 0 ? '#b06a00' : (st === 'sent to you' ? '#2a5db0' : '#777'));
+    box.innerHTML = rows.map(r =>
+      '<div class="panel-box" style="margin-bottom:14px"><div style="font-weight:700">' + escapeHtml(r.headline || '') + '</div>' +
+      '<div style="font-size:12px;margin-bottom:8px">' + escapeHtml(r.outlet || '') + ' &middot; <a href="' + escapeHtml(r.url || '#') + '" target="_blank">article</a></div>' +
+      r.channels.map(c => '<div style="display:flex;justify-content:space-between;padding:3px 0;border-top:1px solid var(--line)"><span>' + escapeHtml(c.name) + '</span><span style="font-weight:600;color:' + col(c.state) + '">' + escapeHtml(c.state) + '</span></div>').join('') +
+      '</div>').join('');
+  } catch (e) { box.innerHTML = '<div class="error-state">Could not load press coverage.</div>'; }
+}
+let AUTO = null;
+function startAutoRefresh() {
+  if (AUTO) clearInterval(AUTO);
+  let n = 0;
+  AUTO = setInterval(() => { n++; if (!document.getElementById('overlay').classList.contains('open')) loadRows(); if (n > 40) clearInterval(AUTO); }, 30000);
+}
+document.getElementById('btnPlan').addEventListener('click', openPlanner);
+document.getElementById('btnAdhoc').addEventListener('click', openAdhoc);
+document.getElementById('btnPress').addEventListener('click', openPress);
+
+loadRows();
