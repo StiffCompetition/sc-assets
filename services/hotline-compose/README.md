@@ -30,3 +30,6 @@ Layout constants used by `/compose` and `/hotline-gfx` (1080×1920 frame): head 
 product box 560×420 at (56, 1229), ticker 1080×178 at y 1742, ON AIR light 336×132 at (372, 102).
 
 Playbook reference: SC Content Playbook v30, sections 7.7.2 (SC Shop Hotline), 7.7.3 (Travel the World), 7.9 and 7.10.
+
+## Hotline set v2 (28 Sep 2026)
+The service uses `sc_hotline_set_locked_v2.png` (Cloudinary `SCSMAuto`), which is set v1 with 40px of plain black removed under the ON AIR sign and 40px of desk added at the bottom. All placement numbers in `/compose` are set for v2: desk top 1045, desk front 1095, head top on line 430, head window 300 to 720, protected SC-sign and palm regions shifted up 40px. The "extra object beside presenter" check accepts up to 4,500 dark colourless pixels (a clean image with a black belt measured 3,064; an image with a chair back measured 6,156). The pipeline's node **Hotline: Build Request** must send the same set URL that `/compose` receives; change both together.
