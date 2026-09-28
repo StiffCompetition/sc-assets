@@ -1,0 +1,53 @@
+{
+ "note": "Rows removed from the SC Content Calendar at Andy's request, 28 Sep 2026: row 3 (Standing Tall Sunday, 27 Sep) and row 5 (Hammerin' Tuesday, 29 Sep). Backup taken before deletion.",
+ "rows": [
+  {
+   "post_date": "2026-09-27T06:00:00.000Z",
+   "day_of_week": "Standing Tall Sunday",
+   "character": "Major Wood",
+   "format": "Day Greeting",
+   "text_content": "Put your feet up and enjoy a sensational Sunday. You deserve it.\n\nSend this to your favourite person.\n\n#StiffCompetition #SeriesOne #SundayFunday #GoodMorning",
+   "image_url": null,
+   "video_url": null,
+   "platforms": "Instagram, Facebook, X",
+   "status": "draft",
+   "notes": "Scene: Picnic lawn. Major Wood faces the camera, ready to move. In the same shot: a kite. On-screen: STANDING TALL SUNDAY / SLOW IT *DOWN* Sound: Kite snapping taut in a strong gust of wind, sharp fabric crack with a fluttering tail, close-mic, cinematic foley. Motion: Slow push-in. Major Wood plants both hands on his hips and squares up to the camera with a big easy smile, ending with hands on hips and chin up. At the same moment, a kite soars and loops across a clear blue sky, ending with Major Wood looking straight into the camera with a big confident grin. ID: DG-3-1 Source: IDEA:1nh2ugo Bed: Open park lawn ambience, gentle breeze, bright birdsong and rustling grass, calm and continuous, high-quality field recording. Payoff: Kite snapping taut in a strong gust of wind, sharp fabric crack with a fluttering tail, close-mic, cinematic foley. End: Using the provided image, show this happening: a kite soars and loops across a clear blue sky. Major Wood's move ends with hands on hips and chin up.",
+   "panel_status": "ready",
+   "panel_notes": "Row: STANDING TALL SUNDAY / SLOW IT *DOWN* | Move: Hips | Source: IDEA:1nh2ugo | Written 2026-09-28 01:58 UTC",
+   "caption_instagram": "Put your feet up and enjoy a sensational Sunday. You deserve it.\n\nSend this to your favourite person.\n\n#StiffCompetition #SeriesOne #SundayFunday #GoodMorning",
+   "caption_x": "Put your feet up and enjoy a sensational Sunday. You deserve it.\n\nSend this to your favourite person.\n\n#StiffCompetition #SeriesOne",
+   "caption_facebook": "Put your feet up and enjoy a sensational Sunday. You deserve it.\n\nSend this to your favourite person.",
+   "concepts": null,
+   "post_time": null,
+   "kling_job": null,
+   "kling_video_url": null,
+   "id": 3,
+   "createdAt": "2026-09-25T21:56:15.413Z",
+   "updatedAt": "2026-09-28T01:58:18.136Z"
+  },
+  {
+   "post_date": "2026-09-29T06:00:00.000Z",
+   "day_of_week": "Hammerin' Tuesday",
+   "character": "Hammerin' Hanky",
+   "format": "Day Greeting",
+   "text_content": "Good morning! Measure twice, smile once, and make it a top Tuesday.\n\nSend this to someone smashing their goals.\n\n#StiffCompetition #HammerinHanky #TuesdayVibes #GoodMorning",
+   "image_url": null,
+   "video_url": null,
+   "platforms": "Instagram, Facebook, X",
+   "status": "draft",
+   "notes": "Scene: Workshop. Hammerin' Hanky faces the camera, ready to move. In the same shot: sawdust. On-screen: HAMMERIN' TUESDAY / LET'S GET *WORKING* Sound: Heavy sledgehammer swinging through the air, deep powerful whoosh passing close by, clean and punchy, cinematic foley. Motion: Slow push-in. Hammerin' Hanky swings the heavy hammer in one wide 180-degree arc, ending with it extended out to one side. At the same moment, sawdust bursts up into a golden cloud in the morning light, ending with Hammerin' Hanky looking straight into the camera with a big confident grin. ID: DG-5-1 Source: IDEA:18ecfhq Bed: Small wooden workshop room tone, soft hum of machinery and creaking floorboards, warm and continuous, high-quality recording. Payoff: Heavy sledgehammer swinging through the air, deep powerful whoosh passing close by, clean and punchy, cinematic foley. End: Using the provided image, show this happening: sawdust bursts up into a golden cloud in the morning light. Hammerin' Hanky's move ends with it extended out to one side.",
+   "panel_status": "ready",
+   "panel_notes": "Row: HAMMERIN' TUESDAY / LET'S GET *WORKING* | Move: Swing | Source: IDEA:18ecfhq | Written 2026-09-28 01:58 UTC",
+   "caption_instagram": "Good morning! Measure twice, smile once, and make it a top Tuesday.\n\nSend this to someone smashing their goals.\n\n#StiffCompetition #HammerinHanky #TuesdayVibes #GoodMorning",
+   "caption_x": "Good morning! Measure twice, smile once, and make it a top Tuesday.\n\nSend this to someone smashing their goals.\n\n#StiffCompetition #HammerinHanky",
+   "caption_facebook": "Good morning! Measure twice, smile once, and make it a top Tuesday.\n\nSend this to someone smashing their goals.",
+   "concepts": null,
+   "post_time": null,
+   "kling_job": null,
+   "kling_video_url": null,
+   "id": 5,
+   "createdAt": "2026-09-25T21:56:15.415Z",
+   "updatedAt": "2026-09-28T01:58:16.602Z"
+  }
+ ]
+}
