@@ -31,9 +31,12 @@ its code lives. Detailed process rules are in the SC Content Playbook (Google Do
 | SC - Post Now (`TI7Lg8CCMdtN48pG`) | Dashboard "Post Now" for one row. |
 | SC Claude Call (`S11nkqzMbLjTFfdY`) | Internal helper so code nodes can call Claude; logs usage. |
 | SC - Usage Log Write (`jF0xvGdqHtNFr1ph`) / SC - Daily Cost Digest (`QtFfNhdeAhvalH9x`) | Paid-call log and the 23:30 Telegram cost digest with the price book. |
-| Hotline Compose service (Railway `sc-hotline-compose`) | `services/hotline-compose/` — seating check and placement, product cut-outs, ticker and box video, Travel artwork merge. |
+| SC - Product Box API (`K5iUMBHmZOMxLjT8`) | `sc-productbox` webhook: the dashboard's Product image picker. Lists a product's live `.shop` photos and saves the chosen photo to the Product Box tab. |
+| Hotline Compose service (Railway `sc-hotline-compose`) | `services/hotline-compose/` — seating check and placement on Hotline set v2, product cut-outs, ticker and box video, Travel artwork merge. Set v2 is `sc_hotline_set_locked_v2.png` in Cloudinary (v1 kept unchanged). |
 
-Data: SC Content Calendar table `Lw2b11QdxL1ZJfz5`; SC Usage Log table `El5mTKsfKay47RqA`; content spreadsheet
+Voice-over: Product posts carry a spoken line from the Product Box tab (column F) through the Hotline steps of the pipeline (`Hotline: Has VO?` to `Hotline: Add Narration Audio`); a failed voice step leaves the clip silent.
+
+Data: SC Content Calendar table `Lw2b11QdxL1ZJfz5`; SC Coverage Queue table `SyW9U1Jz3yetKxdp`; SC Usage Log table `El5mTKsfKay47RqA`; content spreadsheet
 `1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60` (tabs: Ideas by post category, Move Definition, SC Shop Hotline Poses,
 Promotable Items, Product Box).
 
@@ -42,7 +45,9 @@ queue, superseded by the pipeline above), SC - Concept Creator (`9UU1LsBXPW9iXOY
 Reviewer, SC Brief Validator, and the earlier pipeline copies (`I5kNOphPxKYRC8ia`, `89RaWM8ODoVBRdin`).
 
 ## Press (WS-Press)
-SC - Coverage Stagger (`kEHUF3zLTmuYqwrD`): staggers Facebook, Discord, Instagram and Reddit legs after each Day-0 X post.
+SC - Coverage Stagger (`kEHUF3zLTmuYqwrD`): staggers Facebook, Discord, Instagram and Reddit legs after each Day-0 X post. The press-page leg is not built yet (Todoist `6hfFqXFXRPJQGWp7`).
+SC - Coverage Publish (`8yOMWAmkidnYrAl0`): logs a feature and posts the Day-0 X leg.
+SC - Coverage List API (`r8j6H4m0QoFMLbSW`): read-only `sc-coverage-list` webhook; feeds the dashboard's Press coverage view and PRESS calendar cards. The Facebook hold date is also set in the stagger workflow; change both together.
 
 ## Finance
 SC - Bank Statement Ingest, SC - Receipt Capture (Gmail), SC - PayPal Ingest, SC - Amex Ingest, SC - Expense Entry
