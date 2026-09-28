@@ -57,7 +57,7 @@ def compose(r: Req):
     lum = O.mean(axis=2); chroma = O.max(axis=2) - O.min(axis=2)
     cx = int(xs.mean()); band = np.zeros_like(mf, bool); band[DT - 320:DT, :] = True; band[:, cx - 130:cx + 130] = False
     extra = int(((mf > 0) & band & (lum < 60) & (chroma < 22)).sum())
-    if extra > 2500: return {'ok': False, 'reason': f'extra object beside presenter ({extra}px)'}
+    if extra > 4500: return {'ok': False, 'reason': f'extra object beside presenter ({extra}px)'}
     # scale so the head top always lands on the same line, anchored on the desk
     s = (DT - HY) / max(1, (DT - top)); M = np.float32([[s, 0, 540 * (1 - s)], [0, s, DT * (1 - s)]])
     L = cv2.warpAffine(O, M, (1080, 1920), flags=cv2.INTER_LANCZOS4)
