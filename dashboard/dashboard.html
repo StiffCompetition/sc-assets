@@ -272,11 +272,12 @@
     <button id="btnGrid" class="active">Calendar</button>
     <button id="btnList">List</button>
   </div>
-  <select id="filterCharacter"><option value="">All characters</option></select>
-  <select id="filterFormat"><option value="">All formats</option></select>
-  <select id="filterStatus"><option value="">All statuses</option></select>
-  <select id="filterPlatform"><option value="">All platforms</option></select>
+  <div class="tickdrop" id="filterCharacter" data-label="characters"></div>
+  <div class="tickdrop" id="filterFormat" data-label="formats"></div>
+  <div class="tickdrop" id="filterStatus" data-label="statuses"></div>
+  <div class="tickdrop" id="filterPlatform" data-label="platforms"></div>
   <input type="search" id="filterSearch" placeholder="search text...">
+  <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;"><input type="checkbox" id="showPosted"> Show posted/rejected</label>
   <button class="btn" id="btnPlan">Plan content</button>
   <button class="btn secondary" id="btnAdhoc">Add a post</button>
   <button class="btn secondary" id="btnPress">Press coverage</button>
@@ -299,6 +300,7 @@
 <script>
 const LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-list';
 const UPDATE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-update';
+const DELETE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-delete';
 const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-concept-creator';
 const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
 const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
@@ -325,6 +327,7 @@ const STATUS_CLASS = (s) => {
   if (s === 'scheduled') return 'scheduled';
   if (s === 'posted') return 'posted';
   if (s === 'paused') return 'paused';
+  if (s === 'rejected') return 'rejected';
   return 'draft';
 };
 const STATUS_LABEL = (s) => {
@@ -361,47 +364,83 @@ async function loadRows() {
   }
 }
 
+function buildTickDropdown(id, values) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const label = el.dataset.label || 'items';
+  const prevChecked = new Set(Array.from(el.querySelectorAll('input[type=checkbox]:checked')).map(x => x.value));
+  el.style.position = 'relative';
+  el.style.display = 'inline-block';
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'btn secondary tickdrop-btn';
+  const panel = document.createElement('div');
+  panel.className = 'tickdrop-panel';
+  panel.style.cssText = 'display:none;position:absolute;top:100%;left:0;z-index:50;background:#fff;border:1px solid #ccc;border-radius:6px;padding:8px;max-height:260px;overflow:auto;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,.15);';
+  values.forEach(v => {
+    const row = document.createElement('label');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:13px;white-space:nowrap;cursor:pointer;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.value = v; cb.checked = prevChecked.has(v);
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(' ' + v));
+    panel.appendChild(row);
+  });
+  el.innerHTML = '';
+  el.appendChild(btn); el.appendChild(panel);
+  const updateLabel = () => {
+    const n = panel.querySelectorAll('input:checked').length;
+    btn.textContent = n === 0 ? ('All ' + label) : (n + ' ' + label + ' selected');
+  };
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.tickdrop-panel').forEach(p => { if (p !== panel) p.style.display = 'none'; });
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  });
+  panel.addEventListener('click', (e) => e.stopPropagation());
+  panel.addEventListener('change', updateLabel);
+  updateLabel();
+}
+document.addEventListener('click', () => document.querySelectorAll('.tickdrop-panel').forEach(p => p.style.display = 'none'));
+
 function populateFilters() {
   const chars = [...new Set(ROWS.map(r => r.character))].sort();
   const formats = [...new Set(ROWS.map(r => r.format))].sort();
   if (PRESS_ITEMS.length) formats.push('Press');
   const statuses = STATE_NAMES;
   const platforms = [...new Set(ROWS.flatMap(r => (r.platforms || '').split(',').map(p => p.trim()).filter(Boolean)))].sort();
-  const fill = (id, values) => {
-    const el = document.getElementById(id);
-    values.forEach(v => {
-      const opt = document.createElement('option');
-      opt.value = v; opt.textContent = v;
-      el.appendChild(opt);
-    });
-  };
-  fill('filterCharacter', chars);
-  fill('filterFormat', formats);
-  fill('filterStatus', statuses);
-  fill('filterPlatform', platforms);
+  buildTickDropdown('filterCharacter', chars);
+  buildTickDropdown('filterFormat', formats);
+  buildTickDropdown('filterStatus', statuses);
+  buildTickDropdown('filterPlatform', platforms);
 }
 
+function getSelected(id) {
+  const el = document.getElementById(id);
+  return el ? Array.from(el.querySelectorAll('input[type=checkbox]:checked')).map(x => x.value) : [];
+}
 function filteredRows() {
-  const c = document.getElementById('filterCharacter').value;
-  const f = document.getElementById('filterFormat').value;
-  const s = document.getElementById('filterStatus').value;
-  const p = document.getElementById('filterPlatform').value;
+  const c = getSelected('filterCharacter');
+  const f = getSelected('filterFormat');
+  const s = getSelected('filterStatus');
+  const p = getSelected('filterPlatform');
   const q = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const showPosted = document.getElementById('showPosted').checked;
   return ROWS.filter(r =>
     ['cleared', 'ready', 'concepts', 'creating', 'failed'].indexOf(r.panel_status) !== -1 &&
-    (!c || r.character === c) &&
-    (!f || r.format === f) &&
-    (!s || stateName(r) === s) &&
-    (!p || (r.platforms || '').split(',').map(x => x.trim()).includes(p)) &&
+    (showPosted || (r.status !== 'posted' && r.status !== 'rejected')) &&
+    (!c.length || c.includes(r.character)) &&
+    (!f.length || f.includes(r.format)) &&
+    (!s.length || s.includes(stateName(r))) &&
+    (!p.length || (r.platforms || '').split(',').map(x => x.trim()).some(x => p.includes(x))) &&
     (!q || (r.text_content || '').toLowerCase().includes(q))
   );
 }
 
 // Press coverage cards (read-only, from SC - Coverage List API). Shown when no other filter is set, or when Format = Press.
 function pressCards() {
-  const other = ['filterCharacter', 'filterStatus', 'filterPlatform'].some(id => document.getElementById(id).value) || document.getElementById('filterSearch').value.trim();
-  const f = document.getElementById('filterFormat').value;
-  if (other || (f && f !== 'Press')) return [];
+  const other = ['filterCharacter', 'filterStatus', 'filterPlatform'].some(id => getSelected(id).length) || document.getElementById('filterSearch').value.trim();
+  const f = getSelected('filterFormat');
+  if (other || (f.length && !f.includes('Press'))) return [];
   return PRESS_ITEMS;
 }
 function makePressCard(p) {
@@ -546,7 +585,7 @@ function extractOnScreen(notes) {
 function renderOsWords(text) {
   return text.split(/\s+/).filter(Boolean).map(w => {
     const important = /^\*.+\*[^\w]*$/.test(w);
-    const clean = w.replace(/\*/g, '').replace(/[.,!?;:'"]/g, '');
+    const clean = w.replace(/\*/g, '').replace(/[\u2018\u2019]/g, "'").replace(/[.,!?;:"]/g, '');
     const disp = escapeHtml(clean.toUpperCase());
     return important ? '<b>' + disp + '</b>' : disp;
   }).join(' ');
@@ -721,8 +760,10 @@ function openDrawer(r) {
     '<div class="drawer-actions">' +
       '<button class="btn" id="saveBtn">Save</button>' +
       (canPost ? '<button class="btn danger" id="postNowBtn">Post Now</button>' : '') +
+      (r.status !== 'rejected' && r.status !== 'posted' ? '<button class="btn secondary" id="rejectBtn">Reject with reason</button>' : '') +
+      (r.status !== 'posted' ? '<button class="btn danger" id="deleteBtn">Delete</button>' : '') +
       '<button class="btn secondary" id="closeBtn">Close</button>' +
-    '</div>' +
+    '</div>'+
     '<div class="save-status" id="saveStatus"></div>';
 
   document.getElementById('overlay').classList.add('open');
@@ -737,6 +778,8 @@ function openDrawer(r) {
   document.querySelectorAll('.pick-btn').forEach(b => b.addEventListener('click', () => pickConcept(r, Number(b.dataset.n))));
   const nc = document.getElementById('newConceptsBtn'); if (nc) nc.addEventListener('click', () => newConcepts(r));
   const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
+  const rb = document.getElementById('rejectBtn'); if (rb) rb.addEventListener('click', () => rejectRow(r));
+  const db = document.getElementById('deleteBtn'); if (db) db.addEventListener('click', () => deleteRow(r));
   loadProductBox(r);
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -835,6 +878,47 @@ async function postNow(id) {
   }
 }
 
+async function rejectRow(r) {
+  const reason = prompt('Reason for rejecting this post?');
+  if (reason === null) return;
+  const statusEl = document.getElementById('saveStatus');
+  if (statusEl) statusEl.textContent = 'Rejecting...';
+  try {
+    const res = await fetch(UPDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id, status: 'rejected', panel_notes: (reason || '').trim() })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const row = ROWS.find(x => x.id === r.id);
+    if (row) { row.status = 'rejected'; row.panel_notes = (reason || '').trim(); }
+    render();
+    closeDrawer();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed: ' + e.message;
+  }
+}
+
+async function deleteRow(r) {
+  if (r.status === 'posted') { alert('Posted content cannot be deleted.'); return; }
+  if (!confirm('Delete this post permanently? This cannot be undone.')) return;
+  const statusEl = document.getElementById('saveStatus');
+  if (statusEl) statusEl.textContent = 'Deleting...';
+  try {
+    const res = await fetch(DELETE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    ROWS = ROWS.filter(x => x.id !== r.id);
+    render();
+    closeDrawer();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed: ' + e.message;
+  }
+}
+
 async function saveRow(r) {
   const id = r.id;
   const payload = {
@@ -915,7 +999,7 @@ function existingRow(date, slot, time) {
     slot === '6am' ? (!r.post_time && r.format === 'Day Greeting') :
     (!r.post_time && r.format !== 'Product' && r.format !== 'Advice' && r.format !== 'Day Greeting')));
 }
-const STATE_NAMES = ['slot missed', 'writing brief', 'brief ready', 'brief needs attention', 'making start image', 'start image ready', 'video queued / rendering', 'video rendering at Kling', 'clip ready for approval', 'approved', 'scheduled', 'posted', 'paused'];
+const STATE_NAMES = ['slot missed', 'writing brief', 'brief ready', 'brief needs attention', 'making start image', 'start image ready', 'video queued / rendering', 'video rendering at Kling', 'clip ready for approval', 'approved', 'scheduled', 'posted', 'paused', 'rejected'];
 // A clip approved after its publish time never posts: flag it so it can be rescheduled or sent with Post Now.
 function londonToUtc(dateStr, hhmm) {
   const guess = new Date(dateStr + 'T' + hhmm + ':00Z');
@@ -931,6 +1015,7 @@ function slotDue(r) {
 function isMissed(r) { return r.status === 'approved' && r.video_url && (Date.now() - slotDue(r).getTime()) > 20 * 60000; }
 function stateName(r) {
   if (isMissed(r)) return 'slot missed';
+  if (r.status === 'rejected') return 'rejected';
   if (r.status === 'posted' || r.status === 'scheduled' || r.status === 'paused') return r.status;
   if (r.status === 'approved') return 'approved';
   if (r.video_url) return 'clip ready for approval';
