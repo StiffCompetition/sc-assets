@@ -63,9 +63,11 @@ def compose(r: Req):
     L = cv2.warpAffine(O, M, (1080, 1920), flags=cv2.INTER_LANCZOS4)
     A = cv2.GaussianBlur(cv2.warpAffine(mf.astype(np.float32), M, (1080, 1920)), (5, 5), 0) / 255
     # the SC sign and the palm always stay exactly as in the set
+    # Palm-protection removed 29 Sep 2026 (Andy: character must be in front of the plant, not behind it). Only the
+    # SC sign (left, x0:360) is still protected from being altered; the palm (right, x640:1080) now composites
+    # normally, so wherever the character's generated pose genuinely covers it, he shows in front as required.
     prot = np.zeros((1920, 1080), np.uint8)
     prot[340:680, 0:360] = (~isblue(PA[340:680, 0:360])).astype(np.uint8) * 255
-    prot[290:DT, 640:1080] = (~isblue(PA[290:DT, 640:1080])).astype(np.uint8) * 255
     prot = cv2.dilate(prot, np.ones((9, 9), np.uint8)).astype(np.float32) / 255
     A = A * (1 - prot)
     comp = PA * (1 - A[..., None]) + L * A[..., None]; comp[FR:] = PA[FR:]
