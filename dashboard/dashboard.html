@@ -314,6 +314,7 @@ const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-con
 const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
 const PRODUCTBOX_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-productbox';
 const COVERAGE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-coverage-list';
+const PREVIEW_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-text-preview';
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 // JS getDay(): 0=Sun,1=Mon,...,6=Sat. Map to our 0=Mon..6=Sun index:
@@ -612,6 +613,41 @@ function onScreenPreviewHtml(notes) {
 }
 
 
+function previewTextButtonHtml(r) {
+  if (!r.image_url) return '';
+  // SC - Text Overlay Preview (temp testing tool, Playbook 7.32/7.11): renders the real text-fit/watermark
+  // code against this row's existing start image only. Read-only - never touches image_url, video_url or status.
+  return '<div class="field">' +
+    '<button type="button" class="btn secondary" id="previewTextBtn">Preview Text</button>' +
+    '<div id="previewTextStatus" style="font-size:12px;color:var(--dim);margin-top:4px"></div>' +
+    '<div id="previewTextResult"></div>' +
+  '</div>';
+}
+
+async function previewText(r) {
+  const btn = document.getElementById('previewTextBtn');
+  const status = document.getElementById('previewTextStatus');
+  const result = document.getElementById('previewTextResult');
+  btn.disabled = true;
+  status.textContent = 'Rendering preview (about 45 seconds)... this does not change the row.';
+  result.innerHTML = '';
+  try {
+    const res = await fetch(PREVIEW_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ row_id: r.id }) }).then(x => x.json());
+    const movie = (res && res.movie) || {};
+    const url = movie.url || (Array.isArray(movie.movies) && movie.movies[0] && movie.movies[0].url) || '';
+    if (url) {
+      status.textContent = 'Preview ready.';
+      result.innerHTML = '<video controls preload="metadata" style="width:100%;border:1px solid var(--line);background:#000;margin-top:6px" src="' + String(url).replace(/"/g, '&quot;') + '"></video>';
+    } else {
+      status.textContent = 'Still rendering or status unclear - raw response below.';
+      result.innerHTML = '<pre style="white-space:pre-wrap;font-size:11px;color:var(--dim)">' + escapeHtml(JSON.stringify(res)) + '</pre>';
+    }
+  } catch (e) {
+    status.textContent = 'Failed: ' + e.message;
+  }
+  btn.disabled = false;
+}
+
 function briefPart(notes, label) {
   if (!notes) return '';
   const LABELS = ['Appearance','Scene','End frame','End','On-screen','Sound','Motion','Source','ID','NFT'];
@@ -744,6 +780,7 @@ function openDrawer(r) {
     sourceBox(r.notes) +
     '<div class="field"><label>On-Screen Text (what actually renders in the video)</label></div>' +
     onScreenPreviewHtml(r.notes) +
+    previewTextButtonHtml(r) +
     briefEdit(r.notes, 'On-screen', 'On-screen text (setup. delivery; *word* = emphasis)', 'onscreen') +
     briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
     (r.format === 'Travel the World' ? '' : briefEdit(r.notes, 'End', 'End frame (sent to Gemini with the start image)', 'end')) +
@@ -783,6 +820,7 @@ function openDrawer(r) {
   const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
   document.getElementById('rejectBtn').addEventListener('click', () => rejectRow(r));
   document.getElementById('deleteBtn').addEventListener('click', () => deleteRow(r));
+  const ptb = document.getElementById('previewTextBtn'); if (ptb) ptb.addEventListener('click', () => previewText(r));
   loadProductBox(r);
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
