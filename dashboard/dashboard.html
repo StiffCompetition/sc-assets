@@ -433,8 +433,8 @@ function filteredRows() {
   const showPR = document.getElementById('showPostedRejected').checked;
   const q = document.getElementById('filterSearch').value.trim().toLowerCase();
   return ROWS.filter(r =>
-    (showPR || (r.status !== 'posted' && r.panel_status !== 'rejected')) &&
-    (['cleared', 'ready', 'concepts', 'creating', 'failed', 'rejected'].indexOf(r.panel_status) !== -1 || showPR) &&
+    (['cleared', 'ready', 'concepts', 'creating', 'failed'].indexOf(r.panel_status) !== -1 || (showPR && r.panel_status === 'rejected')) &&
+    (showPR || r.status !== 'posted') &&
     (!FILTERS.character.size || FILTERS.character.has(r.character)) &&
     (!FILTERS.format.size || FILTERS.format.has(r.format)) &&
     (!FILTERS.status.size || FILTERS.status.has(stateName(r))) &&
@@ -448,7 +448,8 @@ function pressCards() {
   const other = FILTERS.character.size || FILTERS.status.size || FILTERS.platform.size || document.getElementById('filterSearch').value.trim();
   const fset = FILTERS.format;
   if (other || (fset.size && !fset.has('Press'))) return [];
-  return PRESS_ITEMS;
+  const showPR = document.getElementById('showPostedRejected').checked;
+  return showPR ? PRESS_ITEMS : PRESS_ITEMS.filter(p => p.state !== 'posted');
 }
 function makePressCard(p) {
   const card = document.createElement('div');
