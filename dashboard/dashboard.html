@@ -73,6 +73,14 @@
     color: var(--ink);
   }
   .toolbar .counts { margin-left: auto; font-family: var(--mono); font-size: 12px; color: #565a44; }
+  .toolbar label.showposted { font-size: 13px; display: flex; align-items: center; gap: 5px; color: #444; }
+  .tickfilter { position: relative; }
+  .tickfilter > button { font-family: inherit; font-size: 14px; padding: 7px 9px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  .tickfilter > button.set { border-color: var(--ink); font-weight: 600; }
+  .tickpanel { display: none; position: absolute; top: 100%; left: 0; z-index: 20; background: #fff; border: 1px solid var(--ink); min-width: 180px; max-height: 260px; overflow-y: auto; padding: 6px; margin-top: 2px; }
+  .tickpanel.open { display: block; }
+  .tickpanel label { display: flex; align-items: center; gap: 6px; padding: 3px 2px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .tickpanel .tickclear { font-size: 12px; color: #2a5db0; cursor: pointer; padding: 3px 2px; border-top: 1px solid var(--line); margin-top: 4px; }
   #topbar {
     position: fixed;
     top: 0;
@@ -272,11 +280,12 @@
     <button id="btnGrid" class="active">Calendar</button>
     <button id="btnList">List</button>
   </div>
-  <select id="filterCharacter"><option value="">All characters</option></select>
-  <select id="filterFormat"><option value="">All formats</option></select>
-  <select id="filterStatus"><option value="">All statuses</option></select>
-  <select id="filterPlatform"><option value="">All platforms</option></select>
+  <div class="tickfilter" id="tf_character"><button type="button">Characters</button><div class="tickpanel"></div></div>
+  <div class="tickfilter" id="tf_format"><button type="button">Formats</button><div class="tickpanel"></div></div>
+  <div class="tickfilter" id="tf_status"><button type="button">Statuses</button><div class="tickpanel"></div></div>
+  <div class="tickfilter" id="tf_platform"><button type="button">Platforms</button><div class="tickpanel"></div></div>
   <input type="search" id="filterSearch" placeholder="search text...">
+  <label class="showposted"><input type="checkbox" id="showPostedRejected"> Show posted/rejected</label>
   <button class="btn" id="btnPlan">Plan content</button>
   <button class="btn secondary" id="btnAdhoc">Add a post</button>
   <button class="btn secondary" id="btnPress">Press coverage</button>
@@ -299,6 +308,7 @@
 <script>
 const LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-list';
 const UPDATE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-update';
+const DELETE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-delete';
 const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-concept-creator';
 const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
 const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
@@ -315,6 +325,14 @@ function dayIndex(dateStr) {
 let ROWS = [];
 let PRESS_ITEMS = [];
 let VIEW = 'grid';
+const FILTERS = { character: new Set(), format: new Set(), status: new Set(), platform: new Set() };
+
+function decodeEntities(s) {
+  if (!s) return s;
+  const t = document.createElement('textarea');
+  t.innerHTML = s;
+  return t.value;
+}
 
 const STATUS_CLASS = (s) => {
   if (!s) return 'draft';
@@ -361,47 +379,75 @@ async function loadRows() {
   }
 }
 
+function buildTickPanel(key, values) {
+  const wrap = document.getElementById('tf_' + key);
+  const btn = wrap.querySelector('button');
+  const panel = wrap.querySelector('.tickpanel');
+  panel.innerHTML = values.map(v =>
+    '<label><input type="checkbox" value="' + escapeHtml(String(v)) + '"' + (FILTERS[key].has(v) ? ' checked' : '') + '> ' + escapeHtml(String(v)) + '</label>'
+  ).join('') + '<div class="tickclear">Clear</div>';
+  panel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) FILTERS[key].add(cb.value); else FILTERS[key].delete(cb.value);
+    updateTickButton(key);
+    render();
+  }));
+  panel.querySelector('.tickclear').addEventListener('click', () => {
+    FILTERS[key].clear();
+    panel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+    updateTickButton(key);
+    render();
+  });
+  if (!btn.dataset.wired) {
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.tickpanel.open').forEach(p => { if (p !== panel) p.classList.remove('open'); });
+      panel.classList.toggle('open');
+    });
+  }
+  updateTickButton(key);
+}
+function updateTickButton(key) {
+  const wrap = document.getElementById('tf_' + key);
+  const btn = wrap.querySelector('button');
+  const n = FILTERS[key].size;
+  const label = { character: 'Characters', format: 'Formats', status: 'Statuses', platform: 'Platforms' }[key];
+  btn.textContent = n ? label + ' (' + n + ')' : label;
+  btn.classList.toggle('set', n > 0);
+}
+document.addEventListener('click', () => document.querySelectorAll('.tickpanel.open').forEach(p => p.classList.remove('open')));
+
 function populateFilters() {
   const chars = [...new Set(ROWS.map(r => r.character))].sort();
   const formats = [...new Set(ROWS.map(r => r.format))].sort();
   if (PRESS_ITEMS.length) formats.push('Press');
   const statuses = STATE_NAMES;
   const platforms = [...new Set(ROWS.flatMap(r => (r.platforms || '').split(',').map(p => p.trim()).filter(Boolean)))].sort();
-  const fill = (id, values) => {
-    const el = document.getElementById(id);
-    values.forEach(v => {
-      const opt = document.createElement('option');
-      opt.value = v; opt.textContent = v;
-      el.appendChild(opt);
-    });
-  };
-  fill('filterCharacter', chars);
-  fill('filterFormat', formats);
-  fill('filterStatus', statuses);
-  fill('filterPlatform', platforms);
+  buildTickPanel('character', chars);
+  buildTickPanel('format', formats);
+  buildTickPanel('status', statuses);
+  buildTickPanel('platform', platforms);
 }
 
 function filteredRows() {
-  const c = document.getElementById('filterCharacter').value;
-  const f = document.getElementById('filterFormat').value;
-  const s = document.getElementById('filterStatus').value;
-  const p = document.getElementById('filterPlatform').value;
+  const showPR = document.getElementById('showPostedRejected').checked;
   const q = document.getElementById('filterSearch').value.trim().toLowerCase();
   return ROWS.filter(r =>
-    ['cleared', 'ready', 'concepts', 'creating', 'failed'].indexOf(r.panel_status) !== -1 &&
-    (!c || r.character === c) &&
-    (!f || r.format === f) &&
-    (!s || stateName(r) === s) &&
-    (!p || (r.platforms || '').split(',').map(x => x.trim()).includes(p)) &&
+    (showPR || (r.status !== 'posted' && r.panel_status !== 'rejected')) &&
+    (['cleared', 'ready', 'concepts', 'creating', 'failed', 'rejected'].indexOf(r.panel_status) !== -1 || showPR) &&
+    (!FILTERS.character.size || FILTERS.character.has(r.character)) &&
+    (!FILTERS.format.size || FILTERS.format.has(r.format)) &&
+    (!FILTERS.status.size || FILTERS.status.has(stateName(r))) &&
+    (!FILTERS.platform.size || (r.platforms || '').split(',').map(x => x.trim()).some(p => FILTERS.platform.has(p))) &&
     (!q || (r.text_content || '').toLowerCase().includes(q))
   );
 }
 
 // Press coverage cards (read-only, from SC - Coverage List API). Shown when no other filter is set, or when Format = Press.
 function pressCards() {
-  const other = ['filterCharacter', 'filterStatus', 'filterPlatform'].some(id => document.getElementById(id).value) || document.getElementById('filterSearch').value.trim();
-  const f = document.getElementById('filterFormat').value;
-  if (other || (f && f !== 'Press')) return [];
+  const other = FILTERS.character.size || FILTERS.status.size || FILTERS.platform.size || document.getElementById('filterSearch').value.trim();
+  const fset = FILTERS.format;
+  if (other || (fset.size && !fset.has('Press'))) return [];
   return PRESS_ITEMS;
 }
 function makePressCard(p) {
@@ -680,6 +726,7 @@ async function newConcepts(r) {
 }
 
 function escapeHtml(s) {
+  s = decodeEntities(s);
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
@@ -715,6 +762,8 @@ function openDrawer(r) {
     '<div class="drawer-actions">' +
       '<button class="btn" id="saveBtn">Save</button>' +
       (canPost ? '<button class="btn danger" id="postNowBtn">Post Now</button>' : '') +
+      '<button class="btn secondary" id="rejectBtn">Reject</button>' +
+      '<button class="btn danger" id="deleteBtn">Delete</button>' +
       '<button class="btn secondary" id="closeBtn">Close</button>' +
     '</div>' +
     '<div class="save-status" id="saveStatus"></div>';
@@ -731,6 +780,8 @@ function openDrawer(r) {
   document.querySelectorAll('.pick-btn').forEach(b => b.addEventListener('click', () => pickConcept(r, Number(b.dataset.n))));
   const nc = document.getElementById('newConceptsBtn'); if (nc) nc.addEventListener('click', () => newConcepts(r));
   const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
+  document.getElementById('rejectBtn').addEventListener('click', () => rejectRow(r));
+  document.getElementById('deleteBtn').addEventListener('click', () => deleteRow(r));
   loadProductBox(r);
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -829,6 +880,43 @@ async function postNow(id) {
   }
 }
 
+async function rejectRow(r) {
+  const reason = prompt('Reason for rejecting this post?');
+  if (reason === null) return;
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = 'Rejecting...';
+  try {
+    const res = await fetch(UPDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id, panel_status: 'rejected', panel_notes: reason })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Rejected.';
+    r.panel_status = 'rejected'; r.panel_notes = reason;
+    render();
+    setTimeout(closeDrawer, 500);
+  } catch (e) { statusEl.textContent = 'Failed to reject: ' + e.message; }
+}
+
+async function deleteRow(r) {
+  if (!confirm('Delete this post permanently? This cannot be undone.')) return;
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = 'Deleting...';
+  try {
+    const res = await fetch(DELETE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    statusEl.textContent = 'Deleted.';
+    ROWS = ROWS.filter(x => x.id !== r.id);
+    render();
+    setTimeout(closeDrawer, 500);
+  } catch (e) { statusEl.textContent = 'Failed to delete (posted rows cannot be deleted): ' + e.message; }
+}
+
 async function saveRow(r) {
   const id = r.id;
   const payload = {
@@ -875,9 +963,7 @@ function setViewButtons() {
   document.getElementById('btnGrid').classList.toggle('active', VIEW === 'grid');
   document.getElementById('btnList').classList.toggle('active', VIEW === 'list');
 }
-['filterCharacter', 'filterFormat', 'filterStatus', 'filterPlatform'].forEach(id =>
-  document.getElementById(id).addEventListener('change', render)
-);
+document.getElementById('showPostedRejected').addEventListener('change', render);
 document.getElementById('filterSearch').addEventListener('input', render);
 
 function updateTopbarHeight() {
