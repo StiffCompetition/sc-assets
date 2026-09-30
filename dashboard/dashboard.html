@@ -651,7 +651,7 @@ async function previewText(r) {
 
 function briefPart(notes, label) {
   if (!notes) return '';
-  const LABELS = ['Appearance','Scene','End frame','End','On-screen','Sound','Motion','Source','ID','NFT'];
+  const LABELS = ['Appearance','Scene','End frame','End','On-screen','Sound','Motion','Source','Plan','ID','NFT'];
   const lower = notes.toLowerCase();
   const hits = [];
   LABELS.forEach(function(L) {
@@ -690,10 +690,22 @@ function composeNotes(orig) {
   const idPart = briefPart(orig, 'ID');
   const sound = (g('sound') || '').replace(/[.]+$/, '');
   let src = briefPart(orig, 'Source');
+  // Shot plan (Playbook 7.33): written by the concept step; kept unchanged on save.
+  const plan = briefPart(orig, 'Plan');
   // Rows from the spreadsheet carry Payoff (the sound the pipeline makes) inside the Source part: an edited Sound replaces it.
   if (src && /Payoff:/i.test(src) && sound) src = src.replace(/Payoff:\s*[\s\S]*$/i, 'Payoff: ' + sound + '.');
   return 'Scene: ' + g('scene') + ' On-screen: ' + g('onscreen') + ' Sound: ' + sound + '. Motion: ' + g('motion') +
-    (idPart ? ' ID: ' + idPart.replace(/[.]+$/, '') + '.' : '') + (src ? ' Source: ' + src : '') + (g('end') ? ' End: ' + g('end') : '');
+    (idPart ? ' ID: ' + idPart.replace(/[.]+$/, '') + '.' : '') + (src ? ' Source: ' + src : '') + (plan ? ' Plan: ' + plan : '') + (g('end') ? ' End: ' + g('end') : '');
+}
+// Shot plan (Playbook 7.33): the Entrance, Camera and Ending picked from the Shot Library tab for this post.
+function shotPlanBox(notes) {
+  const plan = briefPart(notes, 'Plan');
+  if (!plan) return '';
+  const get = k => { const m = plan.match(new RegExp(k + '=([^;.]+)')); return m ? m[1].trim() : '-'; };
+  return '<div class="field"><label>Shot plan (from the Shot Library tab)</label><div class="brief-part">' +
+    'Entrance: <strong>' + escapeHtml(get('Entrance')) + '</strong> &middot; Camera: <strong>' + escapeHtml(get('Camera')) + '</strong> &middot; Ending: <strong>' + escapeHtml(get('Ending')) + '</strong>' +
+    ' &middot; <a href="https://docs.google.com/spreadsheets/d/1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60/edit" target="_blank">Shot Library</a>' +
+    '<div style="margin-top:4px;color:var(--dim);font-size:12px">To change a pick, edit the Motion text below (Shot 1 / Shot 2), or press Make a new concept for a fresh rotation.</div></div></div>';
 }
 function sourceBox(notes) {
   const id = briefPart(notes, 'Source');
@@ -785,7 +797,8 @@ function openDrawer(r) {
     briefEdit(r.notes, 'On-screen', 'On-screen text (setup. delivery; *word* = emphasis)', 'onscreen') +
     briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
     (r.format === 'Travel the World' ? '' : briefEdit(r.notes, 'End', 'End frame (sent to Gemini with the start image)', 'end')) +
-    briefEdit(r.notes, 'Motion', 'Motion (sent to Kling)', 'motion') +
+    shotPlanBox(r.notes) +
+    briefEdit(r.notes, 'Motion', /Shot 1 \(/.test(briefPart(r.notes, 'Motion')) ? 'Motion (sent to Kling as two shots: Shot 1, then Shot 2)' : 'Motion (sent to Kling)', 'motion') +
     briefEdit(r.notes, 'Sound', 'Payoff sound (sent to ElevenLabs)', 'sound') +
     field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
     field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
