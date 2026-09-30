@@ -340,7 +340,7 @@ const STATUS_CLASS = (s) => {
   if (s.startsWith('draft - format')) return 'notdesigned';
   if (s.startsWith('draft')) return 'draft';
   if (s === 'text approved' || s === 'image ready' || s === 'image approved') return 'textapproved';
-  if (s === 'approved') return 'approved';
+  if (s === 'approved') return 'scheduled';
   if (s === 'scheduled') return 'scheduled';
   if (s === 'posted') return 'posted';
   if (s === 'paused') return 'paused';
@@ -349,6 +349,7 @@ const STATUS_CLASS = (s) => {
 const STATUS_LABEL = (s) => {
   if (!s) return 'draft';
   if (s.startsWith('draft - format')) return 'not designed';
+  if (s === 'approved') return 'scheduled';   // "approved" IS the scheduled-to-post state (Plan → ... → approved (scheduled))
   return s;
 };
 
@@ -1051,7 +1052,7 @@ function isMissed(r) { return r.status === 'approved' && r.video_url && (Date.no
 function stateName(r) {
   if (isMissed(r)) return 'slot missed';
   if (r.status === 'posted' || r.status === 'scheduled' || r.status === 'paused') return r.status;
-  if (r.status === 'approved') return 'approved';
+  if (r.status === 'approved') return 'scheduled';
   if (r.video_url) return 'clip ready for approval';
   if (r.status === 'image ready') return 'start image ready';
   if (r.status === 'text approved') return 'making start image';
@@ -1064,7 +1065,7 @@ function slotState(row) {
   if (!row) return { gap: true, label: 'EMPTY', color: '#b06a00' };
   if (isMissed(row)) return { gap: false, done: true, label: 'slot missed - reschedule or Post Now', color: '#b00' };
   if (row.status === 'posted') return { gap: false, done: true, label: 'posted', color: '#2a7a2a' };
-  if (['approved', 'scheduled'].indexOf(row.status) !== -1) return { gap: false, done: true, label: row.status, color: '#2a7a2a' };
+  if (['approved', 'scheduled'].indexOf(row.status) !== -1) return { gap: false, done: true, label: 'scheduled', color: '#2a7a2a' };
   if (row.video_url) return { gap: false, done: true, label: 'clip ready for your approval', color: '#2a5db0' };
   if (row.status === 'image ready') return { gap: false, label: 'start image ready', color: '#2a5db0' };
   if (row.status === 'text approved') return { gap: false, label: 'making start image (1-3 min)', color: '#2a5db0' };
