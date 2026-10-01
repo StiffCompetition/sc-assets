@@ -703,7 +703,7 @@ function shotPlanBox(notes) {
   if (!plan) return '';
   const get = k => { const m = plan.match(new RegExp(k + '=([^;.]+)')); return m ? m[1].trim() : '-'; };
   return '<div class="field"><label>Shot plan (from the Shot Library tab)</label><div class="brief-part">' +
-    'Shot 1 camera: <strong>' + escapeHtml(get('Camera')) + '</strong> &middot; Shot 2 entrance: <strong>' + escapeHtml(get('Entrance')) + '</strong> &middot; Shot 3 finish: <strong>' + escapeHtml(get('Ending')) + '</strong>' +
+    'Camera: <strong>' + escapeHtml(get('Camera')) + '</strong> &middot; Way of moving: <strong>' + escapeHtml(get('Entrance')) + '</strong> &middot; Finish: <strong>' + escapeHtml(get('Ending')) + '</strong>' +
     ' &middot; <a href="https://docs.google.com/spreadsheets/d/1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60/edit" target="_blank">Shot Library</a>' +
     '<div style="margin-top:4px;color:var(--dim);font-size:12px">To change a pick, edit the Motion text below (Shot 1 / Shot 2), or press Make a new concept for a fresh rotation.</div></div></div>';
 }
@@ -797,7 +797,7 @@ function openDrawer(r) {
     briefEdit(r.notes, 'On-screen', 'On-screen text (setup. delivery; *word* = emphasis)', 'onscreen') +
     briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
     shotPlanBox(r.notes) +
-    briefEdit(r.notes, 'Motion', /Shot 1 \(/.test(briefPart(r.notes, 'Motion')) ? 'Motion (sent to Kling as a shot list: Shot 1, 2 and 3)' : 'Motion (sent to Kling)', 'motion') +
+    briefEdit(r.notes, 'Motion', /Shot 1 \(/.test(briefPart(r.notes, 'Motion')) ? 'Motion (sent to Kling as a shot list)' : 'Motion (sent to Kling as one continuous shot)', 'motion') +
     briefEdit(r.notes, 'Sound', 'Payoff sound (sent to ElevenLabs)', 'sound') +
     field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
     field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
