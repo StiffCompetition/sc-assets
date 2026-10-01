@@ -703,7 +703,7 @@ function shotPlanBox(notes) {
   if (!plan) return '';
   const get = k => { const m = plan.match(new RegExp(k + '=([^;.]+)')); return m ? m[1].trim() : '-'; };
   return '<div class="field"><label>Shot plan (from the Shot Library tab)</label><div class="brief-part">' +
-    'Shot 1 camera: <strong>' + escapeHtml(get('Camera')) + '</strong> &middot; Shot 2 entrance: <strong>' + escapeHtml(get('Entrance')) + '</strong> &middot; Shot 2 framing: <strong>' + escapeHtml(get('Ending')) + '</strong>' +
+    'Shot 1 camera: <strong>' + escapeHtml(get('Camera')) + '</strong> &middot; Shot 2 entrance: <strong>' + escapeHtml(get('Entrance')) + '</strong> &middot; Shot 3 finish: <strong>' + escapeHtml(get('Ending')) + '</strong>' +
     ' &middot; <a href="https://docs.google.com/spreadsheets/d/1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60/edit" target="_blank">Shot Library</a>' +
     '<div style="margin-top:4px;color:var(--dim);font-size:12px">To change a pick, edit the Motion text below (Shot 1 / Shot 2), or press Make a new concept for a fresh rotation.</div></div></div>';
 }
@@ -797,7 +797,7 @@ function openDrawer(r) {
     briefEdit(r.notes, 'On-screen', 'On-screen text (setup. delivery; *word* = emphasis)', 'onscreen') +
     briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
     shotPlanBox(r.notes) +
-    briefEdit(r.notes, 'Motion', /Shot 1 \(/.test(briefPart(r.notes, 'Motion')) ? 'Motion (sent to Kling as two shots: Shot 1, then Shot 2)' : 'Motion (sent to Kling)', 'motion') +
+    briefEdit(r.notes, 'Motion', /Shot 1 \(/.test(briefPart(r.notes, 'Motion')) ? 'Motion (sent to Kling as a shot list: Shot 1, 2 and 3)' : 'Motion (sent to Kling)', 'motion') +
     briefEdit(r.notes, 'Sound', 'Payoff sound (sent to ElevenLabs)', 'sound') +
     field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
     field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
@@ -813,6 +813,7 @@ function openDrawer(r) {
     '<div class="drawer-actions">' +
       '<button class="btn" id="saveBtn">Save</button>' +
       (canPost ? '<button class="btn danger" id="postNowBtn">Post Now</button>' : '') +
+      (r.status !== 'posted' ? '<button class="btn secondary" id="reschedBtn">Reschedule</button>' : '') +
       '<button class="btn secondary" id="rejectBtn">Reject</button>' +
       '<button class="btn danger" id="deleteBtn">Delete</button>' +
       '<button class="btn secondary" id="closeBtn">Close</button>' +
@@ -831,6 +832,7 @@ function openDrawer(r) {
   document.querySelectorAll('.pick-btn').forEach(b => b.addEventListener('click', () => pickConcept(r, Number(b.dataset.n))));
   const nc = document.getElementById('newConceptsBtn'); if (nc) nc.addEventListener('click', () => newConcepts(r));
   const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
+  const rs = document.getElementById('reschedBtn'); if (rs) rs.addEventListener('click', () => openReschedule(r));
   document.getElementById('rejectBtn').addEventListener('click', () => rejectRow(r));
   document.getElementById('deleteBtn').addEventListener('click', () => deleteRow(r));
   const ptb = document.getElementById('previewTextBtn'); if (ptb) ptb.addEventListener('click', () => previewText(r));
@@ -1034,18 +1036,56 @@ let PROMOS = [];
 let LEFT = {};
 let DRAFTS = 0;
 function ymd(d) { return d.toISOString().slice(0, 10); }
+// Reschedule (1 Oct 2026): moves a post to another date and/or London time. Day posts stay on their weekday, because the
+// character, the day's title and the on-screen text belong to that day (Brief Pre-Flight checks character against day);
+// Product posts can move to any day. A slot that already holds a post is refused. Status and approval are kept.
+function openReschedule(r) {
+  const box = document.getElementById('saveStatus');
+  const curDate = londonYmd(r.post_date);
+  const anyDay = r.format === 'Product';
+  const dowName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(curDate + 'T12:00:00Z').getUTCDay()];
+  box.innerHTML = '<div class="panel-box" style="margin-top:10px">' +
+    '<div style="font-weight:700;margin-bottom:6px">Reschedule</div>' +
+    '<div class="field"><label>Date' + (anyDay ? '' : ' (' + dowName + 's only)') + '</label><input type="date" id="rsDate" value="' + curDate + '"></div>' +
+    '<div class="field"><label>Time (London, 24h) - leave blank for the usual slot</label><input type="time" id="rsTime" step="900" value="' + (r.post_time || '') + '"></div>' +
+    '<button class="btn" id="rsGo">Move post</button> <span id="rsMsg"></span></div>';
+  document.getElementById('rsGo').addEventListener('click', async () => {
+    const msg = document.getElementById('rsMsg');
+    const date = document.getElementById('rsDate').value;
+    const time = (document.getElementById('rsTime').value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = 'Pick a date.'; return; }
+    const dow = new Date(date + 'T12:00:00Z').getUTCDay();
+    if (!anyDay && dow !== new Date(curDate + 'T12:00:00Z').getUTCDay()) { msg.textContent = 'This post belongs to ' + dowName + '; pick another ' + dowName + '.'; return; }
+    const slot = time ? 'custom' : (r.format === 'Product' ? '12pm' : (r.format === 'Day Greeting' ? '6am' : '7am'));
+    const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : '07:00'))) + ':00Z');
+    if (due.getTime() < Date.now() - 60 * 60000) { msg.textContent = 'That time has already passed.'; return; }
+    // The day must not already hold a post of the same slot type (any time), nor any post at the exact custom time.
+    const clash = ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && (slotOfFormat(x.format) === slotOfFormat(r.format) || (time && x.post_time === time)));
+    if (clash) { msg.textContent = 'That slot already has a post (' + clash.character + ', ' + clash.format + '). Pick another time.'; return; }
+    const post_date = date + (slot === '6am' ? 'T06:00:00.000Z' : (slot === '7am' ? 'T07:00:00.000Z' : 'T12:00:00.000Z'));
+    const DAY_TITLE = { 1: 'Major Wood Monday', 2: "Hammerin' Tuesday", 3: 'White-Knuckle Wednesday', 4: 'Thrusting Thursday', 5: 'Full-Friction Friday', 6: 'Sailor Saturday', 0: 'Standing Tall Sunday' };
+    const body = { id: r.id, post_date: post_date, post_time: time || null };
+    if (r.format !== 'Product') body.day_of_week = DAY_TITLE[dow];
+    msg.textContent = 'Moving...';
+    try {
+      const res = await fetch(UPDATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      msg.textContent = 'Moved to ' + date + (time ? ' ' + time + ' London' : ' (usual slot)') + '.';
+      setTimeout(() => { closeDrawer(); loadRows(); }, 900);
+    } catch (e) { msg.textContent = 'Could not move it: ' + e.message; }
+  });
+}
 function londonYmd(v) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(v)); }
 async function loadProducts() {
   if (PRODUCTS) return PRODUCTS;
   try { const res = await fetch(OPTIONS_URL); const j = await res.json(); PRODUCTS = j.products || []; PROMOS = j.promos || []; LEFT = j.left || {}; DRAFTS = j.drafts_awaiting_approval || 0; } catch (e) { PRODUCTS = []; }
   return PRODUCTS;
 }
+// A day's standard slot (6am Day Greeting, 7am main post, 12pm Product) is filled by any post of that slot type on that day,
+// whatever time it was given - matches SC Content Planner (1 Oct 2026), so a rescheduled post is never duplicated.
+function slotOfFormat(f) { return f === 'Day Greeting' ? '6am' : (f === 'Product' ? '12pm' : (f === 'Advice' ? 'advice' : '7am')); }
 function existingRow(date, slot, time) {
-  return ROWS.find(r => londonYmd(r.post_date) === date && (
-    slot === 'custom' ? r.post_time === time :
-    slot === '12pm' ? (!r.post_time && r.format === 'Product') :
-    slot === '6am' ? (!r.post_time && r.format === 'Day Greeting') :
-    (!r.post_time && r.format !== 'Product' && r.format !== 'Advice' && r.format !== 'Day Greeting')));
+  return ROWS.find(r => londonYmd(r.post_date) === date && (slot === 'custom' ? r.post_time === time : slotOfFormat(r.format) === slot));
 }
 const STATE_NAMES = ['slot missed', 'writing brief', 'brief ready', 'brief needs attention', 'making start image', 'start image ready', 'video queued / rendering', 'video rendering at Kling', 'clip ready for approval', 'approved', 'scheduled', 'posted', 'paused'];
 // A clip approved after its publish time never posts: flag it so it can be rescheduled or sent with Post Now.
