@@ -262,6 +262,52 @@
 .panel-box.ok{background:#eef8ee;border-color:#9ccc9c}
 .panel-box.bad{background:#fdeceb;border-color:#e0a9a4}
 .panel-fails{white-space:pre-wrap;margin-top:6px;font-size:12px;line-height:1.4}
+
+/* Phone layout (added 3 Oct 2026). Applies only below 760px wide; desktop is unchanged. */
+@media (max-width: 760px) {
+  body { padding-top: 0 !important; }
+  #topbar { position: static; }
+  header { padding: 12px 14px; gap: 10px; }
+  header h1 { font-size: 18px; }
+  header p { font-size: 12px; }
+  .toolbar { padding: 10px 14px; gap: 8px; }
+  .toolbar .counts { margin-left: 0; width: 100%; }
+  .toolbar input[type="search"] { flex: 1 1 100%; }
+  .toolbar select, .toolbar input[type="search"], .tickfilter > button, .view-toggle button, .btn, .row-btn, .status-btn, .toolbar label.showposted { min-height: 44px; }
+  .tickpanel { max-width: calc(100vw - 28px); }
+  main { padding: 14px 14px 48px; }
+  /* Calendar: one day per row (header, then that day's posts) */
+  .day-grid { grid-template-columns: 1fr; border-left: none; }
+  .day-header { text-align: left; padding: 8px 10px; border-right: none; }
+  .day-col { min-height: 0; }
+ .day-grid > :nth-child(1) { order: 1; } .day-grid > :nth-child(8) { order: 2; }
+ .day-grid > :nth-child(2) { order: 3; } .day-grid > :nth-child(9) { order: 4; }
+ .day-grid > :nth-child(3) { order: 5; } .day-grid > :nth-child(10) { order: 6; }
+ .day-grid > :nth-child(4) { order: 7; } .day-grid > :nth-child(11) { order: 8; }
+ .day-grid > :nth-child(5) { order: 9; } .day-grid > :nth-child(12) { order: 10; }
+ .day-grid > :nth-child(6) { order: 11; } .day-grid > :nth-child(13) { order: 12; }
+ .day-grid > :nth-child(7) { order: 13; } .day-grid > :nth-child(14) { order: 14; }
+  /* List: each post is a stacked card instead of a 7-column table */
+  .list-view table, .list-view tbody, .list-view tr, .list-view td { display: block; width: 100%; }
+  .list-view thead { display: none; }
+  .list-view tr { border: 1px solid var(--line); background: var(--panel); margin-bottom: 12px; padding: 6px 0; }
+  .list-view td { border: none; padding: 4px 12px; }
+  .list-view td.text-cell { max-width: none; }
+  .list-view td::before { display: block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.5px; color: #565a44; }
+  .list-view td:nth-child(1)::before { content: "Date"; }
+  .list-view td:nth-child(2)::before { content: "Day / Character"; }
+  .list-view td:nth-child(3)::before { content: "Format"; }
+  .list-view td:nth-child(4)::before { content: "Text"; }
+  .list-view td:nth-child(5)::before { content: "Platforms"; }
+  .list-view td:nth-child(6)::before { content: "Status"; }
+  .list-view .row-btn { width: 100%; }
+  /* Editor */
+  .drawer.full { padding-left: 14px !important; padding-right: 14px !important; }
+  .brief-topbar { flex-wrap: wrap; gap: 8px; }
+  .drawer-actions { flex-wrap: wrap; }
+  .drawer-actions .btn { flex: 1 1 140px; }
+  .drawer.full .field textarea, .field input, .field select { font-size: 16px; }
+}
 </style>
 </head>
 <body>
