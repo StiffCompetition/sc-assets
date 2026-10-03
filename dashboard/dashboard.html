@@ -625,18 +625,23 @@ function extractOnScreen(notes) {
   const m = notes.match(/On-screen:\s*([\s\S]+?)\s*(?:Sound:|Motion:|ID:|$)/i);
   const raw = m ? m[1].trim() : '';
   if (!raw) return { hasText: false };
-  const flattened = raw.includes('/') ? raw.split('/').map(s => s.trim()).filter(Boolean).join(' ') : raw;
-  const sentences = flattened.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  // Same split rule as the video step (Build Text Elements): a slash separates the text; without a slash, sentence ends do.
+  const hasSlash = raw.includes('/');
+  const flattened = hasSlash ? raw.split('/').map(s => s.trim()).filter(Boolean).join(' ') : raw;
+  const sentences = hasSlash ? raw.split('/').map(s => s.trim()).filter(Boolean) : flattened.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
   const isSplit = sentences.length > 1;
   const setupText = isSplit ? sentences.slice(0, -1).join(' ') : '';
   const deliveryText = isSplit ? sentences[sentences.length - 1] : flattened;
-  return { hasText: true, isSplit, setupText, deliveryText };
+  const words = t => t.split(/\s+/).filter(Boolean).length;
+  // 8 words or fewer with a slash: two stacked blocks (title on top, message below), both held to the end of the clip.
+  const stacked = hasSlash && isSplit && (words(setupText) + words(deliveryText)) <= 8;
+  return { hasText: true, isSplit, stacked, setupText, deliveryText };
 }
 
 function renderOsWords(text) {
   return text.split(/\s+/).filter(Boolean).map(w => {
     const important = /^\*.+\*[^\w]*$/.test(w);
-    const clean = w.replace(/\*/g, '').replace(/[.,!?;:'"]/g, '');
+    const clean = w.replace(/\*/g, '').replace(/[.,;:"]/g, '');
     const disp = escapeHtml(clean.toUpperCase());
     return important ? '<b>' + disp + '</b>' : disp;
   }).join(' ');
@@ -645,6 +650,14 @@ function renderOsWords(text) {
 function onScreenPreviewHtml(notes) {
   const p = extractOnScreen(notes);
   if (!p.hasText) return '<div class="onscreen-preview empty">No On-screen: text found in Notes.</div>';
+  if (p.stacked) {
+    return '<div class="onscreen-preview">' +
+      '<span class="os-tag">TITLE (top) — holds to end of clip (5s)</span>' +
+      '<div class="os-delivery" style="margin-bottom:8px">' + renderOsWords(p.setupText) + '</div>' +
+      '<span class="os-tag">MESSAGE (below the title) — holds to end of clip (5s)</span>' +
+      '<div class="os-delivery">' + renderOsWords(p.deliveryText) + '</div>' +
+    '</div>';
+  }
   if (p.isSplit) {
     return '<div class="onscreen-preview">' +
       '<span class="os-tag">SETUP — fades out around 1.9s</span>' +
