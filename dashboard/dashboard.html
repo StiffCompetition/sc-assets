@@ -1353,7 +1353,7 @@ async function openAdhoc() {
     const dow = new Date(document.getElementById('adDate').value + 'T12:00:00Z').getUTCDay();
     document.getElementById('adProductBox').style.display = f === 'Product' ? 'block' : 'none';
     const n = leftFor(DAY_CHAR[dow], f);
-    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
