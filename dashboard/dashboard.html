@@ -638,7 +638,7 @@ async function previewText(r) {
     const url = movie.url || (Array.isArray(movie.movies) && movie.movies[0] && movie.movies[0].url) || '';
     if (url) {
       status.textContent = 'Preview ready.';
-      result.innerHTML = '<video controls preload="metadata" style="width:100%;border:1px solid var(--line);background:#000;margin-top:6px" src="' + String(url).replace(/"/g, '&quot;') + '"></video>';
+      result.innerHTML = '<video controls preload="metadata" style="display:block;margin:0 auto;width:auto;max-width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);border:1px solid var(--line);background:#000;margin-top:6px" src="' + String(url).replace(/"/g, '&quot;') + '"></video>';
     } else {
       status.textContent = 'Still rendering or status unclear - raw response below.';
       result.innerHTML = '<pre style="white-space:pre-wrap;font-size:11px;color:var(--dim)">' + escapeHtml(JSON.stringify(res)) + '</pre>';
@@ -856,7 +856,7 @@ function field(name, label, type, value) {
 function imagePreview(r) {
   if (!r.image_url || r.video_url) return '';
   const label = r.status === 'image ready' ? 'Start image - check it, then select "image approved" to make the video' : 'Image';
-  return '<div class="field"><label>' + label + '</label><img style="width:100%;border:1px solid var(--line)" src="' + String(r.image_url).replace(/"/g, '&quot;') + '"></div>';
+  return '<div class="field"><label>' + label + '</label><img style="display:block;margin:0 auto;width:auto;max-width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);border:1px solid var(--line)" src="' + String(r.image_url).replace(/"/g, '&quot;') + '"></div>';
 }
 
 function productBoxKey(r) {
@@ -904,7 +904,7 @@ async function loadProductBox(r) {
 }
 function videoPreview(url) {
   if (!url) return '';
-  return '<div class="field"><label>Video Preview</label><video controls preload="metadata" style="width:100%;border:1px solid var(--line);background:#000" src="' + url.replace(/"/g, '&quot;') + '"></video></div>';
+  return '<div class="field"><label>Video Preview</label><video controls preload="metadata" style="display:block;margin:0 auto;width:auto;max-width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);border:1px solid var(--line);background:#000" src="' + url.replace(/"/g, '&quot;') + '"></video></div>';
 }
 
 function statusField(current) {
