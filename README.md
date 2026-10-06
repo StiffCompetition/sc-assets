@@ -22,6 +22,7 @@ its code lives. Detailed process rules are in the SC Content Playbook (Google Do
 |---|---|
 | SC Content Planner (`S7n6cuyk6EDe5XQH`) | Dashboard planner: creates calendar rows from Andy's selection and runs the concept creator on each. |
 | SC Concept Creator (`3hWUnGrQZmI6cAsm`) | Writes each row's brief from approved spreadsheet rows (no AI except Travel); product briefs use the SC Shop Hotline set, the Product Box tab and the seated gestures. |
+| SC - NFT Post Builder (`ykDQm3T2fYGHWF5n`) | NFT post type: POST `{row_id}` to `sc-nft-post` (called by SC Content Planner). Picks a never-used shop NFT (Travel the World excluded), makes its 8 s ticker (Hotline Compose `/hotline-gfx`), renders the character's NFT template (built once per character by Hotline Compose `/nft-template`) with json2video, stores the clip on Cloudinary and writes clip and captions to the calendar row for review. |
 | SC - Video Generation Pipeline (`hjLFFoSSLwkda0XB`) | Start image (Gemini + checks), Kling animation, sound (ElevenLabs), json2video edit with captions, ticker and Hotline graphics; Roll Call and Travel branches. Calls the Hotline service. |
 | SC Kling Collector (`fjPLFR3hCpBIyozZ`) | Collects Kling clips that finished after the pipeline stopped waiting. |
 | SC - Calendar API (update) (`4eXYIAKnlJz6aAJ1`) | `sc-calendar-list` / `sc-calendar-update` webhooks used by the dashboard and all content workflows. |
