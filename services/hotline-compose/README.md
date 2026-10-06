@@ -9,7 +9,7 @@ It does the picture work n8n cannot do itself.
 **Source of truth for the code:** this folder (`services/hotline-compose/main.py`).
 The running copy is the Railway variable `APP_CODE_B64` (base64 of `main.py`); the service installs its packages and
 starts from that variable (see `startCommand` in the service settings). To deploy a change: edit `main.py` here,
-then set `APP_CODE_B64` to `base64 -w0 main.py`. Railway redeploys automatically.
+then set `APP_CODE_B64` to `gzip -9 -n -c main.py | base64 -w0` (compressed, because Railway settings are limited to 32 KB; the start command runs `base64 -d | gunzip`). Railway redeploys automatically.
 The service's start command installs its packages; it must include `imageio-ffmpeg` (a bundled ffmpeg used by `/nft-template` to encode).
 
 ## Endpoints
