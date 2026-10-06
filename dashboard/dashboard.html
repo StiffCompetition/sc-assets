@@ -1287,8 +1287,8 @@ function extraCell(date, dow) {
   return list + '<div class="extra-box" data-date="' + date + '" data-dow="' + dow + '"></div><button type="button" class="btn secondary extra-add" data-date="' + date + '" data-dow="' + dow + '" style="padding:2px 10px;font-size:12px;margin-top:4px">+ Add post</button>';
 }
 function extraTypes(dow) {
-  const t = ['Day Greeting', 'Wisdom', 'Character Lore', 'Travel the World', 'Product'];
-  if (dow === 0) return ['Day Greeting', 'Brand Lore', 'Product'];
+  const t = ['Day Greeting', 'Wisdom', 'Character Lore', 'Travel the World', 'Product', 'NFT'];
+  if (dow === 0) return ['Day Greeting', 'Brand Lore', 'Product', 'NFT'];
   return t;
 }
 function addExtraLine(box) {
@@ -1303,7 +1303,7 @@ function addExtraLine(box) {
     '<button type="button" class="btn secondary ex-remove" style="padding:0 8px;font-size:12px">x</button>';
   box.appendChild(line);
   const fmt = line.querySelector('.ex-format');
-  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = fmt.value === 'Product' ? 'inline' : 'none'; });
+  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value === 'Product' || fmt.value === 'NFT') ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = fmt.value === 'Product' ? 'inline' : 'none'; });
   line.querySelector('.ex-product').addEventListener('change', (e) => { const p = (PRODUCTS || []).find(x => x.handle === e.target.value); line.querySelector('.ex-char').value = (p && p.character) ? p.character : ''; });
   line.querySelector('.ex-remove').addEventListener('click', () => line.remove());
 }
@@ -1377,6 +1377,7 @@ function submitPlan() {
       if (h.indexOf('promo:') === 0) item.promo_item = h.slice(6);
       else { const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; }
     }
+    if (f === 'NFT') item.character = line.querySelector('.ex-char').value;
     plan.push(item);
   }));
   if (extraError) { document.getElementById('planStatus').textContent = extraError; return; }
@@ -1398,7 +1399,7 @@ async function openAdhoc() {
     '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
     '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
-    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option></select></div>' +
+    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option><option>NFT</option></select></div>' +
     '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('') + '</select></div>' +
     '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
     '<div class="drawer-actions"><button class="btn" id="adGo">Create brief</button><button class="btn secondary" id="adClose">Close</button></div>' +
@@ -1410,9 +1411,10 @@ async function openAdhoc() {
   const refresh = () => {
     const f = document.getElementById('adFormat').value;
     const dow = new Date(document.getElementById('adDate').value + 'T12:00:00Z').getUTCDay();
-    document.getElementById('adProductBox').style.display = f === 'Product' ? 'block' : 'none';
+    document.getElementById('adProductBox').style.display = (f === 'Product' || f === 'NFT') ? 'block' : 'none';
+    document.getElementById('adProduct').style.display = f === 'Product' ? '' : 'none';
     const n = leftFor(DAY_CHAR[dow], f);
-    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (blank = the day\'s character). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
@@ -1431,6 +1433,7 @@ async function openAdhoc() {
       if (h.indexOf('promo:') === 0) item.promo_item = h.slice(6);
       else { const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; }
     }
+    if (f === 'NFT') item.character = document.getElementById('adChar').value;
     sendPlan([item], document.getElementById('adStatus'));
   });
 }
