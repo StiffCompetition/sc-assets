@@ -129,7 +129,7 @@ def write_video(frames, w, h):
     u = r.get('secure_url', '')
     return u.replace('/video/upload/', '/video/upload/vc_h264,q_auto:best/') if u else ''
 
-def strip(text_units, h, bg, fg, f, logo=None, star_r=0, gap=36):
+def strip(text_units, h, bg, fg, f, logo=None, star_r=0, gap=36, dur=DUR):
     # one long strip of repeated units, drawn once
     d0 = ImageDraw.Draw(Image.new('RGB', (10, 10)))
     parts = []
@@ -138,7 +138,7 @@ def strip(text_units, h, bg, fg, f, logo=None, star_r=0, gap=36):
         elif u == 'LOGO': parts.append(('logo', logo.width + gap))
         else: parts.append(('text', int(d0.textlength(u, font=f)), u))
     unit_w = sum(p[1] for p in parts)
-    reps = int((1080 + 200 * DUR) / unit_w) + 3
+    reps = int((1080 + 200 * dur) / unit_w) + 3
     im = Image.new('RGB', (unit_w * reps, h), bg); d = ImageDraw.Draw(im)
     cap = f.getbbox('M'); x = 0
     for _ in range(reps):
@@ -153,19 +153,25 @@ def strip(text_units, h, bg, fg, f, logo=None, star_r=0, gap=36):
 
 class Gfx(BaseModel):
     tick: str
+    dur: float = 5.0            # clip length in seconds (Product 5, NFT 8)
+    phrase: str = 'IN STOCK NOW'  # top-row text after the name; '*' between parts draws a star (NFT: 'ONE OF ONE*OWN IT NOW')
+    box: bool = True            # Product posts need the product box; NFT posts do not
     box_url: str = ''
     box_name: str = ''
     set_url: str = 'https://res.cloudinary.com/dkapdtxek/image/upload/v1790557122/SCSMAuto/sc_hotline_set_locked_v2.png'
 
 @app.post('/hotline-gfx')
 def hotline_gfx(g: Gfx):
-    n = int(FPS * DUR)
+    n = int(FPS * g.dur)
     # ticker: 6 px red rule, royal row (logo + name + stars, white italic), white row (shop address, navy); readable crawl
     fi = font('BarlowCondensed-BoldItalic.ttf', 72); fb = font('BarlowCondensed-Bold.ttf', 48)
     lg = Image.open(io.BytesIO(requests.get('https://res.cloudinary.com/dkapdtxek/image/upload/v1790460791/SCSMAuto/sc_ticker_logo_white.png', timeout=60).content)).convert('RGBA')
     capH = fi.getbbox('M')[3] - fi.getbbox('M')[1]; lg = lg.resize((int(lg.width * capH / lg.height), capH))
-    top = strip(['LOGO', g.tick.upper(), '*', 'IN STOCK NOW', '*'], 87, ROYAL, WHITE, fi, logo=lg, star_r=20)
-    bot = strip(['STIFFCOMPETITION.SHOP', '*'], 80, WHITE, NAVY, fb, star_r=14)
+    units = ['LOGO', g.tick.upper(), '*']
+    for part in g.phrase.split('*'):
+        if part.strip(): units += [part.strip().upper(), '*']
+    top = strip(units, 87, ROYAL, WHITE, fi, logo=lg, star_r=20, dur=g.dur)
+    bot = strip(['STIFFCOMPETITION.SHOP', '*'], 80, WHITE, NAVY, fb, star_r=14, dur=g.dur)
     SPEED_TOP, SPEED_BOT = 130.0, 100.0
     tframes = []
     for i in range(n):
@@ -176,6 +182,8 @@ def hotline_gfx(g: Gfx):
         fr.paste(bot.crop((int(SPEED_BOT * t), 0, int(SPEED_BOT * t) + 1080, 80)), (0, 97))
         tframes.append(fr)
     ticker_url = write_video(tframes, 1080, 178)
+    if not g.box:
+        return {'ok': bool(ticker_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': '', 'box_xywh': None}
     # product box over the desk front: slides in (0.5 s), the product slowly pushes in, one light sheen
     RX, RY, RW, RH = 0, 1170, 660, 470
     setimg = Image.open(io.BytesIO(requests.get(g.set_url, timeout=60).content)).convert('RGB').resize((1080, 1920))
@@ -269,3 +277,150 @@ def travel_merge(m: Merge):
     ext.paste(org, (0, y), Image.fromarray(md.astype(np.uint8)))
     buf = io.BytesIO(); ext.save(buf, 'PNG')
     return {'ok': True, 'y': y, 'match': round(float(score), 3), 'logos_removed': removed, 'png_b64': base64.b64encode(buf.getvalue()).decode()}
+
+# ---------- NFT post: one reusable template clip per character (Playbook: NFT post type) ----------
+# Builds the 8 s gallery template: the wall slides only while the character walks (timing measured per character),
+# the frame opening is a flat magenta key area, the character is cut out of his green-screen clip and placed in front.
+# Per post, json2video lays the NFT under the template (keyframes returned here) and keys out the magenta.
+import json as _json, subprocess as _sp, shutil as _sh
+from PIL import ImageOps
+def _ffmpeg():
+    # system ffmpeg if present, otherwise the static build bundled with the imageio-ffmpeg package
+    p = _sh.which('ffmpeg')
+    if p: return p
+    import imageio_ffmpeg
+    return imageio_ffmpeg.get_ffmpeg_exe()
+
+class NftTpl(BaseModel):
+    wall_url: str                      # gallery wall with this character's busts, frame opening filled flat blue
+    clip_url: str                      # character on green, 8 s, already joined (walk in, look, smile, walk on)
+    opening: list                      # [x0, y0, x1, y1] frame opening in wall-image pixels
+    bust_fracs: list = [0.143, 0.857]  # bust centres as fractions of the wall width
+    floor_cut: int = 560               # wall-image row where the floor starts (cut away)
+    floor_src: int = 500               # wall rows floor_src..floor_cut are stretched down to replace the floor
+    char_xywh: list = [401, 188, 1055, 1876]
+    stop_shift: int = 30               # stop the wall this many px further along (frame sits left of him)
+    key_extend: int = 10               # key area reaches this many px beyond the opening (covers the bevel)
+    bevel: int = 8                     # frame inner edge recoloured dark-to-gold over this many px
+    t_full_end: float = 1.0            # walk at full speed until here
+    t_stop: float = 1.7                # stopped from here
+    t_go: float = 6.7                  # starts walking again here
+    t_cruise: float = 7.0              # full speed again from here
+    duration: float = 8.0
+    fps: int = 25
+    name: str = 'nft_template'
+    enc_preset: str = 'veryfast'       # x264 speed/memory trade-off
+    enc_threads: int = 0               # 0 = automatic
+
+def _nft_strip(r):
+    CH = 1920; KEY = (255, 0, 255); E = r.key_extend
+    wall = Image.open(io.BytesIO(requests.get(r.wall_url, timeout=60).content)).convert('RGB')
+    sc = CH / wall.height; full = wall.resize((int(wall.width * sc), CH), Image.LANCZOS)
+    cut = int(r.floor_cut * sc)
+    strip = Image.new('RGB', full.size); strip.paste(full.crop((0, 0, full.width, cut)), (0, 0))
+    strip.paste(full.crop((0, int(r.floor_src * sc), full.width, cut)).resize((full.width, CH - cut), Image.BICUBIC), (0, cut))
+    x0, y0, x1, y1 = [int(v * sc) for v in r.opening]
+    fcx = (x0 + x1) // 2
+    x0, y0, x1, y1 = x0 - E, y0 - E, x1 + E, y1 + E
+    strip.paste(Image.new('RGB', (x1 - x0, y1 - y0), KEY), (x0, y0))
+    S = np.array(strip).astype(np.float32); RW = r.bevel; DARK = np.array([38, 28, 14], np.float32)
+    for d in range(RW):
+        a = (d + 1) / (RW + 1)
+        for xc, xs in ((x0 - 1 - d, x0 - 1 - RW - 3), (x1 + d, x1 + RW + 3)):
+            S[y0 - RW:y1 + RW, xc] = DARK * (1 - a) + S[y0 - RW:y1 + RW, xs] * a
+        for yc, ys in ((y0 - 1 - d, y0 - 1 - RW - 3), (y1 + d, y1 + RW + 3)):
+            S[yc, x0 - 1 - d:x1 + d + 1] = DARK * (1 - a) + S[ys, x0 - 1 - d:x1 + d + 1] * a
+    strip = Image.fromarray(S.clip(0, 255).astype(np.uint8)); del S
+    P = 600; FW = full.width; del full
+    pad = Image.new('RGB', (strip.width + 2 * P, CH))
+    pad.paste(ImageOps.mirror(strip.crop((0, 0, P, CH))), (0, 0)); pad.paste(strip, (P, 0))
+    pad.paste(ImageOps.mirror(strip.crop((strip.width - P, 0, strip.width, CH))), (P + strip.width, 0))
+    A = np.array(pad); del pad, strip
+    fc = fcx + P + r.stop_shift
+    bl = int(r.bust_fracs[0] * FW) + P; br = int(r.bust_fracs[1] * FW) + P
+    PER = br - bl                                  # wall travel per loop = bust-to-bust spacing (loop lands bust on bust)
+    k_in = r.t_full_end + (r.t_stop - r.t_full_end) / 2
+    k_out = (r.t_cruise - r.t_go) / 2 + (r.duration - r.t_cruise)
+    v = PER / (k_in + k_out)
+    endc = int(round(fc - v * k_out)); startc = endc + PER
+    F = 90; w = A[:, endc - 540:endc + 540].astype(np.float32)
+    a = np.ones(1080, np.float32); a[:F] = np.linspace(0, 1, F); a[-F:] = np.linspace(1, 0, F)
+    tgt = A[:, startc - 540:startc + 540].astype(np.float32)
+    A[:, startc - 540:startc + 540] = (w * a[None, :, None] + tgt * (1 - a[None, :, None])).clip(0, 255).astype(np.uint8)
+    geo = {'fc': fc, 'v': v, 'startc': startc, 'open': [x0 + P, y0, x1 + P, y1]}
+    return A, geo
+
+def _nft_centre(r, g, t):
+    v, fc, sc0 = g['v'], g['fc'], g['startc']
+    a, b, c, d = r.t_full_end, r.t_stop, r.t_go, r.t_cruise
+    if t < a: return sc0 - v * t
+    if t < b: u = t - a; return sc0 - v * a - (v * u - v * u * u / (2 * (b - a)))
+    if t < c: return fc
+    if t < d: u = t - c; return fc - v * u * u / (2 * (d - c))
+    return fc - v * (d - c) / 2 - v * (t - d)
+
+def _cutout(fr, K3=np.ones((3, 3), np.uint8)):
+    # green-screen cut-out: per-row background shade, only his figure kept, solid inside his outline, soft 1 px edge
+    f = fr.astype(np.float32); fi0 = fr.astype(np.int16)
+    gdm = fi0[..., 1] - np.maximum(fi0[..., 0], fi0[..., 2])
+    gm = (gdm > 50).astype(np.float32); cnt = gm.sum(1); sm = (f * gm[..., None]).sum(1); good = cnt > 20
+    rowbg = np.zeros((f.shape[0], 3), np.float32); idx = np.arange(f.shape[0])
+    for c in range(3): rowbg[:, c] = np.interp(idx, idx[good], sm[good, c] / cnt[good])
+    rowbg = cv2.blur(rowbg[None, :, :], (31, 1))[0]
+    d = np.sqrt(((f - rowbg[:, None, :]) ** 2).sum(-1)); al = np.clip((d - 45) / 30, 0, 1).astype(np.float32)
+    num, lab, st, _ = cv2.connectedComponentsWithStats((al > 0.5).astype(np.uint8))
+    big = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA])); fig = (lab == big).astype(np.uint8)
+    ff = (1 - fig).astype(np.uint8); h, w = ff.shape; msk = np.zeros((h + 2, w + 2), np.uint8)
+    for sx, sy in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+        if ff[sy, sx] == 1: cv2.floodFill(ff, msk, (sx, sy), 2)
+    solid = ((fig == 1) | ((ff == 1) & (gdm < 30))).astype(np.uint8)
+    interior = cv2.erode(solid, K3, iterations=3).astype(np.float32)
+    edge_al = al * cv2.dilate(solid, K3).astype(np.float32) * (gdm < 45)
+    al2 = np.maximum(cv2.erode(edge_al, K3), interior); al2 = cv2.GaussianBlur(al2, (0, 0), 0.7); al2 = np.maximum(al2, interior)
+    edge = (al2 > 0.01) & (al2 < 0.99); lim = np.maximum(f[..., 0], f[..., 2]); f[..., 1] = np.where(edge & (f[..., 1] > lim), lim, f[..., 1])
+    holes = int(((interior > 0) & (al2 < 0.99)).sum())
+    return f, al2, holes
+
+@app.post('/nft-template')
+def nft_template(r: NftTpl):
+    A, g = _nft_strip(r)
+    clip_path = '/tmp/nft_clip_%d.mp4' % int(time.time() * 1000)
+    open(clip_path, 'wb').write(requests.get(r.clip_url, timeout=180).content)
+    cap = cv2.VideoCapture(clip_path); sfps = cap.get(cv2.CAP_PROP_FPS) or 24.0; nsrc = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    out_path = '/tmp/nft_tpl_%d.mp4' % int(time.time() * 1000)
+    enc = _sp.Popen([_ffmpeg(), '-y', '-v', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', '1080x1920', '-r', str(r.fps), '-i', '-',
+                     '-c:v', 'libx264', '-preset', r.enc_preset, '-x264-params', 'rc-lookahead=10', '-threads', str(r.enc_threads), '-crf', '12', '-pix_fmt', 'yuv444p', out_path], stdin=_sp.PIPE)
+    X, Y, CW, CHh = r.char_xywh; n_out = int(round(r.duration * r.fps))
+    cur_i, cur = -1, None; holes_worst = 0; green_worst = 0
+    for n in range(n_out):
+        t = n / r.fps; want = min(int(round(t * sfps)), nsrc - 1)
+        while cur_i < want:
+            ok, fr = cap.read()
+            if not ok: break
+            cur_i += 1; cur = cv2.cvtColor(fr, cv2.COLOR_BGR2RGB)
+        cx = int(round(_nft_centre(r, g, t))) - 540
+        out = A[:, cx:cx + 1080].copy()
+        f, al, holes = _cutout(cur); holes_worst = max(holes_worst, holes)
+        rgb = cv2.resize(f, (CW, CHh), interpolation=cv2.INTER_LANCZOS4); M = cv2.resize(al, (CW, CHh))[..., None]
+        hh, ww = min(CHh, 1920 - Y), min(CW, 1080 - X)
+        reg = out[Y:Y + hh, X:X + ww].astype(np.float32)
+        out[Y:Y + hh, X:X + ww] = (rgb[:hh, :ww] * M[:hh, :ww] + reg * (1 - M[:hh, :ww])).clip(0, 255).astype(np.uint8)
+        if n % 10 == 0:
+            o = out.astype(np.int16); green_worst = max(green_worst, int(((o[..., 1] - np.maximum(o[..., 0], o[..., 2])) > 40).sum()))
+        enc.stdin.write(out.tobytes())
+    enc.stdin.close(); enc.wait(); cap.release()
+    up = requests.post('https://api.cloudinary.com/v1_1/dkapdtxek/video/upload',
+                       data={'upload_preset': 'SCSMAuto', 'asset_folder': 'SCSMAuto', 'public_id': '%s_%d' % (r.name, int(time.time()))},
+                       files={'file': ('t.mp4', open(out_path, 'rb').read())}, timeout=300).json()
+    for pth in (clip_path, out_path):
+        try: import os; os.remove(pth)
+        except Exception: pass
+    ox, oy, ox1, oy1 = g['open']; side = ox1 - ox
+    # NFT position for every frame while the wall moves (json2video renders 25 fps), plus the stop and the end
+    times = sorted(set([round(i / r.fps, 3) for i in range(n_out + 1) if (i / r.fps) <= r.t_stop or (i / r.fps) >= r.t_go]))
+    kf = [{'time': t, 'x': int(round(ox - (int(round(_nft_centre(r, g, t))) - 540) - 3))} for t in times]
+    return {'ok': bool(up.get('secure_url')) and holes_worst == 0 and green_worst < 500,
+            'template_url': up.get('secure_url', ''),
+            'checks': {'see_through_pixels_inside_character': holes_worst, 'green_pixels_worst_frame': green_worst},
+            'nft': {'y': oy - 3, 'size': side + 6, 'keyframes': kf},
+            'chroma_key': {'color': '#FF00FF', 'tolerance': 40}, 'fps': r.fps, 'duration': r.duration}
