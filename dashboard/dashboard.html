@@ -1095,13 +1095,13 @@ let PROMOS = [];
 let LEFT = {};
 let DRAFTS = 0;
 function ymd(d) { return d.toISOString().slice(0, 10); }
-// Reschedule (1 Oct 2026): moves a post to another date and/or London time. Day posts stay on their weekday, because the
-// character, the day's title and the on-screen text belong to that day (Brief Pre-Flight checks character against day);
-// Product posts can move to any day. A slot that already holds a post is refused. Status and approval are kept.
+// Reschedule (1 Oct 2026; 7 Oct 2026): moves a post to another date and/or London time. Only the Day Greeting belongs to its
+// weekday (Brand Lore stays on Sundays); every other post can move to any day whose own character is not the post's character.
+// A slot that already holds a post is refused. Status and approval are kept.
 function openReschedule(r) {
   const box = document.getElementById('saveStatus');
   const curDate = londonYmd(r.post_date);
-  const anyDay = r.format === 'Product';
+  const anyDay = r.format !== 'Day Greeting' && r.format !== 'Brand Lore';
   const dowName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(curDate + 'T12:00:00Z').getUTCDay()];
   box.innerHTML = '<div class="panel-box" style="margin-top:10px">' +
     '<div style="font-weight:700;margin-bottom:6px">Reschedule</div>' +
@@ -1115,6 +1115,7 @@ function openReschedule(r) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = 'Pick a date.'; return; }
     const dow = new Date(date + 'T12:00:00Z').getUTCDay();
     if (!anyDay && dow !== new Date(curDate + 'T12:00:00Z').getUTCDay()) { msg.textContent = 'This post belongs to ' + dowName + '; pick another ' + dowName + '.'; return; }
+    if (anyDay && r.character === DAY_CHAR[dow]) { msg.textContent = r.character + ' is that day\'s character; only the Day Greeting uses him. Pick another day.'; return; }
     const slot = time ? 'custom' : (r.format === 'Product' ? '12pm' : (r.format === 'Day Greeting' ? '6am' : '7am'));
     const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : '07:00'))) + ':00Z');
     if (due.getTime() < Date.now() - 60 * 60000) { msg.textContent = 'That time has already passed.'; return; }
@@ -1124,7 +1125,7 @@ function openReschedule(r) {
     const post_date = date + (slot === '6am' ? 'T06:00:00.000Z' : (slot === '7am' ? 'T07:00:00.000Z' : 'T12:00:00.000Z'));
     const DAY_TITLE = { 1: 'Major Wood Monday', 2: "Hammerin' Tuesday", 3: 'White-Knuckle Wednesday', 4: 'Thrusting Thursday', 5: 'Full-Friction Friday', 6: 'Sailor Saturday', 0: 'Standing Tall Sunday' };
     const body = { id: r.id, post_date: post_date, post_time: time || null };
-    if (r.format !== 'Product') body.day_of_week = DAY_TITLE[dow];
+    if (r.format === 'Day Greeting') body.day_of_week = DAY_TITLE[dow];
     msg.textContent = 'Moving...';
     try {
       const res = await fetch(UPDATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -1196,7 +1197,8 @@ function productOptions(sel) {
     ((PROMOS || []).length ? '<optgroup label="Promotable items">' + PROMOS.map(p => '<option value="promo:' + escapeHtml(p.item) + '"' + ('promo:' + p.item === sel ? ' selected' : '') + '>' + escapeHtml(p.item) + '</option>').join('') + '</optgroup>' : '') +
     '<optgroup label="Shop products">' + (PRODUCTS || []).map(p => '<option value="' + escapeHtml(p.handle) + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(p.title) + '</option>').join('') + '</optgroup>';
 }
-function charOptions(sel) { return '<option value=""' + (sel ? '' : ' selected') + '>Rotate (all six)</option>' + CHARACTERS.map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
+// 7 Oct 2026 (Andy): only the Day Greeting uses the day's character, so every other picker leaves him out (exclude).
+function charOptions(sel, exclude) { return '<option value=""' + (sel ? '' : ' selected') + '>Rotate</option>' + CHARACTERS.filter(c => c !== exclude).map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
 function closePlan() { document.getElementById('planOverlay').classList.remove('open'); }
 document.getElementById('planPanel').addEventListener('click', (e) => { if (e.target.classList && e.target.classList.contains('plan-back')) closePlan(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('planOverlay').classList.contains('open')) closePlan(); });
@@ -1224,6 +1226,8 @@ async function openPlanner() {
   drawPlanDays(true);
 }
 function leftFor(ch, f) { return (LEFT[ch] && LEFT[ch][f] != null) ? LEFT[ch][f] : null; }
+// Rows left for a post type across every character except the day's (only the Day Greeting uses the day's character).
+function leftOther(dayCh, f) { let t = null; CHARACTERS.filter(c => c !== dayCh).forEach(c => { const k = leftFor(c, f); if (k != null) t = (t || 0) + k; }); return t; }
 const ROT_TYPES = ['Wisdom', 'Character Lore', 'Travel the World'];
 function recentProductHandles() {
   const out = [];
@@ -1237,6 +1241,7 @@ function planDefaults(start, n) {
   const used = recentProductHandles();
   const picks = {};
   let lastChar = '';
+  const charUse = {};
   for (let w = 0; w < n; w += 7) {
     const counts = { 'Wisdom': 0, 'Character Lore': 0, 'Travel the World': 0 };
     const days = [];
@@ -1250,17 +1255,19 @@ function planDefaults(start, n) {
       if (!r7 || slotState(r7).gap) {
         if (x.dow === 0) { picks[x.date + '|7am'] = (leftFor('SC Logo', 'Brand Lore') === 0) ? '' : 'Brand Lore'; }
         else {
-          const cand = ROT_TYPES.filter(f => { const k = left[ch] && left[ch][f]; return k == null || k > 0; });
+          const others = CHARACTERS.filter(c => c !== ch);
+          const avail = f => others.filter(c => { const k = left[c] && left[c][f]; return k == null || k > 0; });
+          const cand = ROT_TYPES.filter(f => avail(f).length);
           cand.sort((p, q) => (counts[p] - counts[q]) || (((ROT_TYPES.indexOf(p) - x.i) % 3 + 3) % 3 - ((ROT_TYPES.indexOf(q) - x.i) % 3 + 3) % 3));
           const f = cand[0] || '';
           picks[x.date + '|7am'] = f;
-          if (f) { counts[f]++; if (left[ch] && left[ch][f] != null) left[ch][f]--; }
+          if (f) { counts[f]++; const pc = avail(f).sort((p, q) => (charUse[p] || 0) - (charUse[q] || 0))[0]; picks[x.date + '|7amc'] = pc; charUse[pc] = (charUse[pc] || 0) + 1; if (left[pc] && left[pc][f] != null) left[pc][f]--; }
         }
       }
       if ([3, 5, 6].indexOf(x.dow) !== -1) {
         const r12 = existingRow(x.date, '12pm');
         if (!r12 || slotState(r12).gap) {
-          const pool = (PRODUCTS || []).slice();
+          const pool = (PRODUCTS || []).filter(p => p.character !== DAY_CHAR[x.dow]);
           pool.sort((p, q) => ((used.indexOf(p.handle) !== -1) - (used.indexOf(q.handle) !== -1)) || (((p.character || DAY_CHAR[x.dow]) === lastChar) - ((q.character || DAY_CHAR[x.dow]) === lastChar)));
           const p = pool[0];
           if (p) { picks[x.date + '|12pm'] = p.handle; used.push(p.handle); lastChar = p.character || DAY_CHAR[x.dow]; }
@@ -1276,7 +1283,7 @@ function formatSelect(date, dow, row, pick) {
   const types = dow === 0 ? ['Brand Lore'] : ROT_TYPES;
   let opts = '';
   if (!st.gap) opts += '<option value="" selected>Keep</option>';
-  opts += types.map(f => { const n = leftFor(ch, f); return '<option value="' + f + '"' + (st.gap && f === pick ? ' selected' : '') + (n === 0 || st.done ? ' disabled' : '') + '>' + (st.gap ? '' : 'Replace with ') + f + (n === null ? '' : ' (' + n + ' left)') + '</option>'; }).join('');
+  opts += types.map(f => { const n = dow === 0 ? leftFor(ch, f) : leftOther(ch, f); return '<option value="' + f + '"' + (st.gap && f === pick ? ' selected' : '') + (n === 0 || st.done ? ' disabled' : '') + '>' + (st.gap ? '' : 'Replace with ') + f + (n === null ? '' : ' (' + n + ' left)') + '</option>'; }).join('');
   if (st.gap) opts += '<option value=""' + (pick ? '' : ' selected') + '>None</option>';
   return '<select data-date="' + date + '" class="plan7">' + opts + '</select>';
 }
@@ -1298,12 +1305,12 @@ function addExtraLine(box) {
   line.className = 'extra-line';
   line.style.cssText = 'margin-top:4px;padding:4px;border:1px solid var(--line);border-radius:6px';
   line.innerHTML = '<input type="time" class="ex-time" value="18:00" step="900" style="width:95px"> ' +
-    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = leftFor(f === 'Brand Lore' || dow === 0 ? 'SC Logo' : ch, f); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + f + (n === null || f === 'Product' ? '' : ' (' + n + ')') + '</option>'; }).join('') + '</select> ' +
-    '<span class="ex-prod" style="display:none"><select class="ex-product">' + productOptions('') + '</select> <select class="ex-char">' + charOptions('') + '</select></span> ' +
+    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = (f === 'Brand Lore' || dow === 0) ? leftFor('SC Logo', f) : (f === 'Day Greeting' ? leftFor(ch, f) : leftOther(ch, f)); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + f + (n === null || f === 'Product' ? '' : ' (' + n + ')') + '</option>'; }).join('') + '</select> ' +
+    '<span class="ex-prod" style="display:none"><select class="ex-product">' + productOptions('') + '</select> <select class="ex-char">' + charOptions('', ch) + '</select></span> ' +
     '<button type="button" class="btn secondary ex-remove" style="padding:0 8px;font-size:12px">x</button>';
   box.appendChild(line);
   const fmt = line.querySelector('.ex-format');
-  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value === 'Product' || fmt.value === 'NFT') ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = fmt.value === 'Product' ? 'inline' : 'none'; });
+  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value !== 'Day Greeting' && fmt.value !== 'Brand Lore') ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = fmt.value === 'Product' ? 'inline' : 'none'; });
   line.querySelector('.ex-product').addEventListener('change', (e) => { const p = (PRODUCTS || []).find(x => x.handle === e.target.value); line.querySelector('.ex-char').value = (p && p.character) ? p.character : ''; });
   line.querySelector('.ex-remove').addEventListener('click', () => line.remove());
 }
@@ -1325,7 +1332,7 @@ function drawPlanDays(useDefaults) {
       : '<em>Keep</em>');
     const e7 = existingRow(date, '7am');
     slots++; if (slotState(e7).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 7am'); }
-    const main = stateTag(e7) + '<br>' + formatSelect(date, dow, e7, picks[date + '|7am']);
+    const main = stateTag(e7) + '<br>' + formatSelect(date, dow, e7, picks[date + '|7am']) + ((slotState(e7).gap && dow !== 0) ? ' <select data-date="' + date + '" class="plan7c">' + charOptions(picks[date + '|7amc'] || '', DAY_CHAR[dow]) + '</select>' : '');
     let prod = '';
     if ([3, 5, 6].indexOf(dow) !== -1) {
       const e12 = existingRow(date, '12pm');
@@ -1334,7 +1341,7 @@ function drawPlanDays(useDefaults) {
       const pk = picks[date + '|12pm'] || '';
       const pp = (PRODUCTS || []).find(x => x.handle === pk);
       prod = stateTag(e12) + '<br>' + (st12.gap
-        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character) || '') + '</select>'
+        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
         : '<em>Keep</em>');
     }
     const bg = (slotState(e6).gap || slotState(e7).gap || ([3, 5, 6].indexOf(dow) !== -1 && slotState(existingRow(date, '12pm')).gap)) ? 'background:rgba(176,106,0,0.07);' : '';
@@ -1377,11 +1384,11 @@ function submitPlan() {
       if (h.indexOf('promo:') === 0) item.promo_item = h.slice(6);
       else { const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; }
     }
-    if (f === 'NFT') item.character = line.querySelector('.ex-char').value;
+    if (['NFT', 'Wisdom', 'Character Lore', 'Travel the World'].indexOf(f) !== -1) item.character = line.querySelector('.ex-char').value;
     plan.push(item);
   }));
   if (extraError) { document.getElementById('planStatus').textContent = extraError; return; }
-  document.querySelectorAll('.plan7').forEach(sel => { if (sel.value) plan.push({ date: sel.dataset.date, format: sel.value }); });
+  document.querySelectorAll('.plan7').forEach(sel => { if (!sel.value) return; const c7 = document.querySelector('.plan7c[data-date="' + sel.dataset.date + '"]'); plan.push({ date: sel.dataset.date, format: sel.value, character: c7 ? c7.value : '' }); });
   document.querySelectorAll('.plan12').forEach(sel => {
     if (!sel.value) return;
     const c0 = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
@@ -1411,10 +1418,12 @@ async function openAdhoc() {
   const refresh = () => {
     const f = document.getElementById('adFormat').value;
     const dow = new Date(document.getElementById('adDate').value + 'T12:00:00Z').getUTCDay();
-    document.getElementById('adProductBox').style.display = (f === 'Product' || f === 'NFT') ? 'block' : 'none';
+    document.getElementById('adProductBox').style.display = (f !== 'Day Greeting' && f !== 'Brand Lore') ? 'block' : 'none';
+    const cur = document.getElementById('adChar').value;
+    document.getElementById('adChar').innerHTML = charOptions(cur === DAY_CHAR[dow] ? '' : cur, DAY_CHAR[dow]);
     document.getElementById('adProduct').style.display = f === 'Product' ? '' : 'none';
-    const n = leftFor(DAY_CHAR[dow], f);
-    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (blank = the day\'s character). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : DAY_CHAR[dow] + ' (the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const n = (f === 'Day Greeting' || f === 'Brand Lore' || dow === 0) ? leftFor(f === 'Day Greeting' && dow !== 0 ? DAY_CHAR[dow] : 'SC Logo', f) : leftOther(DAY_CHAR[dow], f);
+    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
@@ -1433,7 +1442,7 @@ async function openAdhoc() {
       if (h.indexOf('promo:') === 0) item.promo_item = h.slice(6);
       else { const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; }
     }
-    if (f === 'NFT') item.character = document.getElementById('adChar').value;
+    if (['NFT', 'Wisdom', 'Character Lore', 'Travel the World'].indexOf(f) !== -1) item.character = document.getElementById('adChar').value;
     sendPlan([item], document.getElementById('adStatus'));
   });
 }
