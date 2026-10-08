@@ -184,12 +184,14 @@ def hotline_gfx(g: Gfx):
     ticker_url = write_video(tframes, 1080, 178)
     if not g.box:
         return {'ok': bool(ticker_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': '', 'box_xywh': None}
-    # product box over the desk front (Playbook 7.7.2, 8 Oct 2026): one fixed 4:5 box, the same size and place on every post.
+    # product box over the desk front (Playbook 7.7.2, 8 Oct 2026): one fixed 4:5 box, the same size and place on every post;
+    # it slides in from the left of the screen and settles on the right.
     # The product photo fills it edge to edge (cover fit); Andy's crop from the dashboard arrives already applied in box_url.
     # No name bar: the ticker carries the name. Slides in (0.5 s), the product slowly pushes in, one light sheen.
-    BW, BH = 448, 560
-    BX, BY = 56, 1702 - 16 - BH
-    RX, RY, RW, RH = 0, BY - 24, BX + BW + 40, BH + 44
+    # 400 x 500 (4:5), settling on the right of the desk front with even gaps under the desk lip and above the ticker
+    BW, BH = 400, 500
+    BX, BY = 1080 - 56 - BW, 1143
+    RX, RY, RW, RH = 0, BY - 24, 1080, BH + 44
     setimg = Image.open(io.BytesIO(requests.get(g.set_url, timeout=60).content)).convert('RGB').resize((1080, 1920))
     bg = setimg.crop((RX, RY, RX + RW, RY + RH))
     prod = None
@@ -216,7 +218,7 @@ def hotline_gfx(g: Gfx):
                 od.line([(sx + dx + 80, 0), (sx + dx - 80, BH)], fill=(255, 255, 255, int(70 * (1 - abs(dx) / 60))))
             card = Image.alpha_composite(card.convert('RGBA'), ov).convert('RGB')
         framed = Image.new('RGB', (BW + 10, BH + 10), WHITE); framed.paste(card, (5, 5))
-        off = 0 if t >= 0.5 else int(-(BW + 80) * (1 - (t / 0.5)) ** 3)
+        off = 0 if t >= 0.6 else int(-(BX + BW + 40) * (1 - (t / 0.6)) ** 3)   # slides in from off the left edge
         fr = bg.copy()
         shadow = Image.new('L', (RW, RH), 0); ImageDraw.Draw(shadow).rectangle([BX - 5 - RX + off + 8, BY - 5 - RY + 12, BX + BW + 5 - RX + off + 8, BY + BH + 5 - RY + 12], fill=110)
         from PIL import ImageFilter
