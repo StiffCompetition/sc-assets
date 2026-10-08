@@ -158,7 +158,7 @@ class Gfx(BaseModel):
     box: bool = True            # Product posts need the product box; NFT posts do not
     box_url: str = ''
     box_name: str = ''
-    set_url: str = 'https://res.cloudinary.com/dkapdtxek/image/upload/v1790557122/SCSMAuto/sc_hotline_set_locked_v2.png'
+    set_url: str = 'https://res.cloudinary.com/dkapdtxek/image/upload/v1791472129/SCSMAuto/sc_hotline_set_brick_v1.png'
 
 @app.post('/hotline-gfx')
 def hotline_gfx(g: Gfx):
@@ -184,13 +184,14 @@ def hotline_gfx(g: Gfx):
     ticker_url = write_video(tframes, 1080, 178)
     if not g.box:
         return {'ok': bool(ticker_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': '', 'box_xywh': None}
-    # product box over the desk front (Playbook 7.7.2, 8 Oct 2026): one fixed 4:5 box, the same size and place on every post;
+    # product box over the desk front (Playbook 7.7.2, 8 Oct 2026): one fixed square box, the same size and place on every post;
     # it slides in from the left of the screen and settles on the right.
     # The product photo fills it edge to edge (cover fit); Andy's crop from the dashboard arrives already applied in box_url.
     # No name bar: the ticker carries the name. Slides in (0.5 s), the product slowly pushes in, one light sheen.
-    # 400 x 500 (4:5), settling on the right of the desk front with even gaps under the desk lip and above the ticker
-    BW, BH = 400, 500
-    BX, BY = 1080 - 56 - BW, 1143
+    # Square 480 x 480, the same shape as the shop's product photos; it settles on the right of the desk front with
+    # equal 47 px gaps under the desk lip (ends at y 1118), above the ticker (y 1702) and to the right edge.
+    BW, BH = 480, 480
+    BX, BY = 1080 - 47 - 5 - BW, 1118 + 47 + 5
     RX, RY, RW, RH = 0, BY - 24, 1080, BH + 44
     setimg = Image.open(io.BytesIO(requests.get(g.set_url, timeout=60).content)).convert('RGB').resize((1080, 1920))
     bg = setimg.crop((RX, RY, RX + RW, RY + RH))
