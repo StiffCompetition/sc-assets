@@ -1,35 +1,74 @@
-# SC Hotline Compose service
+# Stiff Competition automation — index
 
-**What it is:** a small Python (FastAPI) image and video service used by the Stiff Competition content pipeline.
-It does the picture work n8n cannot do itself.
+Read this before building or changing anything. It lists every live piece of the SC automation, what it does, and where
+its code lives. Detailed process rules are in the SC Content Playbook (Google Doc v30) and the SC Master Manual.
 
-**Where it runs:** Railway, project `satisfied-generosity` (the n8n project), service `sc-hotline-compose`
-(`https://sc-hotline-compose-production.up.railway.app`). Health check: `GET /health`.
+## Rule for all sessions (Claude included): tag what you build, and say what it belongs to
 
-**Source of truth for the code:** this folder (`services/hotline-compose/main.py`).
-The service downloads this folder's `main.py` from GitHub (main branch) every time it starts (see `startCommand` in the service settings), so the copy here is the one that runs. To deploy a change: upload the new `main.py` here, then redeploy the service in Railway (any variable change also redeploys it). If GitHub cannot be reached at start-up, it falls back to the older copy in the Railway variable `APP_CODE_B64`.
-The service's start command installs its packages; it must include `imageio-ffmpeg` (a bundled ffmpeg used by `/nft-template` to encode).
+- Every n8n workflow carries a **description** stating: the SC area it belongs to (Content pipeline, Publishing, Finance,
+  Support bots, Press, Backups, Character facts), what it does in one sentence, what calls it and what it calls, and the
+  Playbook section it implements.
+- Every workflow **name** starts with `SC - ` for live workflows. Temporary or one-off workflows carry `(temporary)` or
+  `(one-off)` in the name and are archived when their job is done, in the same session that created them.
+- Every version saved to a workflow has a **version name** saying what changed and why.
+- Code that runs outside n8n (Railway services, the dashboard, scripts) lives in this repository with a README beside it,
+  and the README names the workflows that call it.
+- When a session finds work it did not do (a new node, a new endpoint, a changed setting), it reads the description and
+  README first and builds on that work rather than duplicating it.
 
-## Endpoints
+## Content pipeline (SC Content Playbook v30)
 
-| Endpoint | Called by | What it does |
-|---|---|---|
-| `POST /compose` | n8n "SC - Video Generation Pipeline" → node **Hotline: Compose** | Takes the locked SC Shop Hotline set and Gemini's picture of the presenter seated in it. Checks the set was not moved, that there is one presenter of the right size at the desk with nothing else added, then places the presenter onto the exact set pixels with his head top on a fixed line. Returns `{ok, reason, png_b64}`; a failed check returns `ok:false` and the pipeline retries (up to 8 tries). |
-| `POST /cutout` | n8n "SC Concept Creator" (product briefs) | Removes a product photo's background (the area connected to the photo's edges) and uploads a transparent PNG to Cloudinary for the on-screen product box. |
-| `POST /hotline-gfx` | n8n "SC - Video Generation Pipeline" → node **Hotline Graphics**; NFT posts | Renders the two-row ticker (readable crawl, drawn stars, white SC mark at capital height) and the product box: one fixed 4:5 box (448 × 560 px, bottom-left of the desk front, the same on every post) that the product photo fills edge to edge, with no name bar because the ticker carries the name (slide-in, slow push-in, one sheen). `box_url` is the product's photo, or Andy's framing of it from the dashboard's Product boxes tool (a Cloudinary fetch-crop URL) as 25 fps MP4 clips, uploads them to Cloudinary and returns their URLs and placement. json2video overlays them; HTML animation is not used because json2video does not capture it smoothly. Optional fields: `dur` (seconds, default 5; NFT posts send 8), `phrase` (top-row text after the name, default `IN STOCK NOW`; `*` between parts draws a star, NFT posts send `ONE OF ONE*OWN IT NOW`), `box` (default true; NFT posts send false, ticker only). |
-| `POST /nft-template` | NFT post type, once per character | Builds the character's reusable 8 s gallery template: the wall (with his busts) slides only while he walks, using his measured timing (`t_full_end`, `t_stop`, `t_go`, `t_cruise`); the frame opening becomes a flat magenta key area with a dark-to-gold inner bevel; he is cut out of his green-screen clip (solid inside his outline, no green left) and placed in front; the loop lands bust on bust so start and end match. Encodes full-colour (4:4:4) H.264 at 25 fps, uploads to Cloudinary and returns `template_url`, `checks` (see-through and green pixel counts), and `nft` (`y`, `size`, and an x keyframe for every frame while the wall moves) for the per-post json2video render, which lays the NFT under the template and keys `#FF00FF` at tolerance 40. Takes about 40 s. |
-| `POST /travel-merge` | n8n "SC - Video Generation Pipeline" → node **Travel: Keep Original Art** | Travel the World: Gemini only paints the 9:16 extension; the original NFT artwork is laid back over the middle pixel for pixel (faces exactly as sold), and any duplicated corner logos in the painted areas are removed. |
+| Workflow (n8n id) | Role |
+|---|---|
+| SC Content Planner (`S7n6cuyk6EDe5XQH`) | Dashboard planner: creates calendar rows from Andy's selection and runs the concept creator on each. |
+| SC Concept Creator (`3hWUnGrQZmI6cAsm`) | Writes each row's brief from approved spreadsheet rows (no AI except Travel); product briefs use the SC Shop Hotline set, the Product Box tab and the seated gestures. |
+| SC - NFT Post Builder (`ykDQm3T2fYGHWF5n`) | NFT post type: POST `{row_id}` to `sc-nft-post` (called by SC Content Planner). Picks a never-used, unsold shop NFT (Travel the World excluded), makes its 8 s ticker (Hotline Compose `/hotline-gfx`), renders the character's NFT template (built once per character by Hotline Compose `/nft-template`) with json2video, stores the clip on Cloudinary and writes clip and captions to the calendar row for review. |
+| SC - Video Generation Pipeline (`hjLFFoSSLwkda0XB`) | Start image (Gemini + checks), Kling animation, sound (ElevenLabs), json2video edit with captions, ticker and Hotline graphics; Roll Call and Travel branches. Calls the Hotline service. |
+| SC Kling Collector (`fjPLFR3hCpBIyozZ`) | Collects Kling clips that finished after the pipeline stopped waiting. |
+| SC - Workflow Code Patch (helper) (`4X0Yozi0Ma7F59DB`) | Maintenance helper: POST `{workflowId, nodeName, replacements:[[old,new]]}` to `sc-wf-patch` makes exact-text edits to one Code node through the n8n API; each old text must occur exactly once or nothing is saved. Called by Claude; calls the n8n API. |
+| SC - Product Box (`WnmRdLvPHnzwLyOm`) | Product posts: GET `sc-product-box` lists the Product Box tab (photo, box name, saved framing) for the dashboard's Product boxes tool; POST `sc-product-box-save` `{handle, crop}` writes Andy's framing (a Cloudinary fetch-crop URL) to column G. Called by the dashboard; SC Concept Creator reads column G. |
+| SC - Calendar API (update) (`4eXYIAKnlJz6aAJ1`) | `sc-calendar-list` / `sc-calendar-update` webhooks used by the dashboard and all content workflows. |
+| SC - Content Calendar Dashboard (hosted) (`Fi8KwAgLq266QQ01`) | Serves the dashboard (`dashboard/dashboard.html` in this repo). |
+| SC - Publish Scheduler (`cAA12OqK71am3qsV`) | 6am, 7am, Monday 10am, Wed/Fri/Sat 12pm and custom-time slots; hands each approved post to the publish flow. |
+| SC - Publish Approved Posts (`ZL9PEe1MnY8nekcE`) | Posts one approved clip to Instagram (Reel), Facebook (Reel) and X. Never runs without Andy's approval of that post. |
+| SC - Post Now (`TI7Lg8CCMdtN48pG`) | Dashboard "Post Now" for one row. |
+| SC Claude Call (`S11nkqzMbLjTFfdY`) | Internal helper so code nodes can call Claude; logs usage. |
+| SC - Usage Log Write (`jF0xvGdqHtNFr1ph`) / SC - Daily Cost Digest (`QtFfNhdeAhvalH9x`) | Paid-call log and the 23:30 Telegram cost digest with the price book. |
+| SC - Product Box API (`K5iUMBHmZOMxLjT8`) | `sc-productbox` webhook: the dashboard's Product image picker. Lists a product's live `.shop` photos and saves the chosen photo to the Product Box tab. |
+| Hotline Compose service (Railway `sc-hotline-compose`) | `services/hotline-compose/` — seating check and placement on Hotline set v2, product cut-outs, ticker and box video, Travel artwork merge. Set v2 is `sc_hotline_set_locked_v2.png` in Cloudinary (v1 kept unchanged). |
 
-## Fixed assets (Cloudinary, never regenerated)
+Voice-over: Product posts carry a spoken line from the Product Box tab (column F) through the Hotline steps of the pipeline (`Hotline: Has VO?` to `Hotline: Add Narration Audio`); a failed voice step leaves the clip silent.
 
-- Locked Hotline set: `https://res.cloudinary.com/dkapdtxek/image/upload/v1790454966/SCSMAuto/sc_hotline_set_locked_v1.png`
-- Ticker mark (white, ™ removed): `https://res.cloudinary.com/dkapdtxek/image/upload/v1790460791/SCSMAuto/sc_ticker_logo_white.png`
-- SC style plate (style reference for all other posts): `https://res.cloudinary.com/dkapdtxek/image/upload/v1790385659/SCSMAuto/sc_style_plate_v1.jpg`
+Data: SC Content Calendar table `Lw2b11QdxL1ZJfz5`; SC Coverage Queue table `SyW9U1Jz3yetKxdp`; SC Usage Log table `El5mTKsfKay47RqA`; content spreadsheet
+`1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60` (tabs: Ideas by post category, Move Definition, SC Shop Hotline Poses,
+Promotable Items, Product Box).
 
-Layout constants used by `/compose` and `/hotline-gfx` (1080×1920 frame): head top 470, desk top 1085, desk front 1135,
-product box 560×420 at (56, 1229), ticker 1080×178 at y 1742, ON AIR light 336×132 at (372, 102).
+Retired: SC Content Automation - Full (`UGXrwQChDqlgVLFP`, the old trend-to-publish flow; still active for its retry
+queue, superseded by the pipeline above), SC - Concept Creator (`9UU1LsBXPW9iXOYL`), SC Brief Creator / v2, SC Panel
+Reviewer, SC Brief Validator, and the earlier pipeline copies (`I5kNOphPxKYRC8ia`, `89RaWM8ODoVBRdin`).
 
-Playbook reference: SC Content Playbook v30, sections 7.7.2 (SC Shop Hotline), 7.7.3 (Travel the World), 7.9 and 7.10.
+## Press (WS-Press)
+SC - Coverage Stagger (`kEHUF3zLTmuYqwrD`): staggers Facebook, Discord, Instagram and Reddit legs after each Day-0 X post. The press-page leg is not built yet (Todoist `6hfFqXFXRPJQGWp7`).
+SC - Coverage Publish (`8yOMWAmkidnYrAl0`): logs a feature and posts the Day-0 X leg.
+SC - Coverage List API (`r8j6H4m0QoFMLbSW`): read-only `sc-coverage-list` webhook; feeds the dashboard's Press coverage view and PRESS calendar cards. The Facebook hold date is also set in the stagger workflow; change both together.
 
-## Hotline set v2 (28 Sep 2026)
-The service uses `sc_hotline_set_locked_v2.png` (Cloudinary `SCSMAuto`), which is set v1 with 40px of plain black removed under the ON AIR sign and 40px of desk added at the bottom. All placement numbers in `/compose` are set for v2: desk top 1045, desk front 1095, head top on line 430, head window 300 to 720, protected SC-sign and palm regions shifted up 40px. The "extra object beside presenter" check accepts up to 4,500 dark colourless pixels (a clean image with a black belt measured 3,064; an image with a chair back measured 6,156). The pipeline's node **Hotline: Build Request** must send the same set URL that `/compose` receives; change both together.
+## Finance
+SC - Bank Statement Ingest, SC - Receipt Capture (Gmail), SC - PayPal Ingest, SC - Amex Ingest, SC - Expense Entry
+(Telegram), SC - Renewals Reminder, SC - Monthly Finance Report, SC - Shopify Daily Snapshot.
+
+## Support bots and knowledge base
+SC - Shared Brain, SC - Web/Discord Bridge, SC - KB Public Read, SC - Instagram DM Channel, SC - Instagram Comment
+Auto-Reply, SC - Facebook Comment Auto-Reply, SC - Messenger Channel, SC - WhatsApp Channel, SC - Telegram Reply Handler,
+SC - Escalation Notifier, SC - Sticker Click Tracker.
+
+## Character facts
+SC - Character Fact Review (`RDomdwUKvXvk1rLk`) with the SC - Character Facts table.
+
+## Backups
+SC - Daily Workflow Backup, SC - Daily Data Table Backup, SC - Claims Backup to Drive.
+
+## Repository layout
+- `dashboard/dashboard.html` — the content calendar dashboard.
+- `services/hotline-compose/` — the Hotline Compose service (code + README).
+- `rollcall/` — Roll Call assets.
+- `ecards/` — birthday e-card artwork per character.
