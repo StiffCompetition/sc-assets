@@ -1503,8 +1503,8 @@ function startAutoRefresh() {
 document.getElementById('btnPlan').addEventListener('click', openPlanner);
 document.getElementById('btnAdhoc').addEventListener('click', openAdhoc);
 document.getElementById('btnPress').addEventListener('click', openPress);
-// Product boxes (Playbook 7.7.2): Andy frames each product's photo once in the fixed 4:5 box; the crop is saved to the Product Box tab.
-const BOX_W = 280, BOX_H = 350;   // on-screen editor (same 4:5 shape as the 448 x 560 box on the clip)
+// Product boxes (Playbook 7.7.2): Andy frames each product's photo once in the fixed square box; the crop is saved to the Product Box tab.
+const BOX_W = 320, BOX_H = 320;   // on-screen editor (same square shape as the 480 x 480 box on the clip and the shop photos)
 async function openBoxes() {
   const panel = document.getElementById('planPanel');
   document.getElementById('planOverlay').classList.add('open');
@@ -1512,7 +1512,7 @@ async function openBoxes() {
   let data;
   try { data = await (await fetch(BOX_LIST_URL)).json(); } catch (e) { document.getElementById('boxList').textContent = 'Could not load the Product Box tab.'; return; }
   const items = (data.items || []).filter(i => i.photo);
-  document.getElementById('boxList').innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px">' + items.map((i, k) => '<button class="btn secondary boxPick" data-k="' + k + '" style="display:flex;flex-direction:column;align-items:center;width:120px;padding:6px"><img src="' + escapeHtml(i.crop || i.photo) + '" style="width:96px;height:120px;object-fit:cover;background:#fff"><span style="font-size:11px;margin-top:4px">' + escapeHtml(i.name || i.handle) + '</span><span style="font-size:10px;color:' + (i.crop ? '#2a7a2a' : '#b06a00') + '">' + (i.crop ? 'framed' : 'not framed yet') + '</span></button>').join('') + '</div><div id="boxEditor"></div>';
+  document.getElementById('boxList').innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px">' + items.map((i, k) => '<button class="btn secondary boxPick" data-k="' + k + '" style="display:flex;flex-direction:column;align-items:center;width:120px;padding:6px"><img src="' + escapeHtml(i.crop || i.photo) + '" style="width:110px;height:110px;object-fit:cover;background:#fff"><span style="font-size:11px;margin-top:4px">' + escapeHtml(i.name || i.handle) + '</span><span style="font-size:10px;color:' + (i.crop ? '#2a7a2a' : '#b06a00') + '">' + (i.crop ? 'framed' : 'not framed yet') + '</span></button>').join('') + '</div><div id="boxEditor"></div>';
   document.querySelectorAll('.boxPick').forEach(b => b.addEventListener('click', () => boxEditor(items[Number(b.dataset.k)])));
 }
 function boxEditor(item) {
