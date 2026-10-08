@@ -1144,6 +1144,17 @@ async function loadProducts() {
 // A day's standard slot (6am Day Greeting, 7am main post, 12pm Product) is filled by any post of that slot type on that day,
 // whatever time it was given - matches SC Content Planner (1 Oct 2026), so a rescheduled post is never duplicated.
 function slotOfFormat(f) { return f === 'Day Greeting' ? '6am' : (f === 'Product' ? '12pm' : (f === 'Advice' ? 'advice' : '7am')); }
+// NFT slots (Playbook 1.2): Wednesday and Thursday at 12:00 New York time, shown and sent as London clock time.
+function nyNoonLondon(date) {
+  for (let h = 14; h <= 19; h++) {
+    const t = new Date(date + 'T' + String(h).padStart(2, '0') + ':00:00Z');
+    if (new Intl.DateTimeFormat('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }).format(t) === '12:00')
+      return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).format(t);
+  }
+  return '17:00';
+}
+const NFT_CHARS = ['Major Wood', 'The Rear Admiral', "Hammerin' Hanky", 'The Grip', 'Slick Willy', 'The Velvet Python'];
+function nftOptions(exclude) { return '<option value="">Rotate</option>' + NFT_CHARS.filter(c => c !== exclude).map(c => '<option>' + escapeHtml(c) + '</option>').join(''); }
 function existingRow(date, slot, time) {
   return ROWS.find(r => londonYmd(r.post_date) === date && (slot === 'custom' ? r.post_time === time : slotOfFormat(r.format) === slot));
 }
@@ -1320,7 +1331,7 @@ function drawPlanDays(useDefaults) {
   if (!start) return;
   const picks = useDefaults === false ? {} : planDefaults(start, n);
   let slots = 0, gaps = 0; const gapList = [];
-  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left">Day</th><th align="left">6am greeting</th><th align="left">7am</th><th align="left">12pm product</th><th align="left">Extra posts</th></tr>';
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left">Day</th><th align="left">6am greeting</th><th align="left">7am</th><th align="left">12pm product</th><th align="left">NFT (12:00 New York)</th><th align="left">Extra posts</th></tr>';
   for (let i = 0; i < n; i++) {
     const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i);
     const date = ymd(d); const dow = d.getUTCDay();
@@ -1344,8 +1355,15 @@ function drawPlanDays(useDefaults) {
         ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
         : '<em>Keep</em>');
     }
+    let nft = '';
+    if (dow === 3 || dow === 4) {
+      const nt = nyNoonLondon(date);
+      const en = ROWS.find(r => londonYmd(r.post_date) === date && r.format === 'NFT');
+      slots++; if (!en) { gaps++; gapList.push(WEEKDAY[dow] + ' NFT'); }
+      nft = (en ? stateTag(en) + '<br><em>Keep</em>' : '<span style="font-weight:600;color:#b06a00">EMPTY</span> (' + nt + ' London)<br><select data-date="' + date + '" data-time="' + nt + '" class="planNft"><option value="NFT" selected>NFT</option><option value="">None</option></select> <select data-date="' + date + '" class="planNftC">' + nftOptions(DAY_CHAR[dow]) + '</select>');
+    }
     const bg = (slotState(e6).gap || slotState(e7).gap || ([3, 5, 6].indexOf(dow) !== -1 && slotState(existingRow(date, '12pm')).gap)) ? 'background:rgba(176,106,0,0.07);' : '';
-    html += '<tr style="border-top:1px solid var(--line);' + bg + '"><td>' + WEEKDAY[dow] + ' ' + date.slice(8) + '/' + date.slice(5, 7) + '<br><em>' + escapeHtml(DAY_CHAR[dow]) + '</em></td><td>' + greet + '</td><td>' + main + '</td><td>' + prod + '</td><td>' + extraCell(date, dow) + '</td></tr>';
+    html += '<tr style="border-top:1px solid var(--line);' + bg + '"><td>' + WEEKDAY[dow] + ' ' + date.slice(8) + '/' + date.slice(5, 7) + '<br><em>' + escapeHtml(DAY_CHAR[dow]) + '</em></td><td>' + greet + '</td><td>' + main + '</td><td>' + prod + '</td><td>' + nft + '</td><td>' + extraCell(date, dow) + '</td></tr>';
   }
   html += '</table>';
   const summary = '<div class="brief-part" style="margin-bottom:8px"><b>' + (slots - gaps) + ' of ' + slots + ' slots filled.</b> ' + (gaps ? 'Empty: ' + gapList.join(', ') + '. Empty slots are pre-filled with a balanced mix below - change anything, then Create.' : 'Nothing missing.') + '</div>';
@@ -1372,6 +1390,7 @@ async function sendPlan(plan, statusEl) {
 function submitPlan() {
   const plan = [];
   document.querySelectorAll('.plan6').forEach(sel => { if (sel.value) plan.push({ date: sel.dataset.date, format: 'Day Greeting' }); });
+  document.querySelectorAll('.planNft').forEach(sel => { if (!sel.value) return; const c = document.querySelector('.planNftC[data-date="' + sel.dataset.date + '"]'); plan.push({ date: sel.dataset.date, format: 'NFT', time: sel.dataset.time, character: c ? c.value : '' }); });
   let extraError = '';
   document.querySelectorAll('.extra-box').forEach(box => box.querySelectorAll('.extra-line').forEach(line => {
     const f = line.querySelector('.ex-format').value;
