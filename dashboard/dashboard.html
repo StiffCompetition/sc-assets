@@ -335,6 +335,7 @@
   <button class="btn" id="btnPlan">Plan content</button>
   <button class="btn secondary" id="btnAdhoc">Add a post</button>
   <button class="btn secondary" id="btnPress">Press coverage</button>
+  <button class="btn secondary" id="btnBoxes">Product boxes</button>
   <div class="counts" id="counts"></div>
 </div>
 </div>
@@ -358,6 +359,8 @@ const DELETE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calend
 const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-concept-creator';
 const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
 const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
+const BOX_LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-product-box';
+const BOX_SAVE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-product-box-save';
 const PRODUCTBOX_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-productbox';
 const COVERAGE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-coverage-list';
 const PREVIEW_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-text-preview';
@@ -1203,6 +1206,11 @@ function stateTag(row) {
   const st = slotState(row);
   return '<span style="font-weight:600;color:' + st.color + '">' + (row ? escapeHtml(row.format) + ': ' : '') + st.label + '</span>';
 }
+// A product's approved clip (Product rows that reached approved/scheduled/posted with a video), for reuse.
+function savedClip(handle) {
+  if (!handle || handle.indexOf('promo:') === 0) return null;
+  return ROWS.filter(r => r.format === 'Product' && r.video_url && ['approved', 'scheduled', 'posted'].indexOf(r.status) !== -1 && (r.notes || '').indexOf('SHOP:' + handle) !== -1)[0] || null;
+}
 function productOptions(sel) {
   return '<option value="">No product post</option>' +
     ((PROMOS || []).length ? '<optgroup label="Promotable items">' + PROMOS.map(p => '<option value="promo:' + escapeHtml(p.item) + '"' + ('promo:' + p.item === sel ? ' selected' : '') + '>' + escapeHtml(p.item) + '</option>').join('') + '</optgroup>' : '') +
@@ -1352,7 +1360,7 @@ function drawPlanDays(useDefaults) {
       const pk = picks[date + '|12pm'] || '';
       const pp = (PRODUCTS || []).find(x => x.handle === pk);
       prod = stateTag(e12) + '<br>' + (st12.gap
-        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
+        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <label style="font-size:12px"><input type="checkbox" class="plan12r" data-date="' + date + '"> reuse saved clip</label> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
         : '<em>Keep</em>');
     }
     let nft = '';
@@ -1371,6 +1379,8 @@ function drawPlanDays(useDefaults) {
   if (DRAFTS) foot += '<div class="brief-part" style="margin-top:8px">' + DRAFTS + ' rows in the content spreadsheet are not yet approved (set status to approved to use them).</div>';
   document.getElementById('planDaysBox').innerHTML = summary + html + foot;
   document.querySelectorAll('.extra-add').forEach(b => b.addEventListener('click', () => addExtraLine(document.querySelector('.extra-box[data-date="' + b.dataset.date + '"]'))));
+  const syncReuse = sel => { const ru = document.querySelector('.plan12r[data-date="' + sel.dataset.date + '"]'); if (!ru) return; const ok = !!savedClip(sel.value); ru.disabled = !ok; ru.checked = ok; ru.parentElement.style.opacity = ok ? 1 : 0.4; ru.parentElement.title = ok ? 'Uses this product\'s approved clip with fresh captions: no new video spend.' : 'No approved clip saved for this product yet.'; };
+  document.querySelectorAll('.plan12').forEach(sel => { syncReuse(sel); sel.addEventListener('change', () => syncReuse(sel)); });
   document.querySelectorAll('.plan12').forEach(sel => sel.addEventListener('change', () => {
     const p = (PRODUCTS || []).find(x => x.handle === sel.value);
     const c = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
@@ -1414,7 +1424,8 @@ function submitPlan() {
     if (sel.value.indexOf('promo:') === 0) { plan.push({ date: sel.dataset.date, format: 'Product', promo_item: sel.value.slice(6), character: c0 ? c0.value : '' }); return; }
     const p = (PRODUCTS || []).find(x => x.handle === sel.value) || {};
     const c = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
-    plan.push({ date: sel.dataset.date, format: 'Product', product_handle: sel.value, product_title: p.title || '', character: c ? c.value : '' });
+    const ru = document.querySelector('.plan12r[data-date="' + sel.dataset.date + '"]');
+    plan.push({ date: sel.dataset.date, format: 'Product', product_handle: sel.value, product_title: p.title || '', character: c ? c.value : '', reuse: !!(ru && ru.checked) });
   });
   sendPlan(plan, document.getElementById('planStatus'));
 }
@@ -1492,6 +1503,45 @@ function startAutoRefresh() {
 document.getElementById('btnPlan').addEventListener('click', openPlanner);
 document.getElementById('btnAdhoc').addEventListener('click', openAdhoc);
 document.getElementById('btnPress').addEventListener('click', openPress);
+// Product boxes (Playbook 7.7.2): Andy frames each product's photo once in the fixed 4:5 box; the crop is saved to the Product Box tab.
+const BOX_W = 280, BOX_H = 350;   // on-screen editor (same 4:5 shape as the 448 x 560 box on the clip)
+async function openBoxes() {
+  const panel = document.getElementById('planPanel');
+  document.getElementById('planOverlay').classList.add('open');
+  panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Product boxes</span><button class="btn secondary plan-back">Close &times;</button></div><h2>Product boxes</h2><div class="sub">Pick a product, then zoom and drag its photo until it fills the box the way you want. Save once; every Product post for it uses this framing.</div><div id="boxList">Loading products&hellip;</div>';
+  let data;
+  try { data = await (await fetch(BOX_LIST_URL)).json(); } catch (e) { document.getElementById('boxList').textContent = 'Could not load the Product Box tab.'; return; }
+  const items = (data.items || []).filter(i => i.photo);
+  document.getElementById('boxList').innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px">' + items.map((i, k) => '<button class="btn secondary boxPick" data-k="' + k + '" style="display:flex;flex-direction:column;align-items:center;width:120px;padding:6px"><img src="' + escapeHtml(i.crop || i.photo) + '" style="width:96px;height:120px;object-fit:cover;background:#fff"><span style="font-size:11px;margin-top:4px">' + escapeHtml(i.name || i.handle) + '</span><span style="font-size:10px;color:' + (i.crop ? '#2a7a2a' : '#b06a00') + '">' + (i.crop ? 'framed' : 'not framed yet') + '</span></button>').join('') + '</div><div id="boxEditor"></div>';
+  document.querySelectorAll('.boxPick').forEach(b => b.addEventListener('click', () => boxEditor(items[Number(b.dataset.k)])));
+}
+function boxEditor(item) {
+  const ed = document.getElementById('boxEditor');
+  ed.innerHTML = '<h3 style="margin-top:16px">' + escapeHtml(item.name || item.handle) + '</h3><div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap"><div id="boxView" style="position:relative;width:' + BOX_W + 'px;height:' + BOX_H + 'px;overflow:hidden;border:5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);background:#1c3faa;cursor:grab;touch-action:none"><img id="boxImg" src="' + escapeHtml(item.photo) + '" style="position:absolute;left:0;top:0;user-select:none;-webkit-user-drag:none" draggable="false"></div><div style="min-width:220px"><label style="font-size:12px">Zoom</label><br><input type="range" id="boxZoom" min="1" max="4" step="0.01" value="1" style="width:220px"><p style="font-size:12px">Drag the photo to position it. The box must be filled edge to edge.</p><button class="btn" id="boxSave">Save framing</button> <span id="boxStatus" style="font-size:12px"></span></div></div>';
+  const img = document.getElementById('boxImg'), view = document.getElementById('boxView'), zoom = document.getElementById('boxZoom');
+  let nw = 0, nh = 0, base = 1, z = 1, x = 0, y = 0;
+  const clamp = () => { const w = nw * base * z, h = nh * base * z; x = Math.min(0, Math.max(BOX_W - w, x)); y = Math.min(0, Math.max(BOX_H - h, y)); img.style.width = w + 'px'; img.style.height = h + 'px'; img.style.left = x + 'px'; img.style.top = y + 'px'; };
+  img.onload = () => {
+    nw = img.naturalWidth; nh = img.naturalHeight; base = Math.max(BOX_W / nw, BOX_H / nh);
+    const m = /c_crop,g_xy_center,x_([0-9.]+),y_([0-9.]+),w_([0-9.]+),h_([0-9.]+)/.exec(item.crop || '');
+    if (m) { z = 1 / Math.max(0.01, Number(m[3]) * nw * base / BOX_W); zoom.value = z; const w = nw * base * z, h = nh * base * z; x = BOX_W / 2 - Number(m[1]) * w; y = BOX_H / 2 - Number(m[2]) * h; }
+    else { x = (BOX_W - nw * base) / 2; y = (BOX_H - nh * base) / 2; }
+    clamp();
+  };
+  zoom.addEventListener('input', () => { const cx = (BOX_W / 2 - x) / (nw * base * z), cy = (BOX_H / 2 - y) / (nh * base * z); z = Number(zoom.value); x = BOX_W / 2 - cx * nw * base * z; y = BOX_H / 2 - cy * nh * base * z; clamp(); });
+  let drag = null;
+  view.addEventListener('pointerdown', e => { drag = { sx: e.clientX, sy: e.clientY, x0: x, y0: y }; view.setPointerCapture(e.pointerId); view.style.cursor = 'grabbing'; });
+  view.addEventListener('pointermove', e => { if (!drag) return; x = drag.x0 + e.clientX - drag.sx; y = drag.y0 + e.clientY - drag.sy; clamp(); });
+  view.addEventListener('pointerup', () => { drag = null; view.style.cursor = 'grab'; });
+  document.getElementById('boxSave').addEventListener('click', async () => {
+    const w = nw * base * z, h = nh * base * z, f = v => Math.max(0, Math.min(1, v)).toFixed(4);
+    const crop = 'https://res.cloudinary.com/dkapdtxek/image/fetch/c_crop,g_xy_center,x_' + f((BOX_W / 2 - x) / w) + ',y_' + f((BOX_H / 2 - y) / h) + ',w_' + f(BOX_W / w) + ',h_' + f(BOX_H / h) + ',fl_relative/' + encodeURIComponent(item.photo);
+    const st = document.getElementById('boxStatus'); st.textContent = 'Saving...';
+    try { const r = await (await fetch(BOX_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: item.handle, crop: crop }) })).json(); if (!r.ok) throw new Error('save failed'); item.crop = crop; st.textContent = 'Saved. Every Product post for this item uses this framing.'; }
+    catch (e) { st.textContent = 'Not saved - please try again.'; }
+  });
+}
+document.getElementById('btnBoxes').addEventListener('click', openBoxes);
 
 loadRows();
 </script>
