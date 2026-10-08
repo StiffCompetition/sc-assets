@@ -184,34 +184,31 @@ def hotline_gfx(g: Gfx):
     ticker_url = write_video(tframes, 1080, 178)
     if not g.box:
         return {'ok': bool(ticker_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': '', 'box_xywh': None}
-    # product box over the desk front: slides in (0.5 s), the product slowly pushes in, one light sheen
-    RX, RY, RW, RH = 0, 1170, 660, 470
+    # product box over the desk front (Playbook 7.7.2, 8 Oct 2026): one fixed 4:5 box, the same size and place on every post.
+    # The product photo fills it edge to edge (cover fit); Andy's crop from the dashboard arrives already applied in box_url.
+    # No name bar: the ticker carries the name. Slides in (0.5 s), the product slowly pushes in, one light sheen.
+    BW, BH = 448, 560
+    BX, BY = 56, 1702 - 16 - BH
+    RX, RY, RW, RH = 0, BY - 24, BX + BW + 40, BH + 44
     setimg = Image.open(io.BytesIO(requests.get(g.set_url, timeout=60).content)).convert('RGB').resize((1080, 1920))
     bg = setimg.crop((RX, RY, RX + RW, RY + RH))
-    BW, BH, BX, BY = 560, 420, 56, 1189
     prod = None
     if g.box_url:
-        prod = Image.open(io.BytesIO(requests.get(g.box_url, timeout=60).content)).convert('RGBA')
-    grad = Image.new('RGB', (BW, BH - 78))
-    gd = ImageDraw.Draw(grad)
-    for yy in range(BH - 78):
-        k = yy / (BH - 78); gd.line([(0, yy), (BW, yy)], fill=tuple(int(ROYAL[c] * (1 - k) + NAVY[c] * k) for c in range(3)))
-    nf = font('BarlowCondensed-Bold.ttf', 46)
-    name = (g.box_name or g.tick).upper()
-    while nf.getlength(name) > BW - 30 and nf.size > 30: nf = font('BarlowCondensed-Bold.ttf', nf.size - 2)
+        prod = Image.open(io.BytesIO(requests.get(g.box_url, timeout=60).content)).convert('RGB')
+    def cover(img, w, h):
+        s = max(w / img.width, h / img.height)
+        r = img.resize((max(w, int(round(img.width * s))), max(h, int(round(img.height * s)))))
+        x0 = (r.width - w) // 2; y0 = (r.height - h) // 2
+        return r.crop((x0, y0, x0 + w, y0 + h))
     bframes = []
     for i in range(n):
         t = i / FPS
-        card = Image.new('RGB', (BW, BH), WHITE); card.paste(grad, (0, 0))
         if prod is not None:
-            z = 1.0 + 0.08 * (t / DUR); p = prod.copy(); p.thumbnail((int(470 * z), int(292 * z)))
-            sh = Image.new('RGBA', (BW, BH - 78), (0, 0, 0, 0)); sd = ImageDraw.Draw(sh)
-            sd.ellipse([BW // 2 - 180, 290, BW // 2 + 180, 322], fill=(0, 0, 0, 120))
-            card.paste(Image.alpha_composite(Image.new('RGBA', sh.size, (0, 0, 0, 0)), sh).convert('RGB'), (0, 0), sh.split()[3].point(lambda v: v // 2))
-            card.paste(p, ((BW - p.width) // 2, int((BH - 78) * 0.48) - p.height // 2), p)
-        cd = ImageDraw.Draw(card)
-        cd.rectangle([0, BH - 78, BW, BH], fill=ROYAL); cd.rectangle([0, BH - 78, BW, BH - 72], fill=RED)
-        nb = cd.textbbox((0, 0), name, font=nf); cd.text(((BW - (nb[2] - nb[0])) // 2 - nb[0], BH - 39 - (nb[1] + nb[3]) // 2), name, font=nf, fill=WHITE)
+            z = 1.0 + 0.08 * (t / DUR)
+            zw, zh = int(BW * z), int(BH * z)
+            card = cover(prod, zw, zh).crop(((zw - BW) // 2, (zh - BH) // 2, (zw - BW) // 2 + BW, (zh - BH) // 2 + BH))
+        else:
+            card = Image.new('RGB', (BW, BH), ROYAL)
         if 0.7 <= t <= 1.8:   # one sheen sweep
             k = (t - 0.7) / 1.1; sx = int(-200 + k * (BW + 400))
             ov = Image.new('RGBA', (BW, BH), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
