@@ -611,6 +611,7 @@ function makeCard(r) {
     '<div class="snippet' + (r.text_content ? '' : ' empty') + '">' + (r.text_content ? escapeHtml(r.text_content) : 'no caption yet') + '</div>' +
     '<span class="badge ' + STATUS_CLASS(r.status) + '">' + STATUS_LABEL(r.status) + '</span>' +
     (r.video_url ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">&#9654; video ready</span>' : '') +
+    (dtbSlides(r) ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">&#9638; slides ready</span>' : '') +
     (r.panel_status === 'concepts' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">pick a concept</span>' : '') +
     (r.status === 'image ready' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">check start image</span>' : '') +
     (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">writing brief...</span>' : '') +
@@ -845,11 +846,12 @@ function escapeHtml(s) {
 function openDrawer(r) {
   const drawer = document.getElementById('drawer');
   drawer.classList.add('full');
-  const canPost = !!r.video_url && ['approved', 'scheduled'].indexOf(r.status) !== -1;
+  const canPost = hasMedia(r) && ['approved', 'scheduled'].indexOf(r.status) !== -1;
   drawer.innerHTML =
     '<div class="brief-topbar"><button class="btn secondary" id="backBtn">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">' + escapeHtml(stateName(r)) + '</span><button class="btn secondary" id="closeTopBtn">Close &times;</button></div>' +
     '<h2>' + r.day_of_week + '</h2>' +
     '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + r.character + ' · ' + r.format + '</div>' +
+    (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' : (
     conceptPicker(r) +
     panelBox(r) +
     sourceBox(r.notes) +
@@ -860,7 +862,7 @@ function openDrawer(r) {
     briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
     shotPlanBox(r.notes) +
     briefEdit(r.notes, 'Motion', /Shot 1 \(/.test(briefPart(r.notes, 'Motion')) ? 'Motion (sent to Kling as a shot list)' : 'Motion (sent to Kling as one continuous shot)', 'motion') +
-    briefEdit(r.notes, 'Sound', 'Payoff sound (sent to ElevenLabs)', 'sound') +
+    briefEdit(r.notes, 'Sound', 'Payoff sound (sent to ElevenLabs)', 'sound'))) +
     field('caption_instagram', 'Instagram caption (4 hashtags)', 'textarea', r.caption_instagram) +
     field('caption_x', 'X caption (2 hashtags)', 'textarea', r.caption_x) +
     field('caption_facebook', 'Facebook caption (no hashtags)', 'textarea', r.caption_facebook) +
@@ -893,6 +895,10 @@ function openDrawer(r) {
   document.getElementById('saveBtn').addEventListener('click', () => saveRow(r));
   document.querySelectorAll('.pick-btn').forEach(b => b.addEventListener('click', () => pickConcept(r, Number(b.dataset.n))));
   const nc = document.getElementById('newConceptsBtn'); if (nc) nc.addEventListener('click', () => newConcepts(r));
+  const da = document.getElementById('dtbAgainBtn'); if (da) da.addEventListener('click', async () => {
+    const st = document.getElementById('saveStatus'); st.textContent = 'Making the slides again (about a minute)...';
+    try { const res = await fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-dare-to-buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ row_id: r.id }) }); if (!res.ok) throw new Error('HTTP ' + res.status); st.textContent = 'Done - reloading.'; setTimeout(() => location.reload(), 800); } catch (e) { st.textContent = 'Failed: ' + e.message; }
+  });
   const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
   const rs = document.getElementById('reschedBtn'); if (rs) rs.addEventListener('click', () => openReschedule(r));
   document.getElementById('rejectBtn').addEventListener('click', () => rejectRow(r));
@@ -915,8 +921,15 @@ function field(name, label, type, value) {
   return '<div class="field"><label>' + label + '</label><input id="f_' + name + '" value="' + v + '"></div>';
 }
 
+function slidesPreview(r) {
+  const d = dtbSlides(r);
+  if (!d) return '';
+  const img = (u, label) => '<div style="flex:1 1 0;min-width:0"><div style="font-size:12px;margin-bottom:4px">' + label + '</div><a href="' + u.replace(/"/g, '&quot;') + '" target="_blank"><img src="' + u.replace(/"/g, '&quot;') + '" style="display:block;width:100%;border:1px solid var(--line)"></a></div>';
+  return '<div class="field"><label>Dare to Buy slides (Instagram and Facebook carousel, in order) and the X image. Check them, then set "approved" to schedule.</label>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' + img(d.slides[0], '1. The dare') + img(d.slides[1], '2. The product') + img(d.slides[2], '3. Get yours') + img(d.x, 'X image') + '</div></div>';
+}
 function imagePreview(r) {
-  if (!r.image_url || r.video_url) return '';
+  if (!r.image_url || r.video_url || dtbSlides(r)) return '';
   const label = r.status === 'image ready' ? 'Start image - check it, then select "image approved" to make the video' : 'Image';
   return '<div class="field"><label>' + label + '</label><img style="display:block;margin:0 auto;width:auto;max-width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);border:1px solid var(--line)" src="' + String(r.image_url).replace(/"/g, '&quot;') + '"></div>';
 }
@@ -1174,11 +1187,19 @@ function slotDue(r) {
   const t = r.post_time ? String(r.post_time).padStart(5, '0') : (r.format === 'Day Greeting' ? '06:00' : (r.format === 'Product' ? '12:00' : (r.format === 'Advice' ? '10:00' : '07:00')));
   return londonToUtc(d, t);
 }
-function isMissed(r) { return r.status === 'approved' && r.video_url && (Date.now() - slotDue(r).getTime()) > 20 * 60000; }
+// Dare to Buy (Playbook 7.7.6): still-image carousels. Their three slides and X image are listed in the row's notes.
+function dtbSlides(r) {
+  if (!r || r.format !== 'Dare to Buy') return null;
+  const m = String(r.notes || '').match(/Slides: (\S+) \| (\S+) \| (\S+) X image: (\S+)/);
+  return m ? { slides: [m[1], m[2], m[3]], x: m[4] } : null;
+}
+function hasMedia(r) { return !!(r && (r.video_url || dtbSlides(r))); }
+function isMissed(r) { return r.status === 'approved' && hasMedia(r) && (Date.now() - slotDue(r).getTime()) > 20 * 60000; }
 function stateName(r) {
   if (isMissed(r)) return 'slot missed';
   if (r.status === 'posted' || r.status === 'scheduled' || r.status === 'paused') return r.status;
   if (r.status === 'approved') return 'scheduled';
+  if (dtbSlides(r)) return 'slides ready for approval';
   if (r.video_url) return 'clip ready for approval';
   if (r.status === 'image ready') return 'start image ready';
   if (r.status === 'text approved') return 'making start image';
@@ -1192,6 +1213,7 @@ function slotState(row) {
   if (isMissed(row)) return { gap: false, done: true, label: 'slot missed - reschedule or Post Now', color: '#b00' };
   if (row.status === 'posted') return { gap: false, done: true, label: 'posted', color: '#2a7a2a' };
   if (['approved', 'scheduled'].indexOf(row.status) !== -1) return { gap: false, done: true, label: 'scheduled', color: '#2a7a2a' };
+  if (dtbSlides(row)) return { gap: false, done: true, label: 'slides ready for your approval', color: '#2a5db0' };
   if (row.video_url) return { gap: false, done: true, label: 'clip ready for your approval', color: '#2a5db0' };
   if (row.status === 'image ready') return { gap: false, label: 'start image ready', color: '#2a5db0' };
   if (row.status === 'text approved') return { gap: false, label: 'making start image (1-3 min)', color: '#2a5db0' };
@@ -1313,8 +1335,8 @@ function extraCell(date, dow) {
   return list + '<div class="extra-box" data-date="' + date + '" data-dow="' + dow + '"></div><button type="button" class="btn secondary extra-add" data-date="' + date + '" data-dow="' + dow + '" style="padding:2px 10px;font-size:12px;margin-top:4px">+ Add post</button>';
 }
 function extraTypes(dow) {
-  const t = ['Day Greeting', 'Wisdom', 'Character Lore', 'Travel the World', 'Product', 'NFT'];
-  if (dow === 0) return ['Day Greeting', 'Brand Lore', 'Product', 'NFT'];
+  const t = ['Day Greeting', 'Wisdom', 'Character Lore', 'Travel the World', 'Product', 'NFT', 'Dare to Buy'];
+  if (dow === 0) return ['Day Greeting', 'Brand Lore', 'Product', 'NFT', 'Dare to Buy'];
   return t;
 }
 function addExtraLine(box) {
@@ -1324,12 +1346,12 @@ function addExtraLine(box) {
   line.className = 'extra-line';
   line.style.cssText = 'margin-top:4px;padding:4px;border:1px solid var(--line);border-radius:6px';
   line.innerHTML = '<input type="time" class="ex-time" value="18:00" step="900" style="width:95px"> ' +
-    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = (f === 'Brand Lore' || dow === 0) ? leftFor('SC Logo', f) : (f === 'Day Greeting' ? leftFor(ch, f) : leftOther(ch, f)); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + f + (n === null || f === 'Product' ? '' : ' (' + n + ')') + '</option>'; }).join('') + '</select> ' +
+    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = (f === 'Brand Lore' || dow === 0) ? leftFor('SC Logo', f) : (f === 'Day Greeting' ? leftFor(ch, f) : leftOther(ch, f)); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + f + (n === null || f === 'Product' || f === 'Dare to Buy' ? '' : ' (' + n + ')') + '</option>'; }).join('') + '</select> ' +
     '<span class="ex-prod" style="display:none"><select class="ex-product">' + productOptions('') + '</select> <select class="ex-char">' + charOptions('', ch) + '</select></span> ' +
     '<button type="button" class="btn secondary ex-remove" style="padding:0 8px;font-size:12px">x</button>';
   box.appendChild(line);
   const fmt = line.querySelector('.ex-format');
-  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value !== 'Day Greeting' && fmt.value !== 'Brand Lore') ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = fmt.value === 'Product' ? 'inline' : 'none'; });
+  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value !== 'Day Greeting' && fmt.value !== 'Brand Lore') ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = (fmt.value === 'Product' || fmt.value === 'Dare to Buy') ? 'inline' : 'none'; if (fmt.value === 'Dare to Buy') line.querySelector('.ex-time').value = '19:00'; });
   line.querySelector('.ex-product').addEventListener('change', (e) => { const p = (PRODUCTS || []).find(x => x.handle === e.target.value); line.querySelector('.ex-char').value = (p && p.character) ? p.character : ''; });
   line.querySelector('.ex-remove').addEventListener('click', () => line.remove());
 }
@@ -1406,6 +1428,11 @@ function submitPlan() {
     const f = line.querySelector('.ex-format').value;
     const item = { date: box.dataset.date, time: line.querySelector('.ex-time').value, format: f };
     if (!item.time) { extraError = 'Every extra post needs a time.'; return; }
+    if (f === 'Dare to Buy') {
+      const h = line.querySelector('.ex-product').value;
+      if (!h || h.indexOf('promo:') === 0) { extraError = 'Pick a shop product for each Dare to Buy post.'; return; }
+      const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; item.character = line.querySelector('.ex-char').value;
+    }
     if (f === 'Product') {
       const h = line.querySelector('.ex-product').value;
       if (!h) { extraError = 'Pick a product or promotable item for each extra Product post.'; return; }
@@ -1436,7 +1463,7 @@ async function openAdhoc() {
     '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
     '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
-    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option><option>NFT</option></select></div>' +
+    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Travel the World</option><option>Brand Lore</option><option>Product</option><option>NFT</option><option>Dare to Buy</option></select></div>' +
     '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('') + '</select></div>' +
     '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
     '<div class="drawer-actions"><button class="btn" id="adGo">Create brief</button><button class="btn secondary" id="adClose">Close</button></div>' +
@@ -1451,9 +1478,10 @@ async function openAdhoc() {
     document.getElementById('adProductBox').style.display = (f !== 'Day Greeting' && f !== 'Brand Lore') ? 'block' : 'none';
     const cur = document.getElementById('adChar').value;
     document.getElementById('adChar').innerHTML = charOptions(cur === DAY_CHAR[dow] ? '' : cur, DAY_CHAR[dow]);
-    document.getElementById('adProduct').style.display = f === 'Product' ? '' : 'none';
+    document.getElementById('adProduct').style.display = (f === 'Product' || f === 'Dare to Buy') ? '' : 'none';
+    if (f === 'Dare to Buy' && document.getElementById('adTime').value === '18:00') document.getElementById('adTime').value = '19:00';
     const n = (f === 'Day Greeting' || f === 'Brand Lore' || dow === 0) ? leftFor(f === 'Day Greeting' && dow !== 0 ? DAY_CHAR[dow] : 'SC Logo', f) : leftOther(DAY_CHAR[dow], f);
-    const info = f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (Rotate = any of the six except ' + DAY_CHAR[dow] + '). Up to one a day, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f === 'Brand Lore' ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
@@ -1465,6 +1493,11 @@ async function openAdhoc() {
   document.getElementById('adGo').addEventListener('click', () => {
     const f = document.getElementById('adFormat').value;
     const item = { date: document.getElementById('adDate').value, time: document.getElementById('adTime').value, format: f };
+    if (f === 'Dare to Buy') {
+      const h = document.getElementById('adProduct').value;
+      if (!h || h.indexOf('promo:') === 0) { document.getElementById('adStatus').textContent = 'Pick a shop product.'; return; }
+      const p = (PRODUCTS || []).find(x => x.handle === h) || {}; item.product_handle = h; item.product_title = p.title || ''; item.character = document.getElementById('adChar').value;
+    }
     if (f === 'Product') {
       const h = document.getElementById('adProduct').value;
       if (!h) { document.getElementById('adStatus').textContent = 'Pick a product or promotable item.'; return; }
