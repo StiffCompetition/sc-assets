@@ -983,9 +983,11 @@ function videoPreview(url) {
 }
 
 function statusField(current) {
-  const options = ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'scheduled', 'posted', 'paused'];
-  let opts = options.map(o => '<button type="button" class="status-btn' + (o === current ? ' active' : '') + '" data-value="' + o + '">' + o + '</button>').join('');
-  return '<div class="field"><label>Status &mdash; "text approved" makes the start image only (small spend) and comes back as "image ready". "image approved" makes the video from that exact image (one clip spend). "approved" signs off the finished clip.</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
+  // 9 Oct 2026 (Andy): one final-approval button. "approved" saves the post as scheduled, which the scheduler posts at its slot.
+  const options = ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'posted', 'paused'];
+  const cur = current === 'scheduled' ? 'approved' : current;
+  let opts = options.map(o => '<button type="button" class="status-btn' + (o === cur ? ' active' : '') + '" data-value="' + o + '">' + o + '</button>').join('');
+  return '<div class="field"><label>Status &mdash; "text approved" makes the start image only (small spend) and comes back as "image ready". "image approved" makes the video from that exact image (one clip spend). "approved" is your final sign-off: the post is saved as scheduled and goes out at its time.</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
 }
 
 function closeDrawer() {
@@ -1058,7 +1060,7 @@ async function saveRow(r) {
     image_url: document.getElementById('f_image_url').value,
     video_url: document.getElementById('f_video_url').value,
     platforms: document.getElementById('f_platforms').value,
-    status: (document.querySelector('.status-btn.active') || {}).dataset ? document.querySelector('.status-btn.active').dataset.value : 'draft',
+    status: (s => s === 'approved' ? 'scheduled' : s)((document.querySelector('.status-btn.active') || {}).dataset ? document.querySelector('.status-btn.active').dataset.value : 'draft'),
     notes: composeNotes(r.notes || ''),
     caption_instagram: (document.getElementById('f_caption_instagram') || {}).value,
     caption_x: (document.getElementById('f_caption_x') || {}).value,
@@ -1194,7 +1196,7 @@ function dtbSlides(r) {
   return m ? { slides: [m[1], m[2], m[3]], x: m[4] } : null;
 }
 function hasMedia(r) { return !!(r && (r.video_url || dtbSlides(r))); }
-function isMissed(r) { return r.status === 'approved' && hasMedia(r) && (Date.now() - slotDue(r).getTime()) > 20 * 60000; }
+function isMissed(r) { return ['approved', 'scheduled'].indexOf(r.status) !== -1 && hasMedia(r) && (Date.now() - slotDue(r).getTime()) > 20 * 60000; }
 function stateName(r) {
   if (isMissed(r)) return 'slot missed';
   if (r.status === 'posted' || r.status === 'scheduled' || r.status === 'paused') return r.status;
