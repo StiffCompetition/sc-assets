@@ -1400,7 +1400,6 @@ function drawPlanDays(useDefaults) {
   html += '</table>';
   const summary = '<div class="brief-part" style="margin-bottom:8px"><b>' + (slots - gaps) + ' of ' + slots + ' slots filled.</b> ' + (gaps ? 'Empty: ' + gapList.join(', ') + '. Empty slots are pre-filled with a balanced mix below - change anything, then Create.' : 'Nothing missing.') + '</div>';
   let foot = '';
-  if (DRAFTS) foot += '<div class="brief-part" style="margin-top:8px">' + DRAFTS + ' rows in the content spreadsheet are not yet approved (set status to approved to use them).</div>';
   document.getElementById('planDaysBox').innerHTML = summary + html + foot;
   document.querySelectorAll('.extra-add').forEach(b => b.addEventListener('click', () => addExtraLine(document.querySelector('.extra-box[data-date="' + b.dataset.date + '"]'))));
   const syncReuse = sel => { const ru = document.querySelector('.plan12r[data-date="' + sel.dataset.date + '"]'); if (!ru) return; const ok = !!savedClip(sel.value); ru.disabled = !ok; ru.checked = ok; ru.parentElement.style.opacity = ok ? 1 : 0.4; ru.parentElement.title = ok ? 'Uses this product\'s approved clip with fresh captions: no new video spend.' : 'No approved clip saved for this product yet.'; };
