@@ -384,6 +384,7 @@ const BOX_SAVE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-prod
 const PRODUCTBOX_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-productbox';
 const COVERAGE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-coverage-list';
 const PREVIEW_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-text-preview';
+const VO_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-vo-timing';   // SC - VO Timing Check: speaks lines in the announcer voice
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 // JS getDay(): 0=Sun,1=Mon,...,6=Sat. Map to our 0=Mon..6=Sun index:
@@ -454,6 +455,7 @@ function cardStage(r) {
   if (s === 'image approved') return { label: r.kling_job ? 'video rendering at Kling...' : 'making video...', color: BLUE, you: false };
   return { label: 'approve text', color: AMBER, you: true };
 }
+function postTimeKey(r) { try { return r._press ? '99:99' : londonHm(slotDue(r)); } catch (e) { return '99:99'; } }   // press cards sit after the day's posts
 function londonHm(d) { return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).format(d); }
 
 function isRollCall(notes) { return /Roll:\s*call/i.test(String(notes || '')); }
@@ -469,7 +471,8 @@ async function loadRows() {
     const res = await fetch(LIST_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    ROWS = (Array.isArray(data) ? data : []).sort((a, b) => isoDate(a.post_date).localeCompare(isoDate(b.post_date)));
+    // 10 Oct 2026 (Andy): posts run by day, then by posting time (London), so each day reads in time order.
+    ROWS = (Array.isArray(data) ? data : []).sort((a, b) => isoDate(a.post_date).localeCompare(isoDate(b.post_date)) || (postTimeKey(a)).localeCompare(postTimeKey(b)));
     try {
       const pr = await fetch(COVERAGE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json());
       PRESS_ITEMS = [];
@@ -615,7 +618,7 @@ function render() {
       cols.forEach((dayRows, i) => {
         const col = document.createElement('div');
         col.className = 'day-col' + (dayRows.length === 0 ? ' empty' : '');
-        dayRows.forEach(r => col.appendChild(r._press ? makePressCard(r) : makeCard(r)));
+        dayRows.slice().sort((a, b) => postTimeKey(a).localeCompare(postTimeKey(b))).forEach(r => col.appendChild(r._press ? makePressCard(r) : makeCard(r)));
         grid.appendChild(col);
       });
 
@@ -817,7 +820,10 @@ function composeNotes(orig) {
   }
   // Rows from the spreadsheet carry Payoff (the sound the pipeline makes) inside the Source part: an edited Sound replaces it.
   if (src && /Payoff:/i.test(src) && sound) src = src.replace(/Payoff:\s*[\s\S]*$/i, 'Payoff: ' + sound + '.');
-  src = (src || '') + rollTail;
+  // Product voice-over (7.7.2): an edit in the Voice-over box replaces the VO line inside the Source part.
+  const voEd = g('vo');
+  if (voEd !== null && src && VO_RX.test(src)) src = src.replace(VO_RX, () => 'VO: ' + voEd.replace(/\s+/g, ' ') + ' ');
+  src = (src || '').trim() + rollTail;
   return 'Scene: ' + g('scene') + ' On-screen: ' + g('onscreen') + ' Sound: ' + sound + '. Motion: ' + g('motion') +
     (idPart ? ' ID: ' + idPart.replace(/[.]+$/, '') + '.' : '') + (src ? ' Source: ' + src : '') + (plan ? ' Plan: ' + plan : '');
 }
@@ -825,8 +831,53 @@ function composeNotes(orig) {
 function rollVoEdit(notes) {
   const m = String(notes || '').match(/RollVO:\s*([\s\S]*?)\s*(\|\s*Logo:\s*([\s\S]*))?$/i);
   if (!m) return '';
-  return '<div class="field"><label>Voice-over (announcer, read over the Roll Call clip)</label><textarea id="b_rollvo">' + escapeHtml(m[1] || '') + '</textarea>' +
-    (m[3] ? '<div style="margin-top:4px;color:var(--dim);font-size:12px">End card line: ' + escapeHtml(m[3].trim()) + '</div>' : '') + '</div>';
+  return '<div class="field"><label>Voice-over (announcer, read over the Roll Call clip)</label><textarea id="b_rollvo" data-logo="' + escapeHtml((m[3] || '').trim()).replace(/"/g, '&quot;') + '">' + escapeHtml(m[1] || '') + '</textarea>' +
+    (m[3] ? '<div style="margin-top:4px;color:var(--dim);font-size:12px">End card line: ' + escapeHtml(m[3].trim()) + '</div>' : '') + voPreviewHtml() + '</div>';
+}
+// Product voice-over (Playbook 7.7.2, 10 Oct 2026): the announcer line is shown, editable and playable before Andy approves the text.
+const VO_RX = /(?<![A-Za-z])VO:\s*([\s\S]*?)\s*(?=Era:|Roll:|Bed:|$)/;
+const VO_WORDS = { mug: /\b(mug|coffee|cup|brew|tea|handle|vessel|breakfast)/i, tee: /\b(tee|t-shirt|shirt)\b/i, hoodie: /\bhood/i, print: /\b(print|wall|frame)/i, tote: /\b(tote|bag|load|haul|carry)/i, card: /\bcard/i, stickers: /\b(sticker|chat)/i };
+function voKind(notes) {
+  // From the box name and the shop handle (box names are cut to 40 characters, so the handle backs them up).
+  const t = String(notes || '').toLowerCase();
+  const n = ((t.match(/boxname:\s*([\s\S]*?)\s*(?:vo:|era:|roll:|bed:|$)/) || [])[1] || '') + ' ' + ((t.match(/source:\s*(\S+)/) || [])[1] || '');
+  return /sticker/.test(n) ? 'stickers' : /e-card|card/.test(n) ? 'card' : /hoodie/.test(n) ? 'hoodie' : /mug|15oz/.test(n) ? 'mug' : /tote/.test(n) ? 'tote' : /museum-art|print/.test(n) ? 'print' : /\btee\b|1994-series|t-shirt/.test(n) ? 'tee' : '';
+}
+function productVoEdit(notes) {
+  if (!/Ticker:/i.test(String(notes || ''))) return '';
+  const m = String(notes || '').match(VO_RX);
+  return '<div class="field"><label>Voice-over (announcer, spoken over the clip)</label><textarea id="b_vo" data-kind="' + voKind(notes) + '">' + escapeHtml(m ? m[1] : '') + '</textarea>' +
+    '<div style="margin-top:4px;color:var(--dim);font-size:12px">Says what the product is, one double meaning played straight, a claim that is true of the product; spoken in 3.9 to 4.6 seconds (Playbook 7.7.2).</div>' + voPreviewHtml() + '</div>';
+}
+function voPreviewHtml() {
+  return '<div style="margin-top:6px"><button type="button" class="btn secondary" id="voPreviewBtn">Preview voice</button><div id="voPreviewStatus" style="font-size:12px;color:var(--dim);margin-top:4px"></div><div id="voPreviewResult"></div></div>';
+}
+async function previewVoice() {
+  const btn = document.getElementById('voPreviewBtn'), st = document.getElementById('voPreviewStatus'), out = document.getElementById('voPreviewResult');
+  const pv = document.getElementById('b_vo'), rv = document.getElementById('b_rollvo');
+  let lines = [];
+  if (pv) lines = [pv.value.trim()].filter(Boolean);
+  else if (rv) { const main = rv.value.trim(); lines = (main.indexOf(' / ') !== -1 ? main.split(/\s*\/\s*/).filter(Boolean) : [main].filter(Boolean)).concat(rv.dataset.logo ? [rv.dataset.logo] : []); }
+  if (!lines.length) { st.textContent = 'No voice-over line to play.'; return; }
+  btn.disabled = true; out.innerHTML = ''; st.textContent = 'Speaking the line in the announcer voice (about 10 seconds)...';
+  try {
+    const res = await fetch(VO_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lines: lines }) }).then(x => x.json());
+    const list = (res && res.results) || [];
+    if (!list.length) throw new Error('no audio came back');
+    const notes = [];
+    if (pv) {
+      const sec = list[0].seconds || 0;
+      if (sec > 4.6) notes.push('Too long: ' + sec + ' s, so the end may be cut off or run over the tune\'s final hit. Shorten it to 3.9 to 4.6 s.');
+      else if (sec < 3.9) notes.push('Short: ' + sec + ' s, leaving a gap at the end. Aim for 3.9 to 4.6 s.');
+      const k = pv.dataset.kind, w = VO_WORDS[k];
+      if (w && !w.test(lines[0])) notes.push('It does not say what the product is (' + k + ').');
+    }
+    st.textContent = notes.length ? notes.join(' ') : (pv ? 'Fits: ' + list[0].seconds + ' s.' : 'Ready.');
+    st.style.color = notes.length ? '#b00' : 'var(--dim)';
+    out.innerHTML = list.map(x => '<div style="margin-top:4px"><audio controls src="' + String(x.url || '').replace(/"/g, '&quot;') + '"></audio> <span style="font-size:12px;color:var(--dim)">' + escapeHtml(x.line) + ' (' + x.seconds + ' s)</span></div>').join('');
+    const a = out.querySelector('audio'); if (a) { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); }
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#b00'; }
+  btn.disabled = false;
 }
 // Shot plan (Playbook 7.33): the Shot Library picks for this post - Camera is the shot-1 camera move, Entrance and Ending (framing) are shot 2.
 function shotPlanBox(notes) {
@@ -940,6 +991,7 @@ function openDrawer(r) {
     previewTextButtonHtml(r) +
     briefEdit(r.notes, 'On-screen', 'On-screen text (setup. delivery; *word* = emphasis)', 'onscreen') +
     rollVoEdit(r.notes) +
+    productVoEdit(r.notes) +
     briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
     shotPlanBox(r.notes) +
     briefEdit(r.notes, 'Motion', /Shot 1 \(/.test(briefPart(r.notes, 'Motion')) ? 'Motion (sent to Kling as a shot list)' : 'Motion (sent to Kling as one continuous shot)', 'motion') +
@@ -985,6 +1037,7 @@ function openDrawer(r) {
   document.getElementById('rejectBtn').addEventListener('click', () => rejectRow(r));
   document.getElementById('deleteBtn').addEventListener('click', () => deleteRow(r));
   const ptb = document.getElementById('previewTextBtn'); if (ptb) ptb.addEventListener('click', () => previewText(r));
+  const vpb = document.getElementById('voPreviewBtn'); if (vpb) vpb.addEventListener('click', previewVoice);
   loadProductBox(r);
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
