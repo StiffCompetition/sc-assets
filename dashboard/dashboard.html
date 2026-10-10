@@ -1447,9 +1447,8 @@ function formatSelect(date, dow, row, pick) {
 // A weekend main-slot post kept at 09:00 (the weekend main time) belongs to the main column, not Extra posts.
 function isWeekendMain(r) { return !!r && String(r.post_time || '').padStart(5, '0') === '09:00' && slotOfFormat(r.format) === '7am' && [0, 6].indexOf(new Date(londonYmd(r.post_date) + 'T12:00:00Z').getUTCDay()) !== -1; }
 function extraCell(date, dow) {
-  const have = ROWS.filter(r => londonYmd(r.post_date) === date && r.post_time && !isWeekendMain(r)).sort((a, b) => String(a.post_time).localeCompare(String(b.post_time)));
-  const list = have.map(r => stateTag(r, r.post_time)).join('');
-  return list + '<div class="extra-box" data-date="' + date + '" data-dow="' + dow + '"></div><button type="button" class="btn secondary extra-add" data-date="' + date + '" data-dow="' + dow + '" style="padding:2px 10px;font-size:12px;margin-top:4px">+ Add post</button>';
+  // 10 Oct 2026 (Andy): extra posts already planned are not listed here; only the button to add one.
+  return '<div class="extra-box" data-date="' + date + '" data-dow="' + dow + '"></div><button type="button" class="btn secondary extra-add" data-date="' + date + '" data-dow="' + dow + '" style="padding:2px 10px;font-size:12px;margin-top:4px">+ Add post</button>';
 }
 function extraTypes(dow) {
   const t = ['Day Greeting', 'Wisdom', 'Character Lore', 'Travel the World', 'Product', 'NFT', 'Dare to Buy'];
@@ -1486,15 +1485,15 @@ function drawPlanDays(useDefaults) {
     const e6 = existingRow(date, '6am');
     slots++; if (slotState(e6).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 6am'); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push('6am'); }
     const n6 = leftFor(DAY_CHAR[dow], 'Day Greeting');
-    const greet = stateTag(e6) + (slotState(e6).gap
-      ? '<select data-date="' + date + '" class="plan6"><option value="Day Greeting"' + (picks[date + '|6am'] ? ' selected' : '') + (n6 === 0 ? ' disabled' : '') + '>Day Greeting' + (n6 === null ? '' : ' (' + n6 + ' left)') + '</option><option value=""' + (picks[date + '|6am'] ? '' : ' selected') + '>None</option></select>'
-      : '<em>Keep</em>');
+    // 10 Oct 2026 (Andy): the planner shows only the gaps (and Add post for extras); a filled slot is left blank.
+    const greet = slotState(e6).gap
+      ? stateTag(e6) + '<select data-date="' + date + '" class="plan6"><option value="Day Greeting"' + (picks[date + '|6am'] ? ' selected' : '') + (n6 === 0 ? ' disabled' : '') + '>Day Greeting' + (n6 === null ? '' : ' (' + n6 + ' left)') + '</option><option value=""' + (picks[date + '|6am'] ? '' : ' selected') + '>None</option></select>'
+      : '';
     const e7 = existingRow(date, '7am');
     const mainT = (dow === 0 || dow === 6) ? '9am' : '7am';
     slots++; if (slotState(e7).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' ' + mainT); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push(mainT); }
     // A 7am-type post moved to its own time is listed once, under Extra posts; the 7am slot just says where it went.
-    const moved = e7 && e7.post_time && !isWeekendMain(e7);
-    const main = moved ? '<div style="font-size:12px;color:#555">' + escapeHtml(e7.format) + ' moved to ' + escapeHtml(e7.post_time) + ' (see Extra posts)</div>' + formatSelect(date, dow, e7, picks[date + '|7am']) : stateTag(e7) + formatSelect(date, dow, e7, picks[date + '|7am']) + ((slotState(e7).gap && dow !== 0) ? ' <select data-date="' + date + '" class="plan7c">' + charOptions(picks[date + '|7amc'] || '', DAY_CHAR[dow]) + '</select>' : '');
+    const main = slotState(e7).gap ? stateTag(e7) + formatSelect(date, dow, e7, picks[date + '|7am']) + (dow !== 0 ? ' <select data-date="' + date + '" class="plan7c">' + charOptions(picks[date + '|7amc'] || '', DAY_CHAR[dow]) + '</select>' : '') : '';
     let prod = '';
     if ([3, 5, 6].indexOf(dow) !== -1) {
       const e12 = existingRow(date, '12pm');
@@ -1502,16 +1501,16 @@ function drawPlanDays(useDefaults) {
       const st12 = slotState(e12);
       const pk = picks[date + '|12pm'] || '';
       const pp = (PRODUCTS || []).find(x => x.handle === pk);
-      prod = stateTag(e12) + (st12.gap
-        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <label class="plan-reuse"><input type="checkbox" class="plan12r" data-date="' + date + '"> <span class="plan-reuse-t">use its approved clip (no new video)</span></label> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
-        : '<em>Keep</em>');
+      prod = st12.gap
+        ? stateTag(e12) + '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <label class="plan-reuse"><input type="checkbox" class="plan12r" data-date="' + date + '"> <span class="plan-reuse-t">use its approved clip (no new video)</span></label> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
+        : '';
     }
     let nft = '';
     if (dow === 3 || dow === 4) {
       const nt = nyNoonLondon(date);
       const en = ROWS.find(r => londonYmd(r.post_date) === date && r.format === 'NFT');
       slots++; if (!en) { gaps++; gapList.push(WEEKDAY[dow] + ' NFT'); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push('NFT'); }
-      nft = (en ? stateTag(en) + '<em>Keep</em>' : '<span class="pempty">EMPTY <span style="font-weight:400">(' + nt + ' London)</span></span><select data-date="' + date + '" data-time="' + nt + '" class="planNft"><option value="NFT" selected>NFT</option><option value="">None</option></select> <select data-date="' + date + '" class="planNftC">' + nftOptions(DAY_CHAR[dow]) + '</select>');
+      nft = (en ? '' : '<span class="pempty">EMPTY <span style="font-weight:400">(' + nt + ' London)</span></span><select data-date="' + date + '" data-time="' + nt + '" class="planNft"><option value="NFT" selected>NFT</option><option value="">None</option></select> <select data-date="' + date + '" class="planNftC">' + nftOptions(DAY_CHAR[dow]) + '</select>');
     }
     const g = c => c ? ' class="pgap"' : '';
     const g12 = [3, 5, 6].indexOf(dow) !== -1 && slotState(existingRow(date, '12pm')).gap;
