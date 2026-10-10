@@ -35,6 +35,7 @@
     align-items: center;
     gap: 14px;
   }
+  header img.logo-img { height: 48px; width: auto; display: block; flex-shrink: 0; }
   header .logo {
     width: 40px; height: 40px;
     flex-shrink: 0;
@@ -162,6 +163,12 @@
   }
   .card:hover { box-shadow: 2px 2px 0 var(--line); }
   .card.sunday { border-left-color: var(--red); }
+  .card { border-left-width: 6px; }
+  .card.needs { background: #fff4dc; }
+  .char-tag { align-self: flex-start; font-size: 11px; font-weight: 700; color: #fff; padding: 1px 7px; border-radius: 9px; letter-spacing: .2px; }
+  .type-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 28px 10px; font-family: var(--mono); font-size: 11px; color: #555; }
+  .clip-info { border: 1px solid var(--line); background: #f7f7f2; padding: 8px 10px; font-size: 13px; }
   .card .date { font-family: var(--mono); font-size: 11px; color: #565a44; }
   .card .day { font-weight: 700; font-size: 13px; line-height: 1.3; }
   .card .character { font-size: 12px; font-style: italic; color: #4b5320; }
@@ -179,7 +186,7 @@
   .badge.notdesigned { color: #8a8a8a; border-color: #8a8a8a; border-style: dotted; }
   .badge.textapproved { color: #2a5db0; border-color: #2a5db0; }
   .badge.approved { color: var(--ink); border-color: var(--ink); }
-  .badge.scheduled { color: #fff; background: #4a4a4a; border-color: #4a4a4a; }
+  .badge.scheduled { color: #fff; background: #2e7d32; border-color: #2e7d32; }
   .badge.posted { color: #fff; background: var(--ink); border-color: var(--ink); }
   .badge.paused { color: var(--ink); border-color: var(--ink); text-decoration: line-through; }
 
@@ -314,12 +321,13 @@
 
 <div id="topbar">
 <header>
-  <div class="logo">SC</div>
+  <img class="logo-img" src="https://res.cloudinary.com/dkapdtxek/image/upload/h_96/SCSMAuto/sc_flagship_logo_fulltext_clean.png" alt="Stiff Competition" onerror="this.outerHTML='&lt;div class=&quot;logo&quot;&gt;SC&lt;/div&gt;'">
   <div>
     <h1>Content Calendar</h1>
     <p>Plan content → brief ready → text approved (start image) → image approved (video) → approved (scheduled)</p>
   </div>
 </header>
+<div class="legend" id="typeLegend"></div>
 
 <div class="toolbar">
   <div class="view-toggle">
@@ -406,6 +414,16 @@ function fmtDate(raw) {
   const d = new Date(raw);
   return d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
+// Colour coding (9 Oct 2026): each post type has its own colour on the card edge; each character his Roll Call colour.
+const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60' };
+const CHAR_COLOR = { 'Major Wood': '#556B2F', 'The Rear Admiral': '#1E3A8A', "Hammerin' Hanky": '#FF7A00', 'The Grip': '#1E5BD8', 'Slick Willy': '#111111', 'The Velvet Python': '#6B2FA0', 'SC Logo': '#555555' };
+function charTag(c) { return '<span class="char-tag" style="background:' + (CHAR_COLOR[c] || '#777') + '">' + escapeHtml(c || '') + '</span>'; }
+function typeDot(f) { return '<span class="type-dot" style="background:' + (FORMAT_COLOR[f] || '#999') + '"></span>'; }
+function dayName(r) { return r.day_of_week || new Date(r.post_date).toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'long' }); }
+function needsYou(r) { return r.panel_status === 'concepts' || r.status === 'image ready' || r.panel_status === 'failed' || isMissed(r); }
+function isRollCall(notes) { return /Roll:\s*call/i.test(String(notes || '')); }
+function renderLegend() { const el = document.getElementById('typeLegend'); if (el) el.innerHTML = Object.keys(FORMAT_COLOR).map(f => '<span>' + typeDot(f) + escapeHtml(f) + '</span>').join('') + '<span><span class="type-dot" style="background:#fff4dc;border:1px solid #e0b860"></span>needs you</span>'; }
+document.addEventListener('DOMContentLoaded', renderLegend);
 function isoDate(raw) {
   const d = new Date(raw);
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
@@ -579,8 +597,8 @@ function render() {
       const tr = document.createElement('tr');
       tr.innerHTML =
         '<td>' + fmtDate(r.post_date) + '</td>' +
-        '<td>' + r.day_of_week + '<br><em>' + r.character + '</em></td>' +
-        '<td>' + r.format + '</td>' +
+        '<td>' + dayName(r) + '<br>' + charTag(r.character) + '</td>' +
+        '<td>' + typeDot(r.format) + r.format + '</td>' +
         '<td class="text-cell">' + (r.text_content ? escapeHtml(r.text_content) : '<span class="snippet empty">no text yet</span>') + '</td>' +
         '<td>' + (r.platforms || '') + '</td>' +
         '<td><span class="badge ' + STATUS_CLASS(r.status) + '">' + STATUS_LABEL(r.status) + '</span></td>' +
@@ -598,15 +616,16 @@ function render() {
 
 function makeCard(r) {
   const card = document.createElement('div');
-  card.className = 'card' + (r.character === 'SC Logo' ? ' sunday' : '');
+  card.className = 'card' + (r.character === 'SC Logo' ? ' sunday' : '') + (needsYou(r) ? ' needs' : '');
+  card.style.borderLeftColor = FORMAT_COLOR[r.format] || '';
   const os = extractOnScreen(r.notes);
   const osLine = os.hasText
     ? '<div class="os-card-line"><b>' + escapeHtml((os.deliveryText).replace(/\*/g, '').toUpperCase()) + '</b>' + (os.isSplit ? ' <span class="os-setup-hint">(+ setup)</span>' : '') + '</div>'
     : '<div class="os-card-line empty">no on-screen text</div>';
   card.innerHTML =
     '<div class="date">' + fmtDate(r.post_date) + '</div>' +
-    '<div class="character">' + r.character + '</div>' +
-    '<div class="format">' + r.format + '</div>' +
+    charTag(r.character) +
+    '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + r.format + '</div>' +
     osLine +
     '<div class="snippet' + (r.text_content ? '' : ' empty') + '">' + (r.text_content ? escapeHtml(r.text_content) : 'no caption yet') + '</div>' +
     '<span class="badge ' + STATUS_CLASS(r.status) + '">' + STATUS_LABEL(r.status) + '</span>' +
@@ -615,7 +634,7 @@ function makeCard(r) {
     (r.panel_status === 'concepts' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">pick a concept</span>' : '') +
     (r.status === 'image ready' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">check start image</span>' : '') +
     (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">writing brief...</span>' : '') +
-    (!r.video_url && r.status === 'text approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">making start image...</span>' : '') +
+    (!r.video_url && r.status === 'text approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + (isRollCall(r.notes) ? 'making the video...' : 'making start image...') + '</span>' : '') +
     (!r.video_url && r.status === 'image approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + (r.kling_job ? 'video rendering at Kling...' : 'video queued / rendering...') + '</span>' : '') +
     (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">needs attention</span>' : '') +
     (isMissed(r) ? '<span class="badge" style="border-color:#b00;color:#b00;">slot missed - reschedule or Post Now</span>' : '') +
@@ -749,7 +768,11 @@ function briefEdit(notes, key, label, id) {
 }
 function composeNotes(orig) {
   const g = id => { const el = document.getElementById('b_' + id); return el ? el.value.trim() : null; };
-  if (g('scene') === null) return orig;
+  if (g('scene') === null) {
+    const ev = g('rollvo');
+    if (ev === null) return orig;
+    return orig.replace(/(RollVO:\s*)([\s\S]*?)(\s*\|\s*Logo:[\s\S]*)?$/i, (m, a, b, c) => a + ev.replace(/\s+/g, ' ') + (c || ''));
+  }
   const idPart = briefPart(orig, 'ID');
   const sound = (g('sound') || '').replace(/[.]+$/, '');
   let src = briefPart(orig, 'Source');
@@ -788,10 +811,16 @@ function shotPlanBox(notes) {
     '<div style="margin-top:4px;color:var(--dim);font-size:12px">To change a pick, edit the Motion text below (Shot 1 / Shot 2), or press Make a new concept for a fresh rotation.</div></div></div>';
 }
 function sourceBox(notes) {
-  const id = briefPart(notes, 'Source');
+  let id = briefPart(notes, 'Source');
   if (!id) return '';
-  return '<div class="field"><label>Source fact</label><div class="brief-part">' + escapeHtml(id) +
-    ' &middot; <a href="https://docs.google.com/spreadsheets/d/1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60/edit" target="_blank">Facts Master</a></div></div>';
+  // Only the source itself: the pipeline codes that follow it (Roll, Era, Bed, Payoff, RollVO, Location) stay out of view.
+  id = id.split(/\s+(?:Roll:|Era:|Bed:|Payoff:|RollVO:|Location:)/i)[0].trim().replace(/[.]+$/, '');
+  const sheet = 'https://docs.google.com/spreadsheets/d/1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60/edit';
+  const nft = id.match(/^NFT:([a-z0-9-]+)/i);
+  const link = nft ? '<a href="https://stiffcompetition.shop/products/' + nft[1] + '" target="_blank">Shop page</a>'
+    : /^IDEA:/i.test(id) ? '<a href="' + sheet + '" target="_blank">Ideas tab</a>'
+    : '<a href="' + sheet + '" target="_blank">Content spreadsheet</a>';
+  return '<div class="field"><label>Source</label><div class="brief-part">' + escapeHtml(id) + ' &middot; ' + link + '</div></div>';
 }
 
 function panelBox(r) {
@@ -866,9 +895,15 @@ function openDrawer(r) {
   const canPost = hasMedia(r) && ['approved', 'scheduled'].indexOf(r.status) !== -1;
   drawer.innerHTML =
     '<div class="brief-topbar"><button class="btn secondary" id="backBtn">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">' + escapeHtml(stateName(r)) + '</span><button class="btn secondary" id="closeTopBtn">Close &times;</button></div>' +
-    '<h2>' + r.day_of_week + '</h2>' +
+    '<h2>' + escapeHtml(dayName(r)) + '</h2>' +
     '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + r.character + ' · ' + r.format + '</div>' +
-    (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' : (
+    (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' :
+    // NFT posts are built whole by SC - NFT Post Builder (character template + NFT + ticker): no brief boxes to edit.
+    r.format === 'NFT' ? panelBox(r) + (r.notes ? '<div class="field"><label>NFT (from the shop)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
+    // Roll Call (Playbook 7.12): a locked master clip; the announcer voice-over is the only part made per post.
+    isRollCall(r.notes) ? panelBox(r) + sourceBox(r.notes) +
+      '<div class="field"><label>Video</label><div class="clip-info">' + (/RollVO:[^|]*\s\/\s/i.test(r.notes || '') ? 'Roll Call portrait clip: the six animated portraits with name tags (crew introduction).' : 'Roll Call comic-page clip: comic pages turning, the six characters in colour.') + ' Fixed clip, ends on the logo.</div></div>' +
+      rollVoEdit(r.notes) : (
     conceptPicker(r) +
     panelBox(r) +
     sourceBox(r.notes) +
@@ -1079,7 +1114,8 @@ async function saveRow(r) {
     video_url: document.getElementById('f_video_url').value,
     platforms: document.getElementById('f_platforms').value,
     status: (s => s === 'approved' ? 'scheduled' : s)((document.querySelector('.status-btn.active') || {}).dataset ? document.querySelector('.status-btn.active').dataset.value : 'draft'),
-    notes: composeNotes(r.notes || ''),
+    // NFT posts carry the NFT Post Builder's record (Source, NFT title, template, shop link), not a brief: kept exactly as written.
+    notes: r.format === 'NFT' ? (r.notes || '') : composeNotes(r.notes || ''),
     caption_instagram: (document.getElementById('f_caption_instagram') || {}).value,
     caption_x: (document.getElementById('f_caption_x') || {}).value,
     caption_facebook: (document.getElementById('f_caption_facebook') || {}).value
