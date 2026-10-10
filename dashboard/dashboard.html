@@ -1228,7 +1228,7 @@ function openReschedule(r) {
     if (!anyDay && dow !== new Date(curDate + 'T12:00:00Z').getUTCDay()) { msg.textContent = 'This post belongs to ' + dowName + '; pick another ' + dowName + '.'; return; }
     if (anyDay && r.character === DAY_CHAR[dow]) { msg.textContent = r.character + ' is that day\'s character; only the Day Greeting uses him. Pick another day.'; return; }
     const slot = time ? 'custom' : (r.format === 'Product' ? '12pm' : (r.format === 'Day Greeting' ? '6am' : '7am'));
-    const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : '07:00'))) + ':00Z');
+    const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : ((dow === 0 || dow === 6) ? '09:00' : '07:00')))) + ':00Z');
     if (due.getTime() < Date.now() - 60 * 60000) { msg.textContent = 'That time has already passed.'; return; }
     // The day must not already hold a post of the same slot type (any time), nor any post at the exact custom time.
     const clash = ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && (slotOfFormat(x.format) === slotOfFormat(r.format) || (time && x.post_time === time)));
@@ -1279,7 +1279,9 @@ function londonToUtc(dateStr, hhmm) {
 }
 function slotDue(r) {
   const d = londonYmd(r.post_date);
-  const t = r.post_time ? String(r.post_time).padStart(5, '0') : (r.format === 'Day Greeting' ? '06:00' : (r.format === 'Product' ? '12:00' : (r.format === 'Advice' ? '10:00' : '07:00')));
+  // 9 Oct 2026 (Andy): the main post goes out at 07:00 Monday to Friday and 09:00 on Saturday and Sunday.
+  const wkend = [0, 6].indexOf(new Date(d + 'T12:00:00Z').getUTCDay()) !== -1;
+  const t = r.post_time ? String(r.post_time).padStart(5, '0') : (r.format === 'Day Greeting' ? '06:00' : (r.format === 'Product' ? '12:00' : (r.format === 'Advice' ? '10:00' : (wkend ? '09:00' : '07:00'))));
   return londonToUtc(d, t);
 }
 // Dare to Buy (Playbook 7.7.6): still-image carousels. Their three slides and X image are listed in the row's notes.
@@ -1428,8 +1430,10 @@ function formatSelect(date, dow, row, pick) {
   return '<select data-date="' + date + '" class="plan7">' + opts + '</select>';
 }
 // Extra posts (Playbook 7.6): any number per day, each at its own London time; published by the custom-time schedule.
+// A weekend main-slot post kept at 09:00 (the weekend main time) belongs to the main column, not Extra posts.
+function isWeekendMain(r) { return !!r && String(r.post_time || '').padStart(5, '0') === '09:00' && slotOfFormat(r.format) === '7am' && [0, 6].indexOf(new Date(londonYmd(r.post_date) + 'T12:00:00Z').getUTCDay()) !== -1; }
 function extraCell(date, dow) {
-  const have = ROWS.filter(r => londonYmd(r.post_date) === date && r.post_time).sort((a, b) => String(a.post_time).localeCompare(String(b.post_time)));
+  const have = ROWS.filter(r => londonYmd(r.post_date) === date && r.post_time && !isWeekendMain(r)).sort((a, b) => String(a.post_time).localeCompare(String(b.post_time)));
   const list = have.map(r => stateTag(r, r.post_time)).join('');
   return list + '<div class="extra-box" data-date="' + date + '" data-dow="' + dow + '"></div><button type="button" class="btn secondary extra-add" data-date="' + date + '" data-dow="' + dow + '" style="padding:2px 10px;font-size:12px;margin-top:4px">+ Add post</button>';
 }
@@ -1460,7 +1464,7 @@ function drawPlanDays(useDefaults) {
   if (!start) return;
   const picks = useDefaults === false ? {} : planDefaults(start, n);
   let slots = 0, gaps = 0; const gapList = [];
-  let html = '<table class="plan-table"><colgroup><col style="width:11%"><col style="width:14%"><col style="width:19%"><col style="width:22%"><col style="width:14%"><col style="width:20%"></colgroup><tr><th>Day</th><th>6am greeting</th><th>7am</th><th>12pm product</th><th>NFT (12:00 New York)</th><th>Extra posts</th></tr>';
+  let html = '<table class="plan-table"><colgroup><col style="width:11%"><col style="width:14%"><col style="width:19%"><col style="width:22%"><col style="width:14%"><col style="width:20%"></colgroup><tr><th>Day</th><th>6am greeting</th><th>Main post (7am, 9am Sat&ndash;Sun)</th><th>12pm product</th><th>NFT (12:00 New York)</th><th>Extra posts</th></tr>';
   const gapByDay = {};
   for (let i = 0; i < n; i++) {
     const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i);
@@ -1472,9 +1476,10 @@ function drawPlanDays(useDefaults) {
       ? '<select data-date="' + date + '" class="plan6"><option value="Day Greeting"' + (picks[date + '|6am'] ? ' selected' : '') + (n6 === 0 ? ' disabled' : '') + '>Day Greeting' + (n6 === null ? '' : ' (' + n6 + ' left)') + '</option><option value=""' + (picks[date + '|6am'] ? '' : ' selected') + '>None</option></select>'
       : '<em>Keep</em>');
     const e7 = existingRow(date, '7am');
-    slots++; if (slotState(e7).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 7am'); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push('7am'); }
+    const mainT = (dow === 0 || dow === 6) ? '9am' : '7am';
+    slots++; if (slotState(e7).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' ' + mainT); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push(mainT); }
     // A 7am-type post moved to its own time is listed once, under Extra posts; the 7am slot just says where it went.
-    const moved = e7 && e7.post_time;
+    const moved = e7 && e7.post_time && !isWeekendMain(e7);
     const main = moved ? '<div style="font-size:12px;color:#555">' + escapeHtml(e7.format) + ' moved to ' + escapeHtml(e7.post_time) + ' (see Extra posts)</div>' + formatSelect(date, dow, e7, picks[date + '|7am']) : stateTag(e7) + formatSelect(date, dow, e7, picks[date + '|7am']) + ((slotState(e7).gap && dow !== 0) ? ' <select data-date="' + date + '" class="plan7c">' + charOptions(picks[date + '|7amc'] || '', DAY_CHAR[dow]) + '</select>' : '');
     let prod = '';
     if ([3, 5, 6].indexOf(dow) !== -1) {
