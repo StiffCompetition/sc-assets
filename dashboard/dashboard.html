@@ -434,7 +434,28 @@ function charLabel(c, r) { return c === 'SC Logo' ? (r && isRollCall(r.notes) ? 
 function charTag(c, r) { return '<span class="char-tag" style="background:' + (CHAR_COLOR[c] || '#777') + '">' + escapeHtml(charLabel(c, r)) + '</span>'; }
 function typeDot(f) { return '<span class="type-dot" style="background:' + (FORMAT_COLOR[f] || '#999') + '"></span>'; }
 function dayName(r) { return r.day_of_week || new Date(r.post_date).toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'long' }); }
-function needsYou(r) { return r.panel_status === 'concepts' || r.status === 'image ready' || r.panel_status === 'failed' || isMissed(r); }
+function needsYou(r) { return cardStage(r).you; }   // amber tint on every post waiting for Andy (10 Oct 2026)
+// One status per card (10 Oct 2026, Andy): what the post needs next, or where it is.
+function cardStage(r) {
+  const AMBER = '#b06a00', BLUE = '#2a5db0', GREEN = '#2a7a2a', RED = '#b00', GREY = '#777';
+  const s = r.status || '';
+  if (s === 'posted') return { label: 'posted', color: GREEN, you: false };
+  if (s === 'approved' || s === 'scheduled') return isMissed(r) ? { label: 'slot missed - reschedule or Post Now', color: RED, you: true } : { label: 'scheduled', color: GREEN, you: false };
+  if (s === 'paused') return { label: 'paused', color: GREY, you: false };
+  if (s === 'rejected') return { label: 'rejected', color: GREY, you: false };
+  if (s.indexOf('draft - format') === 0) return { label: 'not designed', color: GREY, you: false };
+  if (r.panel_status === 'failed') return { label: 'needs attention', color: RED, you: true };
+  if (r.panel_status === 'creating') return { label: 'writing brief...', color: GREY, you: false };
+  if (r.panel_status === 'concepts') return { label: 'pick a concept', color: AMBER, you: true };
+  if (dtbSlides(r)) return { label: 'approve slides', color: AMBER, you: true };
+  if (r.video_url) return { label: 'approve clip', color: AMBER, you: true };
+  if (s === 'image ready') return { label: 'check start image', color: AMBER, you: true };
+  if (s === 'text approved') return { label: ({ rollcall: 'making the video...', travel: 'preparing the artwork...', product: 'seating the presenter...' }[flowOf(r)] || 'making start image...'), color: BLUE, you: false };
+  if (s === 'image approved') return { label: r.kling_job ? 'video rendering at Kling...' : 'making video...', color: BLUE, you: false };
+  return { label: 'approve text', color: AMBER, you: true };
+}
+function londonHm(d) { return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).format(d); }
+
 function isRollCall(notes) { return /Roll:\s*call/i.test(String(notes || '')); }
 function renderLegend() { const el = document.getElementById('typeLegend'); if (el) el.innerHTML = Object.keys(FORMAT_COLOR).map(f => '<span>' + typeDot(f) + escapeHtml(f) + '</span>').join('') + '<span><span class="type-dot" style="background:#fff4dc;border:1px solid #e0b860"></span>needs you</span>'; }
 document.addEventListener('DOMContentLoaded', renderLegend);
@@ -615,7 +636,7 @@ function render() {
         '<td>' + typeDot(r.format) + r.format + '</td>' +
         '<td class="text-cell">' + (r.text_content ? escapeHtml(r.text_content) : '<span class="snippet empty">no text yet</span>') + '</td>' +
         '<td>' + (r.platforms || '') + '</td>' +
-        '<td><span class="badge ' + STATUS_CLASS(r.status) + '">' + STATUS_LABEL(r.status) + '</span></td>' +
+        '<td>' + (st => '<span class="badge" style="border-color:' + st.color + ';color:' + st.color + '">' + escapeHtml(st.label) + '</span>')(cardStage(r)) + '</td>' +
         '<td><button class="row-btn" data-id="' + r.id + '">Edit</button></td>';
       tr.querySelector('.row-btn').addEventListener('click', () => openDrawer(r));
       tbody.appendChild(tr);
@@ -636,23 +657,15 @@ function makeCard(r) {
   const osLine = os.hasText
     ? '<div class="os-card-line"><b>' + escapeHtml((os.deliveryText).replace(/\*/g, '').toUpperCase()) + '</b>' + (os.isSplit ? ' <span class="os-setup-hint">(+ setup)</span>' : '') + '</div>'
     : '<div class="os-card-line empty">no on-screen text</div>';
+  // 10 Oct 2026 (Andy): a card shows the top-level detail only - date and time, character, post type, on-screen line -
+  // and one status: the step the post is at, "scheduled" once Andy gives the final approval, then "posted". The caption is in the drawer.
+  const st = cardStage(r);
   card.innerHTML =
-    '<div class="date">' + fmtDate(r.post_date) + '</div>' +
+    '<div class="date">' + fmtDate(r.post_date) + ' &middot; ' + londonHm(slotDue(r)) + '</div>' +
     charTag(r.character, r) +
     '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + r.format + '</div>' +
     osLine +
-    '<div class="snippet' + (r.text_content ? '' : ' empty') + '">' + (r.text_content ? escapeHtml(r.text_content) : 'no caption yet') + '</div>' +
-    '<span class="badge ' + STATUS_CLASS(r.status) + '">' + STATUS_LABEL(r.status) + '</span>' +
-    (r.video_url ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">&#9654; video ready</span>' : '') +
-    (dtbSlides(r) ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">&#9638; slides ready</span>' : '') +
-    (r.panel_status === 'concepts' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">pick a concept</span>' : '') +
-    (r.status === 'image ready' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">check start image</span>' : '') +
-    (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">writing brief...</span>' : '') +
-    (!r.video_url && r.status === 'text approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + ({ rollcall: 'making the video...', travel: 'preparing the artwork...', product: 'seating the presenter...' }[flowOf(r)] || 'making start image...') + '</span>' : '') +
-    (!r.video_url && r.status === 'image approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + (r.kling_job ? 'video rendering at Kling...' : 'video queued / rendering...') + '</span>' : '') +
-    (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">needs attention</span>' : '') +
-    (isMissed(r) ? '<span class="badge" style="border-color:#b00;color:#b00;">slot missed - reschedule or Post Now</span>' : '') +
-    (r.post_time ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">custom ' + escapeHtml(r.post_time) + '</span>' : '');
+    '<span class="badge" style="border-color:' + st.color + ';color:' + st.color + ';margin-top:6px">' + escapeHtml(st.label) + '</span>';
   card.addEventListener('click', () => openDrawer(r));
   return card;
 }
@@ -661,7 +674,7 @@ function extractOnScreen(notes) {
   if (!notes) return { hasText: false };
   const m = notes.match(/On-screen:\s*([\s\S]+?)\s*(?:Sound:|Motion:|ID:|$)/i);
   const raw = m ? m[1].trim() : '';
-  if (!raw) return { hasText: false };
+  if (!raw || raw === '-') return { hasText: false };   // '-' = no on-screen text (Product, NFT)
   // Same split rule as the video step (Build Text Elements): a slash separates the text; without a slash, sentence ends do.
   const hasSlash = raw.includes('/');
   const flattened = hasSlash ? raw.split('/').map(s => s.trim()).filter(Boolean).join(' ') : raw;
