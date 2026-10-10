@@ -429,7 +429,9 @@ function fmtDate(raw) {
 // Colour coding (9 Oct 2026): each post type has its own colour on the card edge; each character his Roll Call colour.
 const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60' };
 const CHAR_COLOR = { 'Major Wood': '#556B2F', 'The Rear Admiral': '#1E3A8A', "Hammerin' Hanky": '#FF7A00', 'The Grip': '#1E5BD8', 'Slick Willy': '#111111', 'The Velvet Python': '#6B2FA0', 'SC Logo': '#555555' };
-function charTag(c) { return '<span class="char-tag" style="background:' + (CHAR_COLOR[c] || '#777') + '">' + escapeHtml(c || '') + '</span>'; }
+// Brand posts are filed under "SC Logo" for the pipeline; on screen they read "All 6" (Roll Call) or "Brand".
+function charLabel(c, r) { return c === 'SC Logo' ? (r && isRollCall(r.notes) ? 'All 6' : 'Brand') : (c || ''); }
+function charTag(c, r) { return '<span class="char-tag" style="background:' + (CHAR_COLOR[c] || '#777') + '">' + escapeHtml(charLabel(c, r)) + '</span>'; }
 function typeDot(f) { return '<span class="type-dot" style="background:' + (FORMAT_COLOR[f] || '#999') + '"></span>'; }
 function dayName(r) { return r.day_of_week || new Date(r.post_date).toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'long' }); }
 function needsYou(r) { return r.panel_status === 'concepts' || r.status === 'image ready' || r.panel_status === 'failed' || isMissed(r); }
@@ -609,7 +611,7 @@ function render() {
       const tr = document.createElement('tr');
       tr.innerHTML =
         '<td>' + fmtDate(r.post_date) + '</td>' +
-        '<td>' + dayName(r) + '<br>' + charTag(r.character) + '</td>' +
+        '<td>' + dayName(r) + '<br>' + charTag(r.character, r) + '</td>' +
         '<td>' + typeDot(r.format) + r.format + '</td>' +
         '<td class="text-cell">' + (r.text_content ? escapeHtml(r.text_content) : '<span class="snippet empty">no text yet</span>') + '</td>' +
         '<td>' + (r.platforms || '') + '</td>' +
@@ -636,7 +638,7 @@ function makeCard(r) {
     : '<div class="os-card-line empty">no on-screen text</div>';
   card.innerHTML =
     '<div class="date">' + fmtDate(r.post_date) + '</div>' +
-    charTag(r.character) +
+    charTag(r.character, r) +
     '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + r.format + '</div>' +
     osLine +
     '<div class="snippet' + (r.text_content ? '' : ' empty') + '">' + (r.text_content ? escapeHtml(r.text_content) : 'no caption yet') + '</div>' +
@@ -646,7 +648,7 @@ function makeCard(r) {
     (r.panel_status === 'concepts' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">pick a concept</span>' : '') +
     (r.status === 'image ready' ? '<span class="badge" style="border-color:#b06a00;color:#b06a00;">check start image</span>' : '') +
     (r.panel_status === 'creating' ? '<span class="badge" style="border-color:#777;color:#777;">writing brief...</span>' : '') +
-    (!r.video_url && r.status === 'text approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + (isRollCall(r.notes) ? 'making the video...' : 'making start image...') + '</span>' : '') +
+    (!r.video_url && r.status === 'text approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + ({ rollcall: 'making the video...', travel: 'preparing the artwork...', product: 'seating the presenter...' }[flowOf(r)] || 'making start image...') + '</span>' : '') +
     (!r.video_url && r.status === 'image approved' ? '<span class="badge" style="border-color:#2a5db0;color:#2a5db0;">' + (r.kling_job ? 'video rendering at Kling...' : 'video queued / rendering...') + '</span>' : '') +
     (r.panel_status === 'failed' ? '<span class="badge" style="border-color:#b00;color:#b00;">needs attention</span>' : '') +
     (isMissed(r) ? '<span class="badge" style="border-color:#b00;color:#b00;">slot missed - reschedule or Post Now</span>' : '') +
@@ -908,7 +910,7 @@ function openDrawer(r) {
   drawer.innerHTML =
     '<div class="brief-topbar"><button class="btn secondary" id="backBtn">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">' + escapeHtml(stateName(r)) + '</span><button class="btn secondary" id="closeTopBtn">Close &times;</button></div>' +
     '<h2>' + escapeHtml(dayName(r)) + '</h2>' +
-    '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + r.character + ' · ' + r.format + '</div>' +
+    '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + escapeHtml(charLabel(r.character, r)) + ' · ' + r.format + '</div>' +
     (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' :
     // NFT posts are built whole by SC - NFT Post Builder (character template + NFT + ticker): no brief boxes to edit.
     r.format === 'NFT' ? panelBox(r) + (r.notes ? '<div class="field"><label>NFT (from the shop)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
@@ -937,7 +939,7 @@ function openDrawer(r) {
     field('image_url', 'Image URL', 'input', r.image_url) +
     field('video_url', 'Video URL', 'input', r.video_url) +
     field('platforms', 'Platforms', 'input', r.platforms) +
-    statusField(r.status) +
+    statusField(r.status, r) +
     '<input type="hidden" id="f_notes" value="' + escapeHtml(r.notes || '').replace(/"/g, '&quot;') + '">' +
     '<div class="drawer-actions">' +
       '<button class="btn" id="saveBtn">Save</button>' +
@@ -1047,12 +1049,37 @@ function videoPreview(url) {
   return '<div class="field"><label>Video Preview</label><video controls preload="metadata" style="display:block;margin:0 auto;width:auto;max-width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);border:1px solid var(--line);background:#000" src="' + url.replace(/"/g, '&quot;') + '"></video></div>';
 }
 
-function statusField(current) {
+// Each post type's route (9 Oct 2026, checked against the live workflows): the status buttons and their explanation follow it.
+function flowOf(r) {
+  if (!r) return 'standard';
+  if (r.format === 'Dare to Buy') return 'dtb';          // SC - Dare to Buy Builder makes the slides; no video
+  if (r.format === 'NFT') return 'nft';                  // SC - NFT Post Builder makes the whole clip
+  if (isRollCall(r.notes)) return 'rollcall';            // fixed Roll Call clip + voice-over, no start image
+  if (r.format === 'Travel the World') return 'travel';  // the NFT artwork extended to 9:16 is the start image
+  if (r.format === 'Product') return 'product';          // the presenter seated with the product box is the start image
+  return 'standard';
+}
+const FLOW = {
+  standard: { opts: ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'posted', 'paused'],
+    help: '"text approved" makes the start image only (small spend) and comes back as "image ready". "image approved" makes the video from that exact image (one clip spend). "approved" is your final sign-off: the post is saved as scheduled and goes out at its time.' },
+  product: { opts: ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'posted', 'paused'],
+    help: '"text approved" makes the start image: the presenter seated with the product box (small spend), back as "image ready". "image approved" makes the video from that image, with the ticker, box and voice-over (one clip spend). "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
+  travel: { opts: ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'posted', 'paused'],
+    help: '"text approved" prepares the start image: the NFT artwork extended to fill the frame, back as "image ready". "image approved" makes the video from it (one clip spend). "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
+  rollcall: { opts: ['draft', 'text approved', 'approved', 'posted', 'paused'],
+    help: 'Roll Call: "text approved" makes the video straight away from the fixed Roll Call clip and the announcer voice-over (about 5-15 min, no start image), back as "clip ready for your approval". "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
+  nft: { opts: ['draft', 'approved', 'posted', 'paused'],
+    help: 'NFT: the clip is made whole when the post is planned (the character\'s NFT template, the NFT and its ticker). "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' },
+  dtb: { opts: ['draft', 'approved', 'posted', 'paused'],
+    help: 'Dare to Buy: the three carousel slides and the X image are made when the post is planned; there is no video. "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' }
+};
+function statusField(current, r) {
   // 9 Oct 2026 (Andy): one final-approval button. "approved" saves the post as scheduled, which the scheduler posts at its slot.
-  const options = ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'posted', 'paused'];
+  const f = FLOW[flowOf(r)];
   const cur = current === 'scheduled' ? 'approved' : current;
+  const options = f.opts.indexOf(cur) === -1 && cur ? f.opts.concat([cur]) : f.opts;   // a status from before is still shown
   let opts = options.map(o => '<button type="button" class="status-btn' + (o === cur ? ' active' : '') + '" data-value="' + o + '">' + o + '</button>').join('');
-  return '<div class="field"><label>Status &mdash; "text approved" makes the start image only (small spend) and comes back as "image ready". "image approved" makes the video from that exact image (one clip spend). "approved" is your final sign-off: the post is saved as scheduled and goes out at its time.</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
+  return '<div class="field"><label>Status &mdash; ' + f.help + '</label><div class="status-buttons" id="statusButtons">' + opts + '</div></div>';
 }
 
 function closeDrawer() {
@@ -1270,7 +1297,7 @@ function stateName(r) {
   if (dtbSlides(r)) return 'slides ready for approval';
   if (r.video_url) return 'clip ready for approval';
   if (r.status === 'image ready') return 'start image ready';
-  if (r.status === 'text approved') return 'making start image';
+  if (r.status === 'text approved') return ({ rollcall: 'making the video', travel: 'preparing the artwork', product: 'seating the presenter' }[flowOf(r)] || 'making start image');
   if (r.status === 'image approved') return r.kling_job ? 'video rendering at Kling' : 'video queued / rendering';
   if (r.panel_status === 'creating') return 'writing brief';
   if (r.panel_status === 'failed') return 'brief needs attention';
@@ -1284,7 +1311,7 @@ function slotState(row) {
   if (dtbSlides(row)) return { gap: false, done: true, label: 'slides ready for your approval', color: '#2a5db0' };
   if (row.video_url) return { gap: false, done: true, label: 'clip ready for your approval', color: '#2a5db0' };
   if (row.status === 'image ready') return { gap: false, label: 'start image ready', color: '#2a5db0' };
-  if (row.status === 'text approved') return { gap: false, label: isRollCall(row.notes) ? 'making the video (5-15 min)' : 'making start image (1-3 min)', color: '#2a5db0' };
+  if (row.status === 'text approved') return { gap: false, label: ({ rollcall: 'making the video (5-15 min)', travel: 'preparing the artwork (1-3 min)', product: 'seating the presenter (1-3 min)' }[flowOf(row)] || 'making start image (1-3 min)'), color: '#2a5db0' };
   if (row.status === 'image approved') return { gap: false, label: row.kling_job ? 'video rendering at Kling (up to 30 min)' : 'video queued / rendering (5-15 min)', color: '#2a5db0' };
   if (row.panel_status === 'concepts') return { gap: false, label: 'concepts to pick', color: '#2a5db0' };
   if (row.panel_status === 'creating') return { gap: false, label: 'writing brief', color: '#777' };
