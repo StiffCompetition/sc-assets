@@ -733,8 +733,9 @@ async function previewText(r) {
     const movie = (res && res.movie) || {};
     const url = movie.url || (Array.isArray(movie.movies) && movie.movies[0] && movie.movies[0].url) || '';
     if (url) {
-      status.textContent = 'Preview ready.';
-      result.innerHTML = '<video controls preload="metadata" style="display:block;margin:0 auto;width:auto;max-width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);border:1px solid var(--line);background:#000;margin-top:6px" src="' + String(url).replace(/"/g, '&quot;') + '"></video>';
+      status.textContent = 'Preview ready - the start image with the on-screen text, playing on a loop.';
+      // Plays on its own, muted and looping: the words build in over the first seconds, so a still first frame would show no text.
+      result.innerHTML = '<video controls autoplay muted loop playsinline preload="auto" style="display:block;margin:0 auto;width:auto;max-width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);border:1px solid var(--line);background:#000;margin-top:6px" src="' + String(url).replace(/"/g, '&quot;') + '"></video>';
     } else {
       status.textContent = 'Still rendering or status unclear - raw response below.';
       result.innerHTML = '<pre style="white-space:pre-wrap;font-size:11px;color:var(--dim)">' + escapeHtml(JSON.stringify(res)) + '</pre>';
