@@ -755,10 +755,27 @@ function composeNotes(orig) {
   let src = briefPart(orig, 'Source');
   // Shot plan (Playbook 7.33): written by the concept step; kept unchanged on save.
   const plan = briefPart(orig, 'Plan');
+  // Roll Call (Playbook 7.12): the announcer voice-over sits at the end of the Source part as "RollVO: <line> | Logo: <end line>".
+  // It is taken off before the Payoff edit (which runs to the end) and put back with any edit from the Voice-over box.
+  let rollTail = '';
+  const rv = src ? src.match(/\s*RollVO:\s*([\s\S]*?)\s*(\|\s*Logo:[\s\S]*)?$/i) : null;
+  if (rv) {
+    src = src.slice(0, rv.index);
+    const edited = g('rollvo');
+    rollTail = ' RollVO: ' + (edited !== null ? edited.replace(/\s+/g, ' ') : rv[1]) + (rv[2] ? ' ' + rv[2].trim() : '');
+  }
   // Rows from the spreadsheet carry Payoff (the sound the pipeline makes) inside the Source part: an edited Sound replaces it.
   if (src && /Payoff:/i.test(src) && sound) src = src.replace(/Payoff:\s*[\s\S]*$/i, 'Payoff: ' + sound + '.');
+  src = (src || '') + rollTail;
   return 'Scene: ' + g('scene') + ' On-screen: ' + g('onscreen') + ' Sound: ' + sound + '. Motion: ' + g('motion') +
     (idPart ? ' ID: ' + idPart.replace(/[.]+$/, '') + '.' : '') + (src ? ' Source: ' + src : '') + (plan ? ' Plan: ' + plan : '');
+}
+// Roll Call voice-over (Playbook 7.12): the announcer line read over the shared Roll Call clip, shown and editable for Roll Call posts.
+function rollVoEdit(notes) {
+  const m = String(notes || '').match(/RollVO:\s*([\s\S]*?)\s*(\|\s*Logo:\s*([\s\S]*))?$/i);
+  if (!m) return '';
+  return '<div class="field"><label>Voice-over (announcer, read over the Roll Call clip)</label><textarea id="b_rollvo">' + escapeHtml(m[1] || '') + '</textarea>' +
+    (m[3] ? '<div style="margin-top:4px;color:var(--dim);font-size:12px">End card line: ' + escapeHtml(m[3].trim()) + '</div>' : '') + '</div>';
 }
 // Shot plan (Playbook 7.33): the Shot Library picks for this post - Camera is the shot-1 camera move, Entrance and Ending (framing) are shot 2.
 function shotPlanBox(notes) {
@@ -859,6 +876,7 @@ function openDrawer(r) {
     onScreenPreviewHtml(r.notes) +
     previewTextButtonHtml(r) +
     briefEdit(r.notes, 'On-screen', 'On-screen text (setup. delivery; *word* = emphasis)', 'onscreen') +
+    rollVoEdit(r.notes) +
     briefEdit(r.notes, 'Scene', 'Start image (sent to Gemini)', 'scene') +
     shotPlanBox(r.notes) +
     briefEdit(r.notes, 'Motion', /Shot 1 \(/.test(briefPart(r.notes, 'Motion')) ? 'Motion (sent to Kling as a shot list)' : 'Motion (sent to Kling as one continuous shot)', 'motion') +
