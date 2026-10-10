@@ -168,6 +168,18 @@
   .char-tag { align-self: flex-start; font-size: 11px; font-weight: 700; color: #fff; padding: 1px 7px; border-radius: 9px; letter-spacing: .2px; }
   .type-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 28px 10px; font-family: var(--mono); font-size: 11px; color: #555; }
+  .plan-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  .plan-table th { text-align: left; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; padding: 6px; border-bottom: 2px solid var(--ink); }
+  .plan-table td { vertical-align: top; padding: 8px 6px; border-top: 1px solid var(--line); overflow: hidden; }
+  .plan-table td.pgap { background: #fff4dc; }
+  .plan-table select, .plan-table input[type=time] { max-width: 100%; margin-top: 4px; }
+  .pchip { border-left: 5px solid #999; background: #fff; border: 1px solid var(--line); border-left-width: 5px; padding: 3px 6px; margin-bottom: 4px; font-size: 12px; line-height: 1.35; }
+  .pchip .pst { display: block; font-size: 11px; }
+  .pempty { display: block; font-family: var(--mono); font-size: 11px; font-weight: 700; color: #b06a00; }
+  .pday b { display: block; margin-bottom: 4px; }
+  .psum { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .psum span { background: #fff4dc; border: 1px solid #e0b860; padding: 1px 7px; font-size: 12px; }
+  .plan-reuse { font-size: 12px; display: block; margin-top: 4px; }
   .clip-info { border: 1px solid var(--line); background: #f7f7f2; padding: 8px 10px; font-size: 13px; }
   .card .date { font-family: var(--mono); font-size: 11px; color: #565a44; }
   .card .day { font-weight: 700; font-size: 13px; line-height: 1.3; }
@@ -1272,7 +1284,7 @@ function slotState(row) {
   if (dtbSlides(row)) return { gap: false, done: true, label: 'slides ready for your approval', color: '#2a5db0' };
   if (row.video_url) return { gap: false, done: true, label: 'clip ready for your approval', color: '#2a5db0' };
   if (row.status === 'image ready') return { gap: false, label: 'start image ready', color: '#2a5db0' };
-  if (row.status === 'text approved') return { gap: false, label: 'making start image (1-3 min)', color: '#2a5db0' };
+  if (row.status === 'text approved') return { gap: false, label: isRollCall(row.notes) ? 'making the video (5-15 min)' : 'making start image (1-3 min)', color: '#2a5db0' };
   if (row.status === 'image approved') return { gap: false, label: row.kling_job ? 'video rendering at Kling (up to 30 min)' : 'video queued / rendering (5-15 min)', color: '#2a5db0' };
   if (row.panel_status === 'concepts') return { gap: false, label: 'concepts to pick', color: '#2a5db0' };
   if (row.panel_status === 'creating') return { gap: false, label: 'writing brief', color: '#777' };
@@ -1280,10 +1292,14 @@ function slotState(row) {
   if (row.panel_status === 'failed') return { gap: true, label: 'needs attention', color: '#b00' };
   return { gap: true, label: 'old draft', color: '#777' };
 }
-function stateTag(row) {
+// Planner (9 Oct 2026): a planned post shows as a small card in its post-type colour; an empty slot as EMPTY.
+function stateTag(row, time) {
   const st = slotState(row);
-  return '<span style="font-weight:600;color:' + st.color + '">' + (row ? escapeHtml(row.format) + ': ' : '') + st.label + '</span>';
+  if (!row) return '<span class="pempty">EMPTY</span>';
+  const who = row.format === 'Day Greeting' || row.character === 'SC Logo' ? '' : ' ' + charTag(row.character);
+  return '<div class="pchip" style="border-left-color:' + (FORMAT_COLOR[row.format] || '#999') + '">' + (time ? '<b>' + escapeHtml(time) + '</b> ' : '') + '<b style="color:' + (FORMAT_COLOR[row.format] || '#333') + '">' + escapeHtml(row.format) + '</b>' + who + '<span class="pst" style="color:' + st.color + '">' + st.label + '</span></div>';
 }
+function shortTitle(t) { t = String(t || ''); return t.length > 44 ? t.slice(0, 42).trim() + '…' : t; }
 // A product's approved clip (Product rows that reached approved/scheduled/posted with a video), for reuse.
 function savedClip(handle) {
   if (!handle || handle.indexOf('promo:') === 0) return null;
@@ -1292,7 +1308,7 @@ function savedClip(handle) {
 function productOptions(sel) {
   return '<option value="">No product post</option>' +
     ((PROMOS || []).length ? '<optgroup label="Promotable items">' + PROMOS.map(p => '<option value="promo:' + escapeHtml(p.item) + '"' + ('promo:' + p.item === sel ? ' selected' : '') + '>' + escapeHtml(p.item) + '</option>').join('') + '</optgroup>' : '') +
-    '<optgroup label="Shop products">' + (PRODUCTS || []).map(p => '<option value="' + escapeHtml(p.handle) + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(p.title) + '</option>').join('') + '</optgroup>';
+    '<optgroup label="Shop products">' + (PRODUCTS || []).map(p => '<option value="' + escapeHtml(p.handle) + '" title="' + escapeHtml(p.title).replace(/"/g, '&quot;') + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(shortTitle(p.title)) + '</option>').join('') + '</optgroup>';
 }
 // 7 Oct 2026 (Andy): only the Day Greeting uses the day's character, so every other picker leaves him out (exclude).
 function charOptions(sel, exclude) { return '<option value=""' + (sel ? '' : ' selected') + '>Rotate</option>' + CHARACTERS.filter(c => c !== exclude).map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
@@ -1387,7 +1403,7 @@ function formatSelect(date, dow, row, pick) {
 // Extra posts (Playbook 7.6): any number per day, each at its own London time; published by the custom-time schedule.
 function extraCell(date, dow) {
   const have = ROWS.filter(r => londonYmd(r.post_date) === date && r.post_time).sort((a, b) => String(a.post_time).localeCompare(String(b.post_time)));
-  const list = have.map(r => '<div>' + escapeHtml(r.post_time) + ' ' + stateTag(r) + '</div>').join('');
+  const list = have.map(r => stateTag(r, r.post_time)).join('');
   return list + '<div class="extra-box" data-date="' + date + '" data-dow="' + dow + '"></div><button type="button" class="btn secondary extra-add" data-date="' + date + '" data-dow="' + dow + '" style="padding:2px 10px;font-size:12px;margin-top:4px">+ Add post</button>';
 }
 function extraTypes(dow) {
@@ -1402,7 +1418,7 @@ function addExtraLine(box) {
   line.className = 'extra-line';
   line.style.cssText = 'margin-top:4px;padding:4px;border:1px solid var(--line);border-radius:6px';
   line.innerHTML = '<input type="time" class="ex-time" value="18:00" step="900" style="width:95px"> ' +
-    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = (f === 'Brand Lore' || dow === 0) ? leftFor('SC Logo', f) : (f === 'Day Greeting' ? leftFor(ch, f) : leftOther(ch, f)); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + f + (n === null || f === 'Product' || f === 'Dare to Buy' ? '' : ' (' + n + ')') + '</option>'; }).join('') + '</select> ' +
+    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = (f === 'Brand Lore' || dow === 0) ? leftFor('SC Logo', f) : (f === 'Day Greeting' ? leftFor(ch, f) : leftOther(ch, f)); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + f + (n === null || f === 'Product' || f === 'Dare to Buy' ? '' : ' (' + n + ' left)') + '</option>'; }).join('') + '</select> ' +
     '<span class="ex-prod" style="display:none"><select class="ex-product">' + productOptions('') + '</select> <select class="ex-char">' + charOptions('', ch) + '</select></span> ' +
     '<button type="button" class="btn secondary ex-remove" style="padding:0 8px;font-size:12px">x</button>';
   box.appendChild(line);
@@ -1417,46 +1433,51 @@ function drawPlanDays(useDefaults) {
   if (!start) return;
   const picks = useDefaults === false ? {} : planDefaults(start, n);
   let slots = 0, gaps = 0; const gapList = [];
-  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left">Day</th><th align="left">6am greeting</th><th align="left">7am</th><th align="left">12pm product</th><th align="left">NFT (12:00 New York)</th><th align="left">Extra posts</th></tr>';
+  let html = '<table class="plan-table"><colgroup><col style="width:11%"><col style="width:14%"><col style="width:19%"><col style="width:22%"><col style="width:14%"><col style="width:20%"></colgroup><tr><th>Day</th><th>6am greeting</th><th>7am</th><th>12pm product</th><th>NFT (12:00 New York)</th><th>Extra posts</th></tr>';
+  const gapByDay = {};
   for (let i = 0; i < n; i++) {
     const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i);
     const date = ymd(d); const dow = d.getUTCDay();
     const e6 = existingRow(date, '6am');
-    slots++; if (slotState(e6).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 6am'); }
+    slots++; if (slotState(e6).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 6am'); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push('6am'); }
     const n6 = leftFor(DAY_CHAR[dow], 'Day Greeting');
-    const greet = stateTag(e6) + '<br>' + (slotState(e6).gap
-      ? '<select data-date="' + date + '" class="plan6"><option value="Day Greeting"' + (picks[date + '|6am'] ? ' selected' : '') + (n6 === 0 ? ' disabled' : '') + '>Day Greeting' + (n6 === null ? '' : ' (' + n6 + ')') + '</option><option value=""' + (picks[date + '|6am'] ? '' : ' selected') + '>None</option></select>'
+    const greet = stateTag(e6) + (slotState(e6).gap
+      ? '<select data-date="' + date + '" class="plan6"><option value="Day Greeting"' + (picks[date + '|6am'] ? ' selected' : '') + (n6 === 0 ? ' disabled' : '') + '>Day Greeting' + (n6 === null ? '' : ' (' + n6 + ' left)') + '</option><option value=""' + (picks[date + '|6am'] ? '' : ' selected') + '>None</option></select>'
       : '<em>Keep</em>');
     const e7 = existingRow(date, '7am');
-    slots++; if (slotState(e7).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 7am'); }
-    const main = stateTag(e7) + '<br>' + formatSelect(date, dow, e7, picks[date + '|7am']) + ((slotState(e7).gap && dow !== 0) ? ' <select data-date="' + date + '" class="plan7c">' + charOptions(picks[date + '|7amc'] || '', DAY_CHAR[dow]) + '</select>' : '');
+    slots++; if (slotState(e7).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 7am'); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push('7am'); }
+    // A 7am-type post moved to its own time is listed once, under Extra posts; the 7am slot just says where it went.
+    const moved = e7 && e7.post_time;
+    const main = moved ? '<div style="font-size:12px;color:#555">' + escapeHtml(e7.format) + ' moved to ' + escapeHtml(e7.post_time) + ' (see Extra posts)</div>' + formatSelect(date, dow, e7, picks[date + '|7am']) : stateTag(e7) + formatSelect(date, dow, e7, picks[date + '|7am']) + ((slotState(e7).gap && dow !== 0) ? ' <select data-date="' + date + '" class="plan7c">' + charOptions(picks[date + '|7amc'] || '', DAY_CHAR[dow]) + '</select>' : '');
     let prod = '';
     if ([3, 5, 6].indexOf(dow) !== -1) {
       const e12 = existingRow(date, '12pm');
-      slots++; if (slotState(e12).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 12pm'); }
+      slots++; if (slotState(e12).gap) { gaps++; gapList.push(WEEKDAY[dow] + ' 12pm'); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push('12pm'); }
       const st12 = slotState(e12);
       const pk = picks[date + '|12pm'] || '';
       const pp = (PRODUCTS || []).find(x => x.handle === pk);
-      prod = stateTag(e12) + '<br>' + (st12.gap
-        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <label style="font-size:12px"><input type="checkbox" class="plan12r" data-date="' + date + '"> reuse saved clip</label> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
+      prod = stateTag(e12) + (st12.gap
+        ? '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <label class="plan-reuse"><input type="checkbox" class="plan12r" data-date="' + date + '"> <span class="plan-reuse-t">use its approved clip (no new video)</span></label> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
         : '<em>Keep</em>');
     }
     let nft = '';
     if (dow === 3 || dow === 4) {
       const nt = nyNoonLondon(date);
       const en = ROWS.find(r => londonYmd(r.post_date) === date && r.format === 'NFT');
-      slots++; if (!en) { gaps++; gapList.push(WEEKDAY[dow] + ' NFT'); }
-      nft = (en ? stateTag(en) + '<br><em>Keep</em>' : '<span style="font-weight:600;color:#b06a00">EMPTY</span> (' + nt + ' London)<br><select data-date="' + date + '" data-time="' + nt + '" class="planNft"><option value="NFT" selected>NFT</option><option value="">None</option></select> <select data-date="' + date + '" class="planNftC">' + nftOptions(DAY_CHAR[dow]) + '</select>');
+      slots++; if (!en) { gaps++; gapList.push(WEEKDAY[dow] + ' NFT'); (gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] = gapByDay[WEEKDAY[dow] + ' ' + date.slice(8)] || []).push('NFT'); }
+      nft = (en ? stateTag(en) + '<em>Keep</em>' : '<span class="pempty">EMPTY <span style="font-weight:400">(' + nt + ' London)</span></span><select data-date="' + date + '" data-time="' + nt + '" class="planNft"><option value="NFT" selected>NFT</option><option value="">None</option></select> <select data-date="' + date + '" class="planNftC">' + nftOptions(DAY_CHAR[dow]) + '</select>');
     }
-    const bg = (slotState(e6).gap || slotState(e7).gap || ([3, 5, 6].indexOf(dow) !== -1 && slotState(existingRow(date, '12pm')).gap)) ? 'background:rgba(176,106,0,0.07);' : '';
-    html += '<tr style="border-top:1px solid var(--line);' + bg + '"><td>' + WEEKDAY[dow] + ' ' + date.slice(8) + '/' + date.slice(5, 7) + '<br><em>' + escapeHtml(DAY_CHAR[dow]) + '</em></td><td>' + greet + '</td><td>' + main + '</td><td>' + prod + '</td><td>' + nft + '</td><td>' + extraCell(date, dow) + '</td></tr>';
+    const g = c => c ? ' class="pgap"' : '';
+    const g12 = [3, 5, 6].indexOf(dow) !== -1 && slotState(existingRow(date, '12pm')).gap;
+    const gN = (dow === 3 || dow === 4) && !ROWS.find(r => londonYmd(r.post_date) === date && r.format === 'NFT');
+    html += '<tr><td class="pday"><b>' + WEEKDAY[dow] + ' ' + date.slice(8) + '/' + date.slice(5, 7) + '</b>' + charTag(DAY_CHAR[dow]) + '</td><td' + g(slotState(e6).gap) + '>' + greet + '</td><td' + g(slotState(e7).gap) + '>' + main + '</td><td' + g(g12) + '>' + prod + '</td><td' + g(gN) + '>' + nft + '</td><td>' + extraCell(date, dow) + '</td></tr>';
   }
   html += '</table>';
-  const summary = '<div class="brief-part" style="margin-bottom:8px"><b>' + (slots - gaps) + ' of ' + slots + ' slots filled.</b> ' + (gaps ? 'Empty: ' + gapList.join(', ') + '. Empty slots are pre-filled with a balanced mix below - change anything, then Create.' : 'Nothing missing.') + '</div>';
+  const summary = '<div class="brief-part" style="margin-bottom:8px"><b>' + (slots - gaps) + ' of ' + slots + ' slots filled.</b> ' + (gaps ? 'Empty slots (shaded below) are pre-filled with a balanced mix: change anything, then Create briefs.<div class="psum">' + Object.keys(gapByDay).map(k => '<span><b>' + k + '</b> ' + gapByDay[k].join(', ') + '</span>').join('') + '</div>' : 'Nothing missing.') + '</div>';
   let foot = '';
   document.getElementById('planDaysBox').innerHTML = summary + html + foot;
   document.querySelectorAll('.extra-add').forEach(b => b.addEventListener('click', () => addExtraLine(document.querySelector('.extra-box[data-date="' + b.dataset.date + '"]'))));
-  const syncReuse = sel => { const ru = document.querySelector('.plan12r[data-date="' + sel.dataset.date + '"]'); if (!ru) return; const ok = !!savedClip(sel.value); ru.disabled = !ok; ru.checked = ok; ru.parentElement.style.opacity = ok ? 1 : 0.4; ru.parentElement.title = ok ? 'Uses this product\'s approved clip with fresh captions: no new video spend.' : 'No approved clip saved for this product yet.'; };
+  const syncReuse = sel => { const ru = document.querySelector('.plan12r[data-date="' + sel.dataset.date + '"]'); if (!ru) return; const ok = !!savedClip(sel.value); ru.disabled = !ok; ru.checked = ok; ru.parentElement.style.opacity = ok ? 1 : 0.5; ru.parentElement.title = ok ? 'Uses this product\'s approved clip with fresh captions: no new video spend.' : 'No approved clip saved for this product yet.'; const tx = ru.parentElement.querySelector('.plan-reuse-t'); if (tx) tx.textContent = ok ? 'use its approved clip (no new video)' : 'no approved clip yet: a new video will be made'; };
   document.querySelectorAll('.plan12').forEach(sel => { syncReuse(sel); sel.addEventListener('change', () => syncReuse(sel)); });
   document.querySelectorAll('.plan12').forEach(sel => sel.addEventListener('change', () => {
     const p = (PRODUCTS || []).find(x => x.handle === sel.value);
