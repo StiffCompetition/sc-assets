@@ -1656,15 +1656,30 @@ async function openBoxes() {
   document.getElementById('boxList').innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px">' + items.map((i, k) => '<button class="btn secondary boxPick" data-k="' + k + '" style="display:flex;flex-direction:column;align-items:center;width:120px;padding:6px"><img src="' + escapeHtml(i.crop || i.photo) + '" style="width:110px;height:110px;object-fit:cover;background:#fff"><span style="font-size:11px;margin-top:4px">' + escapeHtml(i.name || i.handle) + '</span><span style="font-size:10px;color:' + (i.crop ? '#2a7a2a' : '#b06a00') + '">' + (i.crop ? 'framed' : 'not framed yet') + '</span></button>').join('') + '</div><div id="boxEditor"></div>';
   document.querySelectorAll('.boxPick').forEach(b => b.addEventListener('click', () => boxEditor(items[Number(b.dataset.k)])));
 }
+// T-shirts and hoodies (10 Oct 2026) also get a second, close-up photo that fades in over the box halfway through the clip.
+const hasSecond = item => /\b(TEE|HOODIE)\b/i.test(item.name || '') || /t-?shirt|hoodie|\btee\b/i.test(item.title || '');
+const cropSource = crop => { const m = /fl_relative\/(.+)$/.exec(crop || ''); try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; } };
 function boxEditor(item) {
   const ed = document.getElementById('boxEditor');
-  ed.innerHTML = '<h3 style="margin-top:16px">' + escapeHtml(item.name || item.handle) + '</h3><div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap"><div id="boxView" style="position:relative;width:' + BOX_W + 'px;height:' + BOX_H + 'px;overflow:hidden;border:5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);background:#1c3faa;cursor:grab;touch-action:none"><img id="boxImg" src="' + escapeHtml(item.photo) + '" style="position:absolute;left:0;top:0;user-select:none;-webkit-user-drag:none" draggable="false"></div><div style="min-width:220px"><label style="font-size:12px">Zoom</label><br><input type="range" id="boxZoom" min="1" max="4" step="0.01" value="1" style="width:220px"><p style="font-size:12px">Drag the photo to position it. The box must be filled edge to edge.</p><button class="btn" id="boxSave">Save framing</button> <span id="boxStatus" style="font-size:12px"></span></div></div>';
-  const img = document.getElementById('boxImg'), view = document.getElementById('boxView'), zoom = document.getElementById('boxZoom');
+  ed.innerHTML = '<h3 style="margin-top:16px">' + escapeHtml(item.name || item.handle) + '</h3><div id="boxEd1"></div>' +
+    (hasSecond(item) ? '<h3 style="margin-top:22px">Second photo (close-up)</h3><div class="sub">Pick the close-up (for example the print), then frame it. It fades in over the box halfway through the clip.</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0">' + (item.photos || []).map((p, k) => '<button class="btn secondary box2Pick" data-k="' + k + '" style="padding:4px' + (cropSource(item.crop2) === p ? ';outline:3px solid #2a7a2a' : '') + '"><img src="' + escapeHtml(p) + '" style="width:80px;height:80px;object-fit:cover;background:#fff"></button>').join('') + '</div>' +
+      '<div style="font-size:12px;color:' + (item.crop2 ? '#2a7a2a' : '#b06a00') + '">' + (item.crop2 ? 'Second photo framed (green outline).' : 'No second photo yet.') + '</div><div id="boxEd2"></div>' : '');
+  framer(document.getElementById('boxEd1'), item, 1, item.photo);
+  if (hasSecond(item)) {
+    document.querySelectorAll('.box2Pick').forEach(b => b.addEventListener('click', () => framer(document.getElementById('boxEd2'), item, 2, item.photos[Number(b.dataset.k)])));
+    if (item.crop2 && cropSource(item.crop2)) framer(document.getElementById('boxEd2'), item, 2, cropSource(item.crop2));
+  }
+}
+function framer(holder, item, slot, src) {
+  const id = s => 'bx' + slot + s, saved = slot === 2 ? item.crop2 : item.crop;
+  holder.innerHTML = '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-top:8px"><div id="' + id('View') + '" style="position:relative;width:' + BOX_W + 'px;height:' + BOX_H + 'px;overflow:hidden;border:5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);background:#1c3faa;cursor:grab;touch-action:none"><img id="' + id('Img') + '" src="' + escapeHtml(src) + '" style="position:absolute;left:0;top:0;user-select:none;-webkit-user-drag:none" draggable="false"></div><div style="min-width:220px"><label style="font-size:12px">Zoom</label><br><input type="range" id="' + id('Zoom') + '" min="1" max="4" step="0.01" value="1" style="width:220px"><p style="font-size:12px">Drag the photo to position it. The box must be filled edge to edge.</p><button class="btn" id="' + id('Save') + '">' + (slot === 2 ? 'Save second photo' : 'Save framing') + '</button> <span id="' + id('Status') + '" style="font-size:12px"></span></div></div>';
+  const img = document.getElementById(id('Img')), view = document.getElementById(id('View')), zoom = document.getElementById(id('Zoom'));
   let nw = 0, nh = 0, base = 1, z = 1, x = 0, y = 0;
   const clamp = () => { const w = nw * base * z, h = nh * base * z; x = Math.min(0, Math.max(BOX_W - w, x)); y = Math.min(0, Math.max(BOX_H - h, y)); img.style.width = w + 'px'; img.style.height = h + 'px'; img.style.left = x + 'px'; img.style.top = y + 'px'; };
   img.onload = () => {
     nw = img.naturalWidth; nh = img.naturalHeight; base = Math.max(BOX_W / nw, BOX_H / nh);
-    const m = /c_crop,g_xy_center,x_([0-9.]+),y_([0-9.]+),w_([0-9.]+),h_([0-9.]+)/.exec(item.crop || '');
+    const m = cropSource(saved) === src ? /c_crop,g_xy_center,x_([0-9.]+),y_([0-9.]+),w_([0-9.]+),h_([0-9.]+)/.exec(saved || '') : null;
     if (m) { z = 1 / Math.max(0.01, Number(m[3]) * nw * base / BOX_W); zoom.value = z; const w = nw * base * z, h = nh * base * z; x = BOX_W / 2 - Number(m[1]) * w; y = BOX_H / 2 - Number(m[2]) * h; }
     else { x = (BOX_W - nw * base) / 2; y = (BOX_H - nh * base) / 2; }
     clamp();
@@ -1674,11 +1689,11 @@ function boxEditor(item) {
   view.addEventListener('pointerdown', e => { drag = { sx: e.clientX, sy: e.clientY, x0: x, y0: y }; view.setPointerCapture(e.pointerId); view.style.cursor = 'grabbing'; });
   view.addEventListener('pointermove', e => { if (!drag) return; x = drag.x0 + e.clientX - drag.sx; y = drag.y0 + e.clientY - drag.sy; clamp(); });
   view.addEventListener('pointerup', () => { drag = null; view.style.cursor = 'grab'; });
-  document.getElementById('boxSave').addEventListener('click', async () => {
+  document.getElementById(id('Save')).addEventListener('click', async () => {
     const w = nw * base * z, h = nh * base * z, f = v => Math.max(0, Math.min(1, v)).toFixed(4);
-    const crop = 'https://res.cloudinary.com/dkapdtxek/image/fetch/c_crop,g_xy_center,x_' + f((BOX_W / 2 - x) / w) + ',y_' + f((BOX_H / 2 - y) / h) + ',w_' + f(BOX_W / w) + ',h_' + f(BOX_H / h) + ',fl_relative/' + encodeURIComponent(item.photo);
-    const st = document.getElementById('boxStatus'); st.textContent = 'Saving...';
-    try { const r = await (await fetch(BOX_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: item.handle, crop: crop }) })).json(); if (!r.ok) throw new Error('save failed'); item.crop = crop; st.textContent = 'Saved. Every Product post for this item uses this framing.'; }
+    const crop = 'https://res.cloudinary.com/dkapdtxek/image/fetch/c_crop,g_xy_center,x_' + f((BOX_W / 2 - x) / w) + ',y_' + f((BOX_H / 2 - y) / h) + ',w_' + f(BOX_W / w) + ',h_' + f(BOX_H / h) + ',fl_relative/' + encodeURIComponent(src);
+    const st = document.getElementById(id('Status')); st.textContent = 'Saving...';
+    try { const r = await (await fetch(BOX_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: item.handle, crop: crop, slot: slot }) })).json(); if (!r.ok) throw new Error('save failed'); if (slot === 2) item.crop2 = crop; else item.crop = crop; st.textContent = slot === 2 ? 'Saved. Product posts for this item now show this close-up.' : 'Saved. Every Product post for this item uses this framing.'; }
     catch (e) { st.textContent = 'Not saved - please try again.'; }
   });
 }
