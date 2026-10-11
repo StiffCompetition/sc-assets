@@ -327,6 +327,7 @@
   .drawer-actions .btn { flex: 1 1 140px; }
   .drawer.full .field textarea, .field input, .field select { font-size: 16px; }
 }
+.postno{font-family:var(--mono);font-size:11px;color:#888;margin-left:4px}
 </style>
 </head>
 <body>
@@ -664,7 +665,7 @@ function makeCard(r) {
   // and one status: the step the post is at, "scheduled" once Andy gives the final approval, then "posted". The caption is in the drawer.
   const st = cardStage(r);
   card.innerHTML =
-    '<div class="date">' + fmtDate(r.post_date) + ' &middot; ' + londonHm(slotDue(r)) + '</div>' +
+    '<div class="date">' + fmtDate(r.post_date) + ' &middot; ' + londonHm(slotDue(r)) + ' <span class="postno">#' + r.id + '</span></div>' +
     charTag(r.character, r) +
     '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + r.format + '</div>' +
     osLine +
@@ -975,7 +976,7 @@ function openDrawer(r) {
   drawer.innerHTML =
     '<div class="brief-topbar"><button class="btn secondary" id="backBtn">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">' + escapeHtml(stateName(r)) + '</span><button class="btn secondary" id="closeTopBtn">Close &times;</button></div>' +
     '<h2>' + escapeHtml(dayName(r)) + '</h2>' +
-    '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + escapeHtml(charLabel(r.character, r)) + ' · ' + r.format + '</div>' +
+    '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + escapeHtml(charLabel(r.character, r)) + ' · ' + r.format + ' · <span class="postno">post #' + r.id + '</span></div>' +
     (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' :
     // NFT posts are built whole by SC - NFT Post Builder (character template + NFT + ticker): no brief boxes to edit.
     r.format === 'NFT' ? panelBox(r) + (r.notes ? '<div class="field"><label>NFT (from the shop)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
@@ -1010,6 +1011,8 @@ function openDrawer(r) {
     '<div class="drawer-actions">' +
       '<button class="btn" id="saveBtn">Save</button>' +
       (canPost ? '<button class="btn danger" id="postNowBtn">Post Now</button>' : '') +
+      // 10 Oct 2026 (Andy): a posted Dare to Buy with a video can re-post just its Facebook Reel (after the Facebook post was deleted).
+      (r.format === 'Dare to Buy' && r.video_url && r.status === 'posted' ? '<button class="btn danger" id="fbOnlyBtn">Facebook only (re-post Reel)</button>' : '') +
       (r.status !== 'posted' ? '<button class="btn secondary" id="reschedBtn">Reschedule</button>' : '') +
       '<button class="btn secondary" id="rejectBtn">Reject</button>' +
       '<button class="btn danger" id="deleteBtn">Delete</button>' +
@@ -1033,6 +1036,7 @@ function openDrawer(r) {
     try { const res = await fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-dare-to-buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ row_id: r.id }) }); if (!res.ok) throw new Error('HTTP ' + res.status); st.textContent = 'Done - reloading.'; setTimeout(() => location.reload(), 800); } catch (e) { st.textContent = 'Failed: ' + e.message; }
   });
   const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
+  const fb = document.getElementById('fbOnlyBtn'); if (fb) fb.addEventListener('click', () => postFacebookOnly(r.id));
   const rs = document.getElementById('reschedBtn'); if (rs) rs.addEventListener('click', () => openReschedule(r));
   document.getElementById('rejectBtn').addEventListener('click', () => rejectRow(r));
   document.getElementById('deleteBtn').addEventListener('click', () => deleteRow(r));
@@ -1151,6 +1155,20 @@ function statusField(current, r) {
 
 function closeDrawer() {
   document.getElementById('overlay').classList.remove('open');
+}
+
+async function postFacebookOnly(id) {
+  const statusEl = document.getElementById('saveStatus');
+  if (!confirm('Post the Facebook Reel for this post now? Instagram and X are not touched.')) return;
+  statusEl.textContent = 'Posting to Facebook...';
+  try {
+    const res = await fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-publish-dtb', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ row_id: id, only: 'Facebook' })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    statusEl.textContent = j.summary || 'Posted to Facebook.';
+  } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
 }
 
 async function postNow(id) {
