@@ -13,23 +13,24 @@
     --line: #d8d8d8;
     --today: #1a1a1a;
     --mono: 'Courier New', Courier, monospace;
+    --c-today:#e8453c; --c-next:#2f6fed; --c-wait:#e49b0f; --c-idea:#8a4fd6; --c-park:#8a8f98; --c-done:#2e9e5b; --c-andy:#2f6fed; --c-claude:#12a39a;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-  header { background: #fff; padding: 16px 28px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); }
+  header { background: #fff; border-top: 5px solid var(--c-next); padding: 16px 28px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); }
   header img.logo-img { height: 56px; width: auto; display: block; flex-shrink: 0; }
   header .logo { width: 40px; height: 40px; flex-shrink: 0; border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
   header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
   header p { margin: 2px 0 0; color: var(--grey); font-size: 13px; }
   header .spacer { flex: 1; }
   button { font-family: inherit; font-size: 14px; cursor: pointer; }
-  .btn { padding: 8px 14px; border: 1px solid var(--ink); background: var(--ink); color: #fff; }
-  .btn.ghost { background: #fff; color: var(--ink); }
+  .btn { padding: 8px 14px; border: 1px solid var(--c-next); background: var(--c-next); color: #fff; }
+  .btn.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
   .btn.small { padding: 4px 10px; font-size: 13px; }
 
   .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 28px; background: var(--panel); border-bottom: 1px solid var(--line); align-items: center; }
   .tab { padding: 6px 12px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 0; }
-  .tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tab.on { background: var(--c-next); color: #fff; border-color: var(--c-next); }
   .tab .n { font-family: var(--mono); font-size: 12px; opacity: .7; margin-left: 4px; }
   .tabs .who { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--grey); }
   .tabs select { font-family: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); background: #fff; }
@@ -37,14 +38,33 @@
   main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
   .group-title { margin: 22px 0 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); }
   .card { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
-  .card.today { border-left: 4px solid var(--today); }
+  .card { border-left: 5px solid var(--c-park); }
+  .card.s-Today { border-left-color: var(--c-today); background: #fff8f7; }
+  .card.s-Next { border-left-color: var(--c-next); }
+  .card.s-Waiting { border-left-color: var(--c-wait); background: #fffaf0; }
+  .card.s-Idea { border-left-color: var(--c-idea); }
+  .card.s-Parked { border-left-color: var(--c-park); }
+  .card.s-Done { border-left-color: var(--c-done); }
+  .who-tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:#fff; padding:1px 8px; margin-right:8px; vertical-align:middle; }
+  .who-tag.andy { background: var(--c-andy); } .who-tag.claude { background: var(--c-claude); }
+  .action { font-size: 17px; font-weight: 600; margin-top: 6px; overflow-wrap:anywhere; }
+  .card .title { font-size: 13px; font-weight: 400; color: var(--grey); }
+  details.more { margin-top: 6px; } details.more summary { cursor:pointer; font-size:13px; color:#2a5db0; }
+  .gt-Today{color:var(--c-today)} .gt-Next{color:var(--c-next)} .gt-Waiting{color:var(--c-wait)} .gt-Idea{color:var(--c-idea)} .gt-Parked{color:var(--c-park)} .gt-Done{color:var(--c-done)}
+  .btn.go { background: var(--c-claude); border-color: var(--c-claude); }
+  .btn.done { background: var(--c-done); border-color: var(--c-done); }
   .card.done .title { text-decoration: line-through; color: var(--grey); }
   .card .body { flex: 1; min-width: 0; }
   .title { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
   .step { color: #333; font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
   .meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .chip { font-size: 12px; padding: 1px 8px; border: 1px solid var(--line); color: var(--grey); background: #fff; }
-  .chip.me { border-color: var(--ink); color: var(--ink); }
+  .chip.me { border-color: var(--c-andy); color: var(--c-andy); }
+  .chip.cl { border-color: var(--c-claude); color: var(--c-claude); }
+  .chip.num { font-family: var(--mono); border: none; padding-left: 0; }
+  .chip.wait { border-color: #b36b00; color: #b36b00; }
+  .chip.go { background: var(--c-claude); color: #fff; border-color: var(--c-claude); }
+  .chip.nogo { border-style: dashed; }
   .chip.due { font-family: var(--mono); }
   .chip.late { border-color: #b00020; color: #b00020; }
   .acts { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
@@ -92,6 +112,7 @@
       <label>Who <select id="f_owner"><option>Andy</option><option>Claude</option></select></label>
       <label>Due <input id="f_due" type="date"></label>
     </div>
+    <label>Waiting on <input id="f_wait" maxlength="60" placeholder="Leave empty if nothing is holding it up"></label>
     <label>Link <input id="f_link" type="url" placeholder="https://…"></label>
     <label>Note <textarea id="f_notes" rows="3" maxlength="400"></textarea></label>
     <div class="foot">
@@ -159,18 +180,27 @@ function renderTabs() {
 function card(r) {
   const late = r.due && r.due < today() && r.status !== 'Done';
   const link = safeUrl(r.link);
-  return '<div class="card' + (r.status === 'Today' ? ' today' : '') + (r.status === 'Done' ? ' done' : '') + '" data-id="' + esc(r.id) + '">'
-    + '<div class="body"><div class="title">' + esc(r.title) + '</div>'
-    + (r.next_step ? '<div class="step">' + esc(r.next_step) + '</div>' : '')
-    + '<div class="meta"><span class="chip' + (r.owner === 'Andy' ? ' me' : '') + '">' + esc(r.owner || '') + '</span>'
-    + '<span class="chip">' + esc(r.category || '') + '</span>'
+  const isA = r.owner === 'Andy';
+  const action = r.next_step || r.title;
+  const extra = [];
+  if (r.next_step) extra.push('<div class="step">' + esc(r.title) + '</div>');
+  if (r.notes) extra.push('<div class="step" style="color:#6b6b6b">' + esc(r.notes) + '</div>');
+  return '<div class="card s-' + esc(r.status) + '" data-id="' + esc(r.id) + '">'
+    + '<div class="body">'
+    + '<div class="title"><span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (isA ? 'Your action' : 'Claude') + '</span>#' + esc(r.id) + ' &middot; ' + esc(r.title) + '</div>'
+    + '<div class="action">' + esc(action) + '</div>'
+    + '<div class="meta">'
+    + (r.waiting_on ? '<span class="chip wait">Waiting on: ' + esc(r.waiting_on) + '</span>' : '')
+    + (!isA && r.status !== 'Done' ? (r.go === 'yes' ? '<span class="chip go">Approved for Claude</span>' : '<span class="chip nogo">Not approved</span>') : '')
     + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
+    + '<span class="chip">' + esc(r.category || '') + '</span>'
     + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Open</a>' : '')
     + '</div>'
-    + (r.notes ? '<div class="step" style="color:#6b6b6b;margin-top:6px">' + esc(r.notes) + '</div>' : '')
+    + (r.notes ? '<details class="more"><summary>More</summary><div class="step" style="color:#6b6b6b;margin-top:4px">' + esc(r.notes) + '</div></details>' : '')
     + '</div>'
     + '<div class="acts"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>'
-    + (r.status !== 'Done' ? '<button class="btn small" data-act="done">Done</button>' : '')
+    + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
+    + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
 
@@ -181,11 +211,12 @@ function render() {
   list.sort((a, b) => (rank[a.status] - rank[b.status]) || String(a.due || '9999').localeCompare(String(b.due || '9999')));
   if (!list.length) { $('list').innerHTML = '<div class="empty">Nothing here.</div>'; return; }
   let html = '', last = '';
-  list.forEach(r => { if (view === 'Now' && r.status !== last) { html += '<div class="group-title">' + esc(r.status) + '</div>'; last = r.status; } html += card(r); });
+  list.forEach(r => { if (view === 'Now' && r.status !== last) { html += '<div class="group-title gt-' + esc(r.status) + '">' + esc(r.status) + '</div>'; last = r.status; } html += card(r); });
   $('list').innerHTML = html;
   $('list').querySelectorAll('.card').forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id);
     c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
+    const g = c.querySelector('[data-act=go]'); if (g) g.onclick = () => save(Object.assign({}, r, { go: r.go === 'yes' ? '' : 'yes' }));
     const d = c.querySelector('[data-act=done]'); if (d) d.onclick = () => save(Object.assign({}, r, { status: 'Done' }));
     c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
   });
@@ -197,7 +228,7 @@ async function save(r) {
   if (i >= 0) rows[i] = r;
   render();
   try {
-    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes }) });
+    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes, waiting_on: r.waiting_on || '', go: r.go || '' }) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const out = await res.json();
     if (!out.ok) throw new Error('not saved');
@@ -219,6 +250,7 @@ function openDlg(r) {
   $('f_owner').value = r ? r.owner || 'Andy' : 'Andy';
   $('f_due').value = r ? r.due || '' : '';
   $('f_link').value = r ? r.link || '' : '';
+  $('f_wait').value = r ? r.waiting_on || '' : '';
   $('f_notes').value = r ? r.notes || '' : '';
   $('removeBtn').style.display = r ? '' : 'none';
   $('dlg').showModal();
@@ -228,7 +260,7 @@ $('cancel').onclick = () => $('dlg').close();
 $('removeBtn').onclick = () => { if (editing) { save(Object.assign({}, editing, { status: 'Removed' })); rows = rows.filter(x => String(x.id) !== String(editing.id)); render(); } $('dlg').close(); };
 $('form').onsubmit = e => {
   e.preventDefault();
-  const r = Object.assign({}, editing || {}, { title: $('f_title').value.trim(), next_step: $('f_next').value.trim(), category: $('f_cat').value, status: $('f_status').value, owner: $('f_owner').value, due: $('f_due').value, link: $('f_link').value.trim(), notes: $('f_notes').value.trim() });
+  const r = Object.assign({}, editing || {}, { title: $('f_title').value.trim(), next_step: $('f_next').value.trim(), category: $('f_cat').value, status: $('f_status').value, owner: $('f_owner').value, due: $('f_due').value, link: $('f_link').value.trim(), waiting_on: $('f_wait').value.trim(), notes: $('f_notes').value.trim() });
   if (!r.title) return;
   $('dlg').close();
   save(r);
