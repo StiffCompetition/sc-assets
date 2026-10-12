@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stiff Competition — Marketing</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #fafafa;
+    --panel: #ffffff;
+    --grey: #6b6b6b;
+    --line: #d8d8d8;
+    --today: #1a1a1a;
+    --mono: 'Courier New', Courier, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  header { background: #fff; padding: 16px 28px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); }
+  header img.logo-img { height: 56px; width: auto; display: block; flex-shrink: 0; }
+  header .logo { width: 40px; height: 40px; flex-shrink: 0; border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+  header p { margin: 2px 0 0; color: var(--grey); font-size: 13px; }
+  header .spacer { flex: 1; }
+  button { font-family: inherit; font-size: 14px; cursor: pointer; }
+  .btn { padding: 8px 14px; border: 1px solid var(--ink); background: var(--ink); color: #fff; }
+  .btn.ghost { background: #fff; color: var(--ink); }
+  .btn.small { padding: 4px 10px; font-size: 13px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 28px; background: var(--panel); border-bottom: 1px solid var(--line); align-items: center; }
+  .tab { padding: 6px 12px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 0; }
+  .tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tab .n { font-family: var(--mono); font-size: 12px; opacity: .7; margin-left: 4px; }
+  .tabs .who { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--grey); }
+  .tabs select { font-family: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); background: #fff; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
+  .group-title { margin: 22px 0 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
+  .card.today { border-left: 4px solid var(--today); }
+  .card.done .title { text-decoration: line-through; color: var(--grey); }
+  .card .body { flex: 1; min-width: 0; }
+  .title { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+  .step { color: #333; font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
+  .meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { font-size: 12px; padding: 1px 8px; border: 1px solid var(--line); color: var(--grey); background: #fff; }
+  .chip.me { border-color: var(--ink); color: var(--ink); }
+  .chip.due { font-family: var(--mono); }
+  .chip.late { border-color: #b00020; color: #b00020; }
+  .acts { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+  .acts select { font-size: 13px; padding: 4px; border: 1px solid var(--line); background: #fff; }
+  a.lnk { font-size: 13px; color: #2a5db0; text-decoration: none; }
+  .empty { color: var(--grey); padding: 40px 0; text-align: center; }
+  .error-state { background: #fff; border: 1px solid #b00020; color: #b00020; padding: 14px; margin: 20px 0; }
+
+  dialog { border: 1px solid var(--ink); padding: 0; width: min(520px, 94vw); }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  .dlg { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .dlg h2 { margin: 0 0 4px; font-size: 18px; }
+  .dlg label { font-size: 12px; color: var(--grey); display: flex; flex-direction: column; gap: 3px; }
+  .dlg input, .dlg select, .dlg textarea { font-family: inherit; font-size: 15px; padding: 7px 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  .dlg .row { display: flex; gap: 10px; } .dlg .row > label { flex: 1; }
+  .dlg .foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 16px; font-size: 14px; display: none; }
+
+  @media (max-width: 640px) {
+    header { padding: 12px 16px; } .tabs { padding: 10px 16px; } .tabs .who { margin-left: 0; width: 100%; }
+    .card { flex-direction: column; } .acts { flex-direction: row; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <img class="logo-img" src="https://res.cloudinary.com/dkapdtxek/image/upload/v1791598843/SCSMAuto/sc_letters_logo_header_v1.png" alt="SC" onerror="this.outerHTML='<div class=&quot;logo&quot;>SC</div>'">
+  <div><h1>Marketing</h1><p>What needs doing, in order</p></div>
+  <div class="spacer"></div>
+  <button class="btn" id="addBtn">+ Add</button>
+</header>
+<div class="tabs" id="tabs"></div>
+<main id="list"><div class="empty">Loading…</div></main>
+
+<dialog id="dlg">
+  <form method="dialog" class="dlg" id="form">
+    <h2 id="dlgTitle">Add</h2>
+    <label>What <input id="f_title" maxlength="80" required placeholder="Short and clear"></label>
+    <label>Next step <input id="f_next" maxlength="100" placeholder="One line"></label>
+    <div class="row">
+      <label>Category <select id="f_cat"></select></label>
+      <label>Status <select id="f_status"></select></label>
+    </div>
+    <div class="row">
+      <label>Who <select id="f_owner"><option>Andy</option><option>Claude</option></select></label>
+      <label>Due <input id="f_due" type="date"></label>
+    </div>
+    <label>Link <input id="f_link" type="url" placeholder="https://…"></label>
+    <label>Note <textarea id="f_notes" rows="3" maxlength="400"></textarea></label>
+    <div class="foot">
+      <button type="button" class="btn ghost" id="cancel">Cancel</button>
+      <button type="button" class="btn ghost" id="removeBtn">Remove</button>
+      <button type="submit" class="btn" id="saveBtn">Save</button>
+    </div>
+  </form>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = 'https://n8n-production-afc2.up.railway.app/webhook/';
+const LIST_URL = BASE + 'sc-marketing-list';
+const SAVE_URL = BASE + 'sc-marketing-save';
+
+const CATEGORIES = ['Influencers', 'Follow list', 'Newsletters', 'Posts and boosts', 'Shop', 'Systems', 'Ideas'];
+const STATUSES = ['Today', 'Next', 'Waiting', 'Idea', 'Parked', 'Done'];
+const ACTIVE = ['Today', 'Next', 'Waiting'];
+
+let rows = [];
+let view = 'Now';
+let who = 'Everyone';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => e.style.display = 'none', 2200); }
+function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : ''; }
+function today() { return new Date().toISOString().slice(0, 10); }
+
+async function load() {
+  try {
+    const res = await fetch(LIST_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    rows = (Array.isArray(data) ? data : []).filter(r => r.status !== 'Removed');
+    render();
+  } catch (e) {
+    $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
+  }
+}
+
+function inView(r) {
+  if (who !== 'Everyone' && r.owner !== who) return false;
+  if (view === 'Now') return ACTIVE.includes(r.status);
+  if (view === 'Parked') return r.status === 'Parked';
+  if (view === 'Done') return r.status === 'Done';
+  return r.category === view && r.status !== 'Done';
+}
+
+function counts(v) {
+  const keep = view; view = v;
+  const n = rows.filter(inView).length;
+  view = keep; return n;
+}
+
+function renderTabs() {
+  const names = ['Now', ...CATEGORIES, 'Parked', 'Done'];
+  $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + counts(n) + '</span></button>').join('')
+    + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
+  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
+  $('whoSel').onchange = e => { who = e.target.value; render(); };
+}
+
+function card(r) {
+  const late = r.due && r.due < today() && r.status !== 'Done';
+  const link = safeUrl(r.link);
+  return '<div class="card' + (r.status === 'Today' ? ' today' : '') + (r.status === 'Done' ? ' done' : '') + '" data-id="' + esc(r.id) + '">'
+    + '<div class="body"><div class="title">' + esc(r.title) + '</div>'
+    + (r.next_step ? '<div class="step">' + esc(r.next_step) + '</div>' : '')
+    + '<div class="meta"><span class="chip' + (r.owner === 'Andy' ? ' me' : '') + '">' + esc(r.owner || '') + '</span>'
+    + '<span class="chip">' + esc(r.category || '') + '</span>'
+    + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
+    + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Open</a>' : '')
+    + '</div>'
+    + (r.notes ? '<div class="step" style="color:#6b6b6b;margin-top:6px">' + esc(r.notes) + '</div>' : '')
+    + '</div>'
+    + '<div class="acts"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>'
+    + (r.status !== 'Done' ? '<button class="btn small" data-act="done">Done</button>' : '')
+    + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
+}
+
+function render() {
+  renderTabs();
+  const list = rows.filter(inView);
+  const rank = { Today: 0, Next: 1, Waiting: 2, Idea: 3, Parked: 4, Done: 5 };
+  list.sort((a, b) => (rank[a.status] - rank[b.status]) || String(a.due || '9999').localeCompare(String(b.due || '9999')));
+  if (!list.length) { $('list').innerHTML = '<div class="empty">Nothing here.</div>'; return; }
+  let html = '', last = '';
+  list.forEach(r => { if (view === 'Now' && r.status !== last) { html += '<div class="group-title">' + esc(r.status) + '</div>'; last = r.status; } html += card(r); });
+  $('list').innerHTML = html;
+  $('list').querySelectorAll('.card').forEach(c => {
+    const r = rows.find(x => String(x.id) === c.dataset.id);
+    c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
+    const d = c.querySelector('[data-act=done]'); if (d) d.onclick = () => save(Object.assign({}, r, { status: 'Done' }));
+    c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
+  });
+}
+
+async function save(r) {
+  const prev = rows.slice();
+  const i = rows.findIndex(x => String(x.id) === String(r.id));
+  if (i >= 0) rows[i] = r;
+  render();
+  try {
+    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const out = await res.json();
+    if (!out.ok) throw new Error('not saved');
+    toast('Saved');
+    if (i < 0) await load();
+  } catch (e) { rows = prev; render(); toast('Not saved: ' + e.message); }
+}
+
+let editing = null;
+function openDlg(r) {
+  editing = r || null;
+  $('dlgTitle').textContent = r ? 'Edit' : 'Add';
+  $('f_cat').innerHTML = CATEGORIES.map(c => '<option>' + c + '</option>').join('');
+  $('f_status').innerHTML = STATUSES.map(c => '<option>' + c + '</option>').join('');
+  $('f_title').value = r ? r.title : '';
+  $('f_next').value = r ? r.next_step || '' : '';
+  $('f_cat').value = r ? r.category : (CATEGORIES.includes(view) ? view : 'Influencers');
+  $('f_status').value = r ? r.status : 'Next';
+  $('f_owner').value = r ? r.owner || 'Andy' : 'Andy';
+  $('f_due').value = r ? r.due || '' : '';
+  $('f_link').value = r ? r.link || '' : '';
+  $('f_notes').value = r ? r.notes || '' : '';
+  $('removeBtn').style.display = r ? '' : 'none';
+  $('dlg').showModal();
+}
+$('addBtn').onclick = () => openDlg(null);
+$('cancel').onclick = () => $('dlg').close();
+$('removeBtn').onclick = () => { if (editing) { save(Object.assign({}, editing, { status: 'Removed' })); rows = rows.filter(x => String(x.id) !== String(editing.id)); render(); } $('dlg').close(); };
+$('form').onsubmit = e => {
+  e.preventDefault();
+  const r = Object.assign({}, editing || {}, { title: $('f_title').value.trim(), next_step: $('f_next').value.trim(), category: $('f_cat').value, status: $('f_status').value, owner: $('f_owner').value, due: $('f_due').value, link: $('f_link').value.trim(), notes: $('f_notes').value.trim() });
+  if (!r.title) return;
+  $('dlg').close();
+  save(r);
+};
+
+load();
+</script>
+</body>
+</html>
