@@ -99,6 +99,15 @@
   .typechip { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 1px 6px; border: 1px solid; margin-right: 6px; }
   .typechip.BUILD { color: var(--c-idea); border-color: var(--c-idea); } .typechip.RUN { color: var(--c-claude); border-color: var(--c-claude); }
   .steps .card { margin-left: 0; }
+  .addbar { margin-bottom: 14px; } #addform { display:flex; gap:8px; }
+  #addform input { flex:1; min-width:0; font:inherit; font-size:16px; padding:8px 12px; border:1px solid var(--line); background:#fff; }
+  #addform .btn { min-width:90px; }
+  .subtabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .hint { background:#f3f7ff; border:1px solid #d5e3ff; padding:10px 14px; font-size:14px; margin-bottom:12px; }
+  .card.f-Followed { border-left-color: var(--c-wait); } .card.f-FollowedBack { border-left-color: var(--c-done); } .card.f-Skipped { border-left-color: var(--c-park); } .card.f-due { border-left-color: var(--c-today); background:#fff8f7; }
+  .fhandle { font-weight:700; font-size:17px; } .fhandle a { color:inherit; text-decoration:none; } .fnm { color:var(--grey); font-size:13px; margin-left:6px; }
+  .fwhy { font-size:13px; color:var(--c-idea); margin-top:4px; } .fmeta { font-size:12px; color:var(--grey); margin-top:4px; font-family:var(--mono); }
+  .btn.warn { background: var(--c-today); border-color: var(--c-today); }
   @media (max-width: 640px) {
     header { padding: 12px 16px; } .tabs { padding: 10px 16px; } .tabs .who { margin-left: 0; width: 100%; }
     .card { flex-direction: column; } .acts { flex-direction: row; width: 100%; }
@@ -148,12 +157,17 @@
 const BASE = 'https://n8n-production-afc2.up.railway.app/webhook/';
 const LIST_URL = BASE + 'sc-marketing-list';
 const SAVE_URL = BASE + 'sc-marketing-save';
+const FOLLOW_LIST_URL = BASE + 'sc-follow-list';
+const FOLLOW_SAVE_URL = BASE + 'sc-follow-save';
+const UNFOLLOW_AFTER_DAYS = 7;
 
 const CATEGORIES = ['Influencers', 'Follow list', 'Newsletters', 'Posts and boosts', 'Shop', 'Systems', 'Ideas'];
 const STATUSES = ['Today', 'Next', 'Waiting', 'Idea', 'Parked', 'Done'];
 const ACTIVE = ['Today', 'Next', 'Waiting'];
 
 let rows = [];
+let frows = [];
+let fview = 'To follow';
 let view = 'Now';
 let who = 'Everyone';
 
@@ -161,7 +175,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => e.style.display = 'none', 2200); }
 function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : ''; }
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 const rank = { Today: 0, Next: 1, Waiting: 2, Idea: 3, Parked: 4, Done: 5 };
 
 async function load() {
@@ -170,6 +184,7 @@ async function load() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     rows = (Array.isArray(data) ? data : []).filter(r => r.status !== 'Removed');
+    try { const fr = await fetch(FOLLOW_LIST_URL); if (fr.ok) { const fd = await fr.json(); frows = Array.isArray(fd) ? fd : []; } } catch (e2) { frows = []; }
     render();
   } catch (e) {
     $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
@@ -198,6 +213,7 @@ function flatShown(r) {
   return false;
 }
 function tabCount(v) {
+  if (v === 'Follow list') return frows.filter(FVIEWS['To follow']).length;
   const keep = view; view = v; let n;
   if (v === 'Parked' || v === 'Done') n = rows.filter(flatShown).length;
   else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length : 0);
@@ -272,6 +288,7 @@ function missionCard(m) {
 
 function render() {
   renderTabs();
+  if (view === 'Follow list') { renderFollow(); return; }
   let html = '';
   if (view === 'Parked' || view === 'Done') {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
@@ -345,6 +362,81 @@ $('form').onsubmit = e => {
   $('dlg').close();
   save(r);
 };
+
+// ---------- Follow list (inside this dashboard) ----------
+function daysSince(d) { return d ? Math.floor((Date.now() - new Date(d + 'T00:00:00').getTime()) / 86400000) : 0; }
+const isDue = r => r.status === 'Followed' && daysSince(r.followed_on) >= UNFOLLOW_AFTER_DAYS;
+const FVIEWS = {
+  'To follow': r => r.status === 'To follow',
+  'Waiting for follow-back': r => r.status === 'Followed' && !isDue(r),
+  'Followed back': r => r.status === 'Followed back',
+  'Unfollow due': r => isDue(r),
+  'Skipped': r => r.status === 'Skipped'
+};
+function cleanHandle(s) { return String(s || '').trim().replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, '').replace(/^@/, '').split(/[\/?\s]/)[0]; }
+
+function followCard(r) {
+  const cls = isDue(r) ? 'f-due' : 'f-' + String(r.status).replace(' ', '');
+  const url = 'https://x.com/' + encodeURIComponent(r.handle);
+  let btns;
+  if (r.status === 'To follow') btns = '<a class="btn small" target="_blank" rel="noopener" href="' + url + '">Open profile</a><button class="btn small done" data-fa="followed">I followed</button><button class="btn small ghost" data-fa="skip">Skip</button>';
+  else if (r.status === 'Followed') btns = '<a class="btn small ghost" target="_blank" rel="noopener" href="' + url + '">Open profile</a><button class="btn small done" data-fa="back">Followed back</button>' + (isDue(r) ? '<button class="btn small warn" data-fa="unfollowed">I unfollowed</button>' : '');
+  else btns = '<a class="btn small ghost" target="_blank" rel="noopener" href="' + url + '">Open profile</a>';
+  return '<div class="card ' + cls + '" data-fid="' + esc(r.id) + '"><div class="body"><div class="fhandle"><a target="_blank" rel="noopener" href="' + url + '">@' + esc(r.handle) + '</a><span class="fnm">' + esc(r.name) + '</span></div>'
+    + (r.bio ? '<div class="step">' + esc(r.bio) + '</div>' : '') + (r.why ? '<div class="fwhy">' + esc(r.why) + '</div>' : '')
+    + '<div class="fmeta">from ' + esc(r.seed) + (r.followed_on ? ' · followed ' + esc(r.followed_on) : '') + (isDue(r) ? ' · no follow-back after ' + UNFOLLOW_AFTER_DAYS + ' days' : '') + '</div></div>'
+    + '<div class="acts">' + btns + '</div></div>';
+}
+
+function renderFollow() {
+  const sub = '<div class="subtabs">' + Object.keys(FVIEWS).map(v => '<button class="tab' + (v === fview ? ' on' : '') + '" data-fv="' + esc(v) + '">' + esc(v) + '<span class="n">' + frows.filter(FVIEWS[v]).length + '</span></button>').join('') + '</div>';
+  const add = '<div class="addbar"><form id="addform"><input id="addhandle" type="text" placeholder="Add a username you followed, e.g. @name" autocomplete="off" autocapitalize="off"><button class="btn" type="submit">Add</button></form></div>';
+  let hint = '';
+  if (fview === 'To follow') hint = '<div class="hint">Follow these by hand: open the profile, press Follow on X, then press "I followed" here. About 25 a day is safe.</div>';
+  if (fview === 'Unfollow due') hint = '<div class="hint">No follow-back after ' + UNFOLLOW_AFTER_DAYS + ' days. Unfollow by hand on X, then press "I unfollowed".</div>';
+  const list = frows.filter(FVIEWS[fview]);
+  $('list').innerHTML = add + sub + hint + (list.length ? list.map(followCard).join('') : '<div class="empty">Nothing here.</div>');
+  $('addform').onsubmit = addFollow;
+  $('list').querySelectorAll('[data-fv]').forEach(b => b.onclick = () => { fview = b.dataset.fv; render(); });
+  $('list').querySelectorAll('[data-fid]').forEach(c => {
+    const r = frows.find(x => String(x.id) === c.dataset.fid);
+    c.querySelectorAll('[data-fa]').forEach(b => b.onclick = () => {
+      const a = b.dataset.fa;
+      if (a === 'followed') saveFollow(Object.assign({}, r, { status: 'Followed', followed_on: today() }));
+      if (a === 'skip') saveFollow(Object.assign({}, r, { status: 'Skipped' }));
+      if (a === 'back') saveFollow(Object.assign({}, r, { status: 'Followed back', checked_on: today() }));
+      if (a === 'unfollowed') saveFollow(Object.assign({}, r, { status: 'Skipped', checked_on: today() }));
+    });
+  });
+}
+
+async function saveFollow(r) {
+  const prev = frows.slice();
+  const i = frows.findIndex(x => String(x.id) === String(r.id));
+  frows[i] = r; render();
+  try {
+    const res = await fetch(FOLLOW_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, status: r.status, followed_on: r.followed_on || '', checked_on: r.checked_on || '' }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const out = await res.json(); if (!out.ok) throw new Error('not saved');
+    toast('Saved');
+  } catch (e) { frows = prev; render(); toast('Not saved: ' + e.message); }
+}
+
+async function addFollow(e) {
+  e.preventDefault();
+  const h = cleanHandle($('addhandle').value);
+  if (!h) return;
+  const dup = frows.find(r => String(r.handle).toLowerCase() === h.toLowerCase());
+  if (dup) { toast('Already on the list: ' + dup.status); return; }
+  try {
+    const res = await fetch(FOLLOW_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: h, status: 'Followed', followed_on: today(), checked_on: '' }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const out = await res.json(); if (!out.ok) throw new Error('not saved');
+    fview = 'Waiting for follow-back';
+    toast('Added @' + h);
+    await load();
+  } catch (err) { toast('Not added: ' + err.message); }
+}
 
 load();
 </script>
