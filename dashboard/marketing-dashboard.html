@@ -193,7 +193,7 @@ const ACTIVE = ['Today', 'Next', 'Waiting'];
 let rows = [];
 let frows = [];
 let fview = 'To follow';
-let view = 'Now';
+let view = 'Today';   // 12 Oct 2026 (Andy): the daily routine has its own tab, shown first
 let who = 'Everyone';
 
 const $ = id => document.getElementById(id);
@@ -240,14 +240,15 @@ function flatShown(r) {
 }
 function tabCount(v) {
   if (v === 'Follow list') return frows.filter(FVIEWS['To follow']).length;
+  if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
   const keep = view; view = v; let n;
   if (v === 'Parked' || v === 'Done') n = rows.filter(flatShown).length;
-  else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length + routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length : 0);
+  else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length : 0);
   view = keep; return n;
 }
 
 function renderTabs() {
-  const names = ['Now', ...CATEGORIES, 'Parked', 'Done'];
+  const names = ['Today', 'Now', ...CATEGORIES, 'Parked', 'Done'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -315,6 +316,7 @@ function missionCard(m) {
 function render() {
   renderTabs();
   if (view === 'Follow list') { renderFollow(); return; }
+  if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
   if (view === 'Parked' || view === 'Done') {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
@@ -327,9 +329,7 @@ function render() {
     html = ms.map(missionCard).join('');
     if (view === 'Now') html += loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).map(r => card(r, true)).join('');
   }
-  if (view === 'Now') html = routineHtml() + html;
   $('list').innerHTML = html || '<div class="empty">Nothing here.</div>';
-  if (view === 'Now') wireRoutine();
   $('list').querySelectorAll('.card').forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id);
     c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
@@ -433,7 +433,7 @@ async function loadCal() {
   try { const res = await fetch(CAL_URL); const d = await res.json(); cal = Array.isArray(d) ? d : (d.rows || d.data || []); }
   catch (e) { cal = []; toast('Could not load today\'s clips'); }
   calLoading = false;
-  if (view === 'Now') render();
+  if (view === 'Today') render();
 }
 
 function clipsHtml(r) {
