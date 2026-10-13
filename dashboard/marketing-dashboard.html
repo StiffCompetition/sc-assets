@@ -498,10 +498,10 @@ async function sendGift() {
     const r = await fetch(GIFT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'gift', handle, platform: $('g_platform').value, product_handle: giftPick.handle }) });
     const d = await r.json();
     if (!d.ok) { $('g_send').disabled = false; $('g_status').textContent = d.error || d.message || 'The gift was not made.'; return; }
-    $('g_status').textContent = 'Done: ' + d.product_title + ', order ' + d.order_name + ', ' + d.status + '. ' + (d.note || '') + (d.claim_url ? ' Paste this link in your DM:' : '');
+    $('g_status').textContent = 'Done: ' + d.product_title + ', order ' + d.order_name + ', ' + d.status + '. ' + (d.note || '') + (d.claim_url ? ' Copy the gift message (link included) into your DM:' : '');
     if (d.claim_url) {
-      $('g_link').innerHTML = '<input readonly value="' + esc(d.claim_url) + '"><button type="button" class="btn small">Copy link</button>';
-      $('g_link').querySelector('button').onclick = () => copyText(d.claim_url, 'Gift link copied');
+      $('g_link').innerHTML = '<input readonly value="' + esc(d.claim_url) + '"><button type="button" class="btn small">Copy gift message</button>';
+      $('g_link').querySelector('button').onclick = () => copyText(giftMessage(d.claim_url), 'Gift message copied');
     }
     giftPool = giftPool.filter(p => p.handle !== giftPick.handle);
     // Record the gift on that person's tracker row (13 Oct 2026).
@@ -518,6 +518,11 @@ $('g_cancel').onclick = () => $('giftDlg').close();
 // with no reply, replied, gift sent (private gift link), claimed (set by the API when the link has been used).
 const TRACK_URL = BASE + 'sc-gift-tracker';
 const FOLLOWUP_DAYS = 5;
+// Message wording agreed with Andy 13 Oct 2026 (NFT Creator Outreach Playbook). [why] is written per person.
+const DM_TEMPLATE = "Hey [name], I'm Andy. I'm a nobody who started Stiff Competition with no knowledge of coding, NFTs or selling online, just an idea, and built the whole thing myself.\nIt's six characters from a 1994 action-figure line that never made the shelves: one-of-one NFTs on Polygon, merch, and plenty of cheeky British innuendo. [why]\nWe're a tiny brand and we need eyes on us. I'd love to gift you one of the character NFTs, and if it makes you laugh, a share or a shout-out to your followers would mean a lot. Say yes and I'll send you a private link to claim it.";
+const GIFT_TEMPLATE = "Brilliant, here it is: [gift link]\nOpen it and choose where your NFT goes: your own wallet, or a free wallet we make for you with just your email. If you post about it, tag us and we'll share it back. Enjoy.";
+const FOLLOWUP_TEMPLATE = "Hi, Andy again from Stiff Competition. Just bumping this in case it got buried: a free character NFT is yours if you'd like one, and a share with your followers would really help a small brand like ours. If it's not for you, no worries at all.";
+const giftMessage = url => GIFT_TEMPLATE.replace('[gift link]', url);
 let track = null, trackLoading = false, tEdit = null;
 async function loadTrack() {
   if (trackLoading) return; trackLoading = true;
@@ -560,9 +565,9 @@ function trackerHtml() {
     const [lbl, cls] = tStage(t); const url = safeUrl(t.profile_url);
     let b = '';
     if (t.status === 'To send') b += (t.dm_text ? '<button class="btn small" data-ta="dm">Copy DM</button>' : '') + '<button class="btn small done" data-ta="sent">I sent it</button>';
-    if (t.status === 'Sent') b += (followDue(t) && t.followup_text ? '<button class="btn small warn" data-ta="fu">Copy follow-up</button>' : '') + (followDue(t) ? '<button class="btn small ghost" data-ta="fusent">Follow-up sent</button>' : '') + '<button class="btn small done" data-ta="replied">They replied</button>' + (t.followup_on ? '<button class="btn small ghost" data-ta="noreply">No reply</button>' : '');
+    if (t.status === 'Sent') b += (followDue(t) ? '<button class="btn small warn" data-ta="fu">Copy follow-up</button>' : '') + (followDue(t) ? '<button class="btn small ghost" data-ta="fusent">Follow-up sent</button>' : '') + '<button class="btn small done" data-ta="replied">They replied</button>' + (t.followup_on ? '<button class="btn small ghost" data-ta="noreply">No reply</button>' : '');
     if (t.status === 'Replied') b += '<button class="btn small" data-ta="gift">Give gift</button>';
-    if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift link</button>';
+    if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift message</button>';
     b += (url ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(url) + '">Profile</a>' : '') + '<button class="btn small ghost" data-ta="edit">Edit</button>';
     return '<div class="trow" data-tid="' + esc(t.id) + '"><div class="who"><b>' + esc(t.handle) + '</b> <span class="gnote">' + esc(t.platform || '') + '</span>' + (t.product_title ? ' <span class="gnote">· ' + esc(t.product_title) + '</span>' : '') + (t.fit ? '<div class="fit">' + esc(t.fit) + '</div>' : '') + '</div><span class="tstat ' + cls + '">' + esc(lbl) + '</span><div class="tacts">' + b + '</div></div>';
   };
@@ -576,9 +581,9 @@ function wireTracker() {
   $('list').querySelectorAll('.trow').forEach(el => {
     const t = (track || []).find(x => String(x.id) === el.dataset.tid); if (!t) return;
     const on = (k, f) => { const b = el.querySelector('[data-ta=' + k + ']'); if (b) b.onclick = f; };
-    on('dm', () => copyText(t.dm_text, 'DM copied'));
-    on('fu', () => copyText(t.followup_text, 'Follow-up copied'));
-    on('link', () => copyText(t.claim_url, 'Gift link copied'));
+    on('dm', () => { if (/\[(name|why)\]/.test(t.dm_text)) { toast('Fill in [name] and [why] first (Edit)'); return; } copyText(t.dm_text, 'DM copied'); });
+    on('fu', () => copyText(t.followup_text || FOLLOWUP_TEMPLATE, 'Follow-up copied'));
+    on('link', () => copyText(giftMessage(t.claim_url), 'Gift message copied'));
     on('sent', () => saveTrack(Object.assign({}, t, { status: 'Sent', sent_on: today() })));
     on('fusent', () => saveTrack(Object.assign({}, t, { followup_on: today() })));
     on('replied', () => saveTrack(Object.assign({}, t, { status: 'Replied', replied_on: today() })));
@@ -590,7 +595,7 @@ function wireTracker() {
 function openTrack(t) {
   tEdit = t; $('tTitle').textContent = t ? 'Edit ' + t.handle : 'Add a person';
   $('t_handle').value = t ? t.handle : ''; $('t_platform').value = t ? (t.platform || 'X') : 'X'; $('t_url').value = t ? (t.profile_url || '') : '';
-  $('t_fit').value = t ? (t.fit || '') : ''; $('t_dm').value = t ? (t.dm_text || '') : ''; $('t_fu').value = t ? (t.followup_text || '') : '';
+  $('t_fit').value = t ? (t.fit || '') : ''; $('t_dm').value = t ? (t.dm_text || '') : DM_TEMPLATE; $('t_fu').value = t ? (t.followup_text || '') : FOLLOWUP_TEMPLATE;
   $('t_status').value = t ? (t.status || 'To send') : 'To send'; $('t_notes').value = t ? (t.notes || '') : '';
   $('tDlg').showModal();
 }
