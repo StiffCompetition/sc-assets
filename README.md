@@ -43,7 +43,7 @@ its code lives. Detailed process rules are in the SC Content Playbook (Google Do
 | SC - VO Timing Check (`BQMDmAuHtRzSHCv2`) | POST `{lines:[...]}` to `sc-vo-timing`: speaks each line in the announcer voice (ElevenLabs), returns seconds and an audio URL per line. Called by the dashboard's Preview voice (Product and Roll Call voice-overs) and by Claude when timing new lines. |
 | SC - Post Now (`TI7Lg8CCMdtN48pG`) | Dashboard "Post Now" for one row: POST `{rowId}` to `sc-post-now`, hands the row to SC - Publish Approved Posts and replies through its Respond OK step. Publishes live. |
 | SC Claude Call (`S11nkqzMbLjTFfdY`) | Internal helper so code nodes can call Claude; logs usage. |
-| SC - Usage Log Write (`jF0xvGdqHtNFr1ph`) / SC - Daily Cost Digest (`QtFfNhdeAhvalH9x`) | Paid-call log and the 23:30 Telegram cost digest with the price book. |
+| SC - Usage Log Write (`jF0xvGdqHtNFr1ph`) / SC - Daily Cost Digest (`QtFfNhdeAhvalH9x`) | Paid-call log and the 23:30 Telegram cost and usage message (SCFinanceBot); prices come from SC - Cost Calculator. See Monitoring below. |
 | SC - Product Box API (`K5iUMBHmZOMxLjT8`) | `sc-productbox` webhook: the dashboard's Product image picker. Lists a product's live `.shop` photos and saves the chosen photo to the Product Box tab. |
 | Hotline Compose service (Railway `sc-hotline-compose`) | `services/hotline-compose/` — seating check and placement on Hotline set v2, product cut-outs, ticker and box video, Travel artwork merge. Set v2 is `sc_hotline_set_locked_v2.png` in Cloudinary (v1 kept unchanged). |
 
@@ -65,6 +65,20 @@ SC - Coverage List API (`r8j6H4m0QoFMLbSW`): read-only `sc-coverage-list` webhoo
 ## Finance
 SC - Bank Statement Ingest, SC - Receipt Capture (Gmail), SC - PayPal Ingest, SC - Amex Ingest, SC - Expense Entry
 (Telegram), SC - Renewals Reminder, SC - Monthly Finance Report, SC - Shopify Daily Snapshot.
+
+## Monitoring (SC Cost Monitoring Playbook v2)
+
+| Workflow (n8n id) | Role |
+|---|---|
+| SC - Cost Calculator (`hzusKyDGh2gJtiZg`) | The only price book. Hour, today, yesterday and month spend, per-activity split, uncounted activities, peak flag. Called by the Digest, Cost Guard, Tool Watch and the Executive Report. |
+| SC - Cloudinary Usage (`u1ZLYThbwRvdX12q`) | Read-only: credits used, plan limit and percent from the vendor Admin API (credential Cloudinary Admin). Called by the Digest, Cost Guard and Tool Watch. |
+| SC - Cost Guard (`XlfiKZrdt2l3qNY6`) | Hourly spend and tool-usage watch; red alert on SCWhatsAppSupportBot when the state changes; at the daily stop limit switches off the biggest spender's workflows. |
+| SC - Tool Watch (`Mcxj8QB9tbBNSi0y`) | Every 10 minutes: new failed runs in any workflow. Hourly at :15: tool usage against its limit (watch list in its usage code), uncounted spend, key workflows switched off. Calls SC - Raise Alert. |
+| SC - Raise Alert (`PbgJH08sEPV1qscv`) | One dashboard Alerts task (SC Marketing Actions table `tWNO2Zd6kPgtOLpO`, type ALERT), one Todoist task and one red message per issue; repeats only update the count. Called by SC - Tool Watch. |
+| SC - Executive Report (`fB53RN5Q5yZG8PkR`) | The 06:00 London SC Daily Brief: Telegram brief from SCWhatsAppSupportBot plus the full email. Reads open Alerts tasks, SC Shopify Daily (`q9mAhJ8uQRohUJlX`) and the Cost Calculator. |
+| SC - Shopify Daily Snapshot (`vyNq83y7PHBHv90N`) | Saves the day's store figures at 23:30 London (extra column: signups, waitlist, e-cards, sticker clicks, follow codes). Sends no message. |
+
+Dashboard: `dashboard/marketing-dashboard.html` has an Alerts tab (urgent display, also in Now).
 
 ## Support bots and knowledge base
 SC - Shared Brain, SC - Web/Discord Bridge, SC - KB Public Read, SC - Instagram DM Channel, SC - Instagram Comment
