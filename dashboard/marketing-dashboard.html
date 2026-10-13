@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stiff Competition — Marketing</title>
+<title>MAR</title>
 <style>
   :root {
     --ink: #1a1a1a;
@@ -193,6 +193,7 @@ const ACTIVE = ['Today', 'Next', 'Waiting'];
 let rows = [];
 let frows = [];
 let fview = 'To follow';
+let showDone = false;   // 13 Oct 2026 (Andy): lines ticked today are hidden unless asked for
 let view = 'Today';   // 12 Oct 2026 (Andy): the daily routine has its own tab, shown first
 let who = 'Everyone';
 
@@ -476,8 +477,11 @@ function routineHtml() {
   const list = routineDue().sort((a, b) => (a.status === 'Waiting') - (b.status === 'Waiting') || (a.done_on === today()) - (b.done_on === today()) || a.id - b.id);
   const left = list.filter(r => r.status === 'Today' && r.done_on !== today()).length;
   if (list.some(r => r.link === 'sc:clips-today' && r.status === 'Today')) loadCal();
+  const doneN = list.filter(r => r.done_on === today()).length;
+  const shown = showDone ? list : list.filter(r => r.done_on !== today());
   return '<div class="routine"><h2>Today\'s routine</h2><div class="sub">' + (left ? left + ' to do today' : 'All done for today') + '</div>'
-    + list.map(dlineHtml).join('')
+    + shown.map(dlineHtml).join('')
+    + (doneN ? '<div style="margin-top:8px"><a href="#" class="lnk" id="toggleDone">' + (showDone ? 'Hide done' : 'Show done (' + doneN + ')') + '</a></div>' : '')
     + '<div class="addbar" style="margin:10px 0 0"><form id="dailyform" style="display:flex;gap:8px"><input id="dailytitle" type="text" maxlength="80" placeholder="Add a daily line" style="flex:1;min-width:0;font:inherit;font-size:16px;padding:8px 12px;border:1px solid var(--line)"><button class="btn" type="submit">Add</button></form></div>'
     + '</div>';
 }
@@ -493,6 +497,7 @@ async function getClipFile(c) {
 function copyText(t) { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } }
 
 function wireRoutine() {
+  const td = $('toggleDone'); if (td) td.onclick = e => { e.preventDefault(); showDone = !showDone; render(); };
   const f = $('dailyform');
   if (f) f.onsubmit = e => {
     e.preventDefault();

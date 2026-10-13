@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stiff Competition — Content Calendar</title>
+<title>CM</title>
 <style>
   :root {
     --ink: #1a1a1a;
@@ -328,6 +328,25 @@
   .drawer.full .field textarea, .field input, .field select { font-size: 16px; }
 }
 .postno{font-family:var(--mono);font-size:11px;color:#888;margin-left:4px}
+.lib-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 14px}
+.lib-bar select{font-family:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);background:#fff;min-height:44px}
+.lib-help{font-size:12.5px;color:#666}
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.lib-card{background:#fff;border:1px solid var(--line);border-top:5px solid #777;display:flex;flex-direction:column}
+.lib-card video{width:100%;aspect-ratio:9/16;max-height:380px;object-fit:cover;background:#000;display:block}
+.lib-body{padding:9px 10px 11px;display:flex;flex-direction:column;gap:6px;flex:1}
+.lib-title{font-size:13.5px;font-weight:600;line-height:1.35}
+.lib-sub{font-size:12px;color:#777}
+.lib-chips{display:flex;flex-wrap:wrap;gap:4px}
+.lib-chip{font-family:var(--mono);font-size:11px;padding:2px 6px;border:1px solid var(--line);color:#999;background:#fafafa}
+.lib-chip.done{color:#2a7a2a;border-color:#9cc59c;background:#f1f8f1}
+.lib-chip.recent{color:#8a5200;border-color:#e0b860;background:#fff4dc;font-weight:600}
+.lib-recent{font-size:12px;color:#8a5200;background:#fff4dc;padding:4px 6px}
+.lib-booked{font-size:12px;color:#2a5db0}
+.lib-card .lib-repost{margin-top:auto}
+.lib-plat{display:block;font-size:15px;padding:6px 0}
+.lib-warn{font-size:12.5px;color:#8a5200;background:#fff4dc;padding:1px 5px}
+.lib-note{font-size:12.5px;color:#666}
 </style>
 </head>
 <body>
@@ -346,6 +365,7 @@
   <div class="view-toggle">
     <button id="btnGrid" class="active">Calendar</button>
     <button id="btnList">List</button>
+    <button id="btnLibrary">Library</button>
   </div>
   <div class="tickfilter" id="tf_character"><button type="button">Characters</button><div class="tickpanel"></div></div>
   <div class="tickfilter" id="tf_format"><button type="button">Formats</button><div class="tickpanel"></div></div>
@@ -575,6 +595,7 @@ function makePressCard(p) {
 }
 
 function render() {
+  if (VIEW === 'library') { renderLibrary(); return; }
   const rows = filteredRows();
   document.getElementById('counts').textContent = rows.length + ' / ' + ROWS.length + ' posts';
   const main = document.getElementById('main');
@@ -1124,6 +1145,7 @@ function videoPreview(url) {
 // Each post type's route (9 Oct 2026, checked against the live workflows): the status buttons and their explanation follow it.
 function flowOf(r) {
   if (!r) return 'standard';
+  if (/REPOST:/.test(String(r.notes || ''))) return 'repost';   // Library repost: the clip is already made
   if (r.format === 'Dare to Buy') return 'dtb';          // SC - Dare to Buy Builder makes the slides; no video
   if (r.format === 'NFT') return 'nft';                  // SC - NFT Post Builder makes the whole clip
   if (isRollCall(r.notes)) return 'rollcall';            // fixed Roll Call clip + voice-over, no start image
@@ -1142,6 +1164,8 @@ const FLOW = {
     help: 'Roll Call: "text approved" makes the video straight away from the fixed Roll Call clip and the announcer voice-over (about 5-15 min, no start image), back as "clip ready for your approval". "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
   nft: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'NFT: the clip is made whole when the post is planned (the character\'s NFT template, the NFT and its ticker). "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' },
+  repost: { opts: ['draft', 'approved', 'posted', 'paused'],
+    help: 'Repost (Library tab): the clip is already made, so nothing is generated. Check the captions and platforms, then "approved" schedules it for its date and time. "draft" holds it back.' },
   dtb: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'Dare to Buy: the three carousel slides and the X image are made when the post is planned; there is no video. "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' }
 };
@@ -1298,6 +1322,161 @@ async function saveRow(r) {
   }
 }
 
+// ---------- Library tab (13 Oct 2026, Andy) ----------
+// Every finished clip in one grid: calendar posts with a video (approved, scheduled or posted) plus the SC Content Library
+// (media made before the calendar, e.g. the 6 intro videos). Each card shows where and when it already went out.
+// "Recently posted" (last 30 days) is shown to help pick, never to block. "Repost" makes a DRAFT calendar row
+// (notes REPOST:#N or REPOST:LIB:N) for Andy to check and set "approved"; nothing posts without that.
+const LIBRARY_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-library-list';
+const RESTORE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-restore';
+const REPOST_PLATFORMS = [['Instagram', 'IG'], ['Facebook', 'FB'], ['X', 'X'], ['YouTube', 'YT']];
+const RECENT_DAYS = 30;
+let LIB = null;
+const LIBF = { character: '', source: '', hideRecent: false };
+
+async function loadLibrary() {
+  try {
+    const res = await fetch(LIBRARY_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    LIB = Array.isArray(data) ? data : [];
+  } catch (e) { LIB = []; console.log('[Library] load failed', e); }
+}
+function repostKey(r) { const m = String(r.notes || '').match(/REPOST:(#\d+|LIB:\d+)/); return m ? m[1] : null; }
+// Which platforms a posted row reached: from the publisher's "PUBLISH RESULT:" note, else its platforms list.
+function postedPlatforms(r) {
+  const n = String(r.notes || '');
+  const i = n.lastIndexOf('PUBLISH RESULT:');
+  const plats = REPOST_PLATFORMS.map(p => p[0]);
+  if (i === -1) return String(r.platforms || '').split(',').map(x => x.trim()).filter(p => plats.indexOf(p) !== -1);
+  const res = n.slice(i);
+  return plats.filter(p => new RegExp('(^|\\W)' + p + ':\\s*posted', 'i').test(res));
+}
+function libraryItems() {
+  const items = [];
+  ROWS.filter(r => !repostKey(r) && r.video_url && r.format !== 'Dare to Buy' && ['approved', 'scheduled', 'posted'].indexOf(r.status) !== -1)
+    .forEach(r => items.push({ key: '#' + r.id, src: 'calendar', title: r.format + ' · post #' + r.id, character: r.character, format: r.format, video_url: r.video_url,
+      image_url: r.image_url || '', caption_instagram: r.caption_instagram || r.text_content || '', caption_facebook: r.caption_facebook || r.text_content || '',
+      caption_x: r.caption_x || r.text_content || '', made: isoDate(r.post_date), row: r }));
+  (LIB || []).filter(l => l.video_url).forEach(l => items.push({ key: 'LIB:' + l.id, src: 'library', title: l.title || ('Library ' + l.id), character: l.character || '',
+    format: 'Intro', video_url: l.video_url, image_url: l.image_url || '', caption_instagram: '', caption_facebook: '', caption_x: '', made: l.added_on || '', lib: l }));
+  // History: the original post itself plus every repost row made from it.
+  items.forEach(it => {
+    const rows = ROWS.filter(r => (it.row && r.id === it.row.id) || repostKey(r) === it.key);
+    it.history = []; it.booked = [];
+    rows.forEach(r => {
+      const d = isoDate(r.post_date);
+      if (r.status === 'posted') postedPlatforms(r).forEach(p => it.history.push({ platform: p, date: d, id: r.id }));
+      else if (r.id !== (it.row || {}).id && r.panel_status !== 'rejected') it.booked.push({ date: d, time: r.post_time || '', status: r.status, id: r.id, platforms: r.platforms || '' });
+    });
+    it.last = {};
+    it.history.forEach(h => { if (!it.last[h.platform] || h.date > it.last[h.platform]) it.last[h.platform] = h.date; });
+    it.recent = Object.keys(it.last).filter(p => daysAgo(it.last[p]) <= RECENT_DAYS);
+  });
+  return items.sort((a, b) => (b.made || '').localeCompare(a.made || ''));
+}
+function daysAgo(iso) { return Math.floor((Date.now() - new Date(iso + 'T12:00:00Z').getTime()) / 86400000); }
+function shortDate(iso) { return iso ? new Date(iso + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''; }
+
+async function renderLibrary() {
+  const main = document.getElementById('main');
+  if (LIB === null) { main.innerHTML = '<div class="loading">Loading library…</div>'; await loadLibrary(); if (VIEW !== 'library') return; }
+  const all = libraryItems();
+  const chars = Array.from(new Set(all.map(i => i.character).filter(Boolean))).sort();
+  const items = all.filter(i => (!LIBF.character || i.character === LIBF.character) && (!LIBF.source || i.src === LIBF.source) && (!LIBF.hideRecent || !i.recent.length));
+  document.getElementById('counts').textContent = items.length + ' / ' + all.length + ' clips';
+  main.innerHTML =
+    '<div class="lib-bar">' +
+      '<select id="libChar"><option value="">All characters</option>' + chars.map(c => '<option' + (c === LIBF.character ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join('') + '</select>' +
+      '<select id="libSrc"><option value="">Calendar + library</option><option value="calendar"' + (LIBF.source === 'calendar' ? ' selected' : '') + '>Calendar posts</option><option value="library"' + (LIBF.source === 'library' ? ' selected' : '') + '>Library (made before the calendar)</option></select>' +
+      '<label class="showposted"><input type="checkbox" id="libHide"' + (LIBF.hideRecent ? ' checked' : '') + '> Hide posted in last ' + RECENT_DAYS + ' days</label>' +
+      '<span class="lib-help">Repost makes a draft in the calendar. Nothing posts until you set it "approved".</span>' +
+    '</div>' +
+    (items.length ? '<div class="lib-grid">' + items.map(libCard).join('') + '</div>' : '<div class="loading">No clips match.</div>');
+  document.getElementById('libChar').onchange = e => { LIBF.character = e.target.value; renderLibrary(); };
+  document.getElementById('libSrc').onchange = e => { LIBF.source = e.target.value; renderLibrary(); };
+  document.getElementById('libHide').onchange = e => { LIBF.hideRecent = e.target.checked; renderLibrary(); };
+  main.querySelectorAll('.lib-repost').forEach(b => b.onclick = () => openRepost(all.find(i => i.key === b.dataset.key)));
+}
+function libCard(it) {
+  const chips = REPOST_PLATFORMS.map(([p, s]) => {
+    const d = it.last[p];
+    const cls = d ? (daysAgo(d) <= RECENT_DAYS ? 'lib-chip recent' : 'lib-chip done') : 'lib-chip';
+    return '<span class="' + cls + '" title="' + p + (d ? ' last posted ' + shortDate(d) : ' never posted') + '">' + s + ' ' + (d ? shortDate(d) : '&mdash;') + '</span>';
+  }).join('');
+  const recent = it.recent.length ? '<div class="lib-recent">Recently posted: ' + it.recent.map(p => p + ' ' + daysAgo(it.last[p]) + 'd ago').join(', ') + '</div>' : '';
+  const booked = it.booked.length ? '<div class="lib-booked">Repost booked: ' + it.booked.map(b => '#' + b.id + ' ' + shortDate(b.date) + (b.time ? ' ' + escapeHtml(b.time) : '') + ' (' + escapeHtml(STATUS_LABEL(b.status)) + ')').join(', ') + '</div>' : '';
+  return '<div class="lib-card" style="border-top-color:' + (CHAR_COLOR[it.character] || '#777') + '">' +
+    '<video controls preload="none" playsinline' + (it.image_url ? ' poster="' + it.image_url.replace(/"/g, '&quot;') + '"' : '') + ' src="' + it.video_url.replace(/"/g, '&quot;') + '"></video>' +
+    '<div class="lib-body">' +
+      '<div class="lib-title">' + (it.character ? charTag(it.character, it.row) + ' ' : '') + typeDot(it.format) + escapeHtml(it.title) + '</div>' +
+      '<div class="lib-sub">' + (it.src === 'library' ? 'Library' : 'Calendar') + (it.made ? ' · ' + shortDate(it.made) : '') + '</div>' +
+      '<div class="lib-chips">' + chips + '</div>' + recent + booked +
+      '<button class="btn lib-repost" data-key="' + it.key + '">Repost</button>' +
+    '</div></div>';
+}
+function openRepost(it) {
+  if (!it) return;
+  const drawer = document.getElementById('drawer');
+  drawer.classList.add('full');
+  const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 86400000));
+  const platRow = REPOST_PLATFORMS.map(([p]) => {
+    const d = it.last[p];
+    const warn = d ? (daysAgo(d) <= RECENT_DAYS ? ' <span class="lib-warn">posted here ' + daysAgo(d) + ' days ago (' + shortDate(d) + ')</span>' : ' <span class="lib-note">last posted ' + shortDate(d) + '</span>') : ' <span class="lib-note">never posted here</span>';
+    return '<label class="lib-plat"><input type="checkbox" value="' + p + '"> ' + p + warn + '</label>';
+  }).join('');
+  const cap = (id, label, val, extra) => '<div class="field"><label>' + label + '</label><textarea id="' + id + '" rows="5">' + escapeHtml(String(val || '')) + '</textarea>' + (extra || '') + '</div>';
+  drawer.innerHTML =
+    '<div class="brief-topbar"><button class="btn secondary" id="rpBack">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Repost</span><button class="btn secondary" id="rpClose">Close &times;</button></div>' +
+    '<h2>Repost: ' + escapeHtml(it.title) + '</h2>' +
+    '<div class="sub">' + escapeHtml(it.character || '') + ' · ' + (it.src === 'library' ? 'Library clip' : 'from post #' + it.row.id) + '</div>' +
+    '<div class="field"><video controls preload="metadata" playsinline style="display:block;max-height:50vh;max-width:100%;background:#000" src="' + it.video_url.replace(/"/g, '&quot;') + '"></video></div>' +
+    '<div class="field"><label>Platforms</label>' + platRow + '<div class="lib-note">TikTok stays manual (Post to TikTok on MAR).</div></div>' +
+    '<div class="field" style="display:flex;gap:12px;flex-wrap:wrap"><div><label>Date (London)</label><input type="date" id="rpDate" value="' + tomorrow + '"></div><div><label>Time (London, HH:MM)</label><input type="time" id="rpTime" step="900"></div></div>' +
+    (it.src === 'library' ? '<div class="lib-note" style="margin-bottom:8px">This clip has no captions yet: write them below (hashtags per the playbook).</div>' : '<div class="lib-note" style="margin-bottom:8px">Captions are copied from post #' + it.row.id + '. Edit as you like.</div>') +
+    cap('rpIg', 'Instagram caption (also used for YouTube hashtags)', it.caption_instagram) +
+    cap('rpFb', 'Facebook caption (also the YouTube title and description)', it.caption_facebook) +
+    cap('rpX', 'X caption', it.caption_x, '<div class="lib-note">X refuses a post whose text matches an earlier one: change at least a few words.</div>') +
+    '<div class="drawer-actions"><button class="btn" id="rpSave">Make draft in calendar</button><button class="btn secondary" id="rpCancel">Cancel</button></div>' +
+    '<div class="lib-note" id="rpStatus" style="margin-top:10px"></div>';
+  document.getElementById('overlay').classList.add('open');
+  ['rpBack', 'rpClose', 'rpCancel'].forEach(id => document.getElementById(id).onclick = closeDrawer);
+  document.getElementById('rpSave').onclick = () => saveRepost(it);
+}
+async function saveRepost(it) {
+  const st = document.getElementById('rpStatus');
+  const plats = Array.from(document.querySelectorAll('.lib-plat input:checked')).map(x => x.value);
+  const date = document.getElementById('rpDate').value;
+  const time = document.getElementById('rpTime').value;
+  const ig = document.getElementById('rpIg').value.trim(), fb = document.getElementById('rpFb').value.trim(), x = document.getElementById('rpX').value.trim();
+  const miss = [];
+  if (!plats.length) miss.push('pick at least one platform');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) miss.push('pick a date');
+  if (!/^\d{2}:\d{2}$/.test(time)) miss.push('pick a time');
+  if (plats.indexOf('Instagram') !== -1 && !ig) miss.push('write the Instagram caption');
+  if ((plats.indexOf('Facebook') !== -1 || plats.indexOf('YouTube') !== -1) && !fb) miss.push('write the Facebook caption');
+  if (plats.indexOf('X') !== -1 && !x) miss.push('write the X caption');
+  if (miss.length) { st.style.color = '#b00'; st.textContent = 'Please ' + miss.join(', ') + '.'; return; }
+  const btn = document.getElementById('rpSave'); btn.disabled = true; st.style.color = ''; st.textContent = 'Making the draft…';
+  const weekday = new Date(date + 'T12:00:00Z').toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'long' });
+  const src = it.src === 'library' ? 'library clip ' + it.title : 'post #' + it.row.id;
+  const body = {
+    post_date: date + 'T12:00:00.000Z', post_time: time, day_of_week: weekday, character: it.character || 'SC Logo', format: it.format,
+    text_content: ig || fb || x, caption_instagram: ig, caption_facebook: fb, caption_x: x, video_url: it.video_url, image_url: it.image_url,
+    platforms: plats.join(', '), status: 'draft', panel_status: 'ready', notes: 'REPOST:' + it.key,
+    panel_notes: 'Repost of ' + src + ', made in the Library tab ' + new Date().toISOString().slice(0, 10) + '. Check the clip and captions, then set "approved" to schedule it.'
+  };
+  try {
+    const res = await fetch(RESTORE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const out = await res.json();
+    if (!res.ok || !out.success) throw new Error('HTTP ' + res.status);
+    st.style.color = '#2a7a2a'; st.textContent = 'Draft post #' + out.id + ' made for ' + shortDate(date) + ' ' + time + '. It is in the calendar waiting for your approval.';
+    await loadRows();
+    setTimeout(() => { closeDrawer(); if (VIEW === 'library') renderLibrary(); }, 1500);
+  } catch (e) { btn.disabled = false; st.style.color = '#b00'; st.textContent = 'Could not make the draft: ' + e.message; }
+}
+document.getElementById('btnLibrary').addEventListener('click', () => { VIEW = 'library'; setViewButtons(); render(); });
+
 document.getElementById('overlay').addEventListener('click', (e) => {
   if (e.target.id === 'overlay') closeDrawer();
 });
@@ -1306,6 +1485,7 @@ document.getElementById('btnList').addEventListener('click', () => { VIEW = 'lis
 function setViewButtons() {
   document.getElementById('btnGrid').classList.toggle('active', VIEW === 'grid');
   document.getElementById('btnList').classList.toggle('active', VIEW === 'list');
+  document.getElementById('btnLibrary').classList.toggle('active', VIEW === 'library');
 }
 document.getElementById('showPostedRejected').addEventListener('change', render);
 document.getElementById('filterSearch').addEventListener('input', render);
