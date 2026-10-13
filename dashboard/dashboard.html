@@ -1507,10 +1507,12 @@ function planDefaults(start, n) {
 function formatSelect(date, dow, row, pick) {
   const ch = DAY_CHAR[dow];
   const st = slotState(row);
-  const types = dow === 0 ? ['Brand Lore', 'Brand Lore (Poster Wall)'] : ROT_TYPES;   // 12 Oct 2026 (Andy): the Poster Wall clip is chosen here, never rotated in
+  // 12 Oct 2026 (Andy): Brand Lore (and the Poster Wall clip, chosen here, never rotated in) on Sunday; Friday and Saturday also offer it.
+  const BL = ['Brand Lore', 'Brand Lore (Poster Wall)'];
+  const types = dow === 0 ? BL : ([5, 6].indexOf(dow) !== -1 ? ROT_TYPES.concat(BL) : ROT_TYPES);
   let opts = '';
   if (!st.gap) opts += '<option value="" selected>Keep</option>';
-  opts += types.map(f => { const n = dow === 0 ? leftFor(ch, f) : leftOther(ch, f); return '<option value="' + f + '"' + (st.gap && f === pick ? ' selected' : '') + (n === 0 || st.done ? ' disabled' : '') + '>' + (st.gap ? '' : 'Replace with ') + f + (n === null ? '' : ' (' + n + ' left)') + '</option>'; }).join('');
+  opts += types.map(f => { const n = (dow === 0 || f.indexOf('Brand Lore') === 0) ? leftFor('SC Logo', f) : leftOther(ch, f); return '<option value="' + f + '"' + (st.gap && f === pick ? ' selected' : '') + (n === 0 || st.done ? ' disabled' : '') + '>' + (st.gap ? '' : 'Replace with ') + f + (n === null ? '' : ' (' + n + ' left)') + '</option>'; }).join('');
   if (st.gap) opts += '<option value=""' + (pick ? '' : ' selected') + '>None</option>';
   return '<select data-date="' + date + '" class="plan7">' + opts + '</select>';
 }
@@ -1524,6 +1526,7 @@ function extraCell(date, dow) {
 function extraTypes(dow) {
   const t = ['Day Greeting', 'Wisdom', 'Character Lore', 'Travel the World', 'Product', 'NFT', 'Dare to Buy'];
   if (dow === 0) return ['Day Greeting', 'Brand Lore', 'Brand Lore (Poster Wall)', 'Product', 'NFT', 'Dare to Buy'];
+  if (dow === 5 || dow === 6) return t.concat(['Brand Lore', 'Brand Lore (Poster Wall)']);   // 12 Oct 2026 (Andy): Brand Lore on Friday and Saturday too
   return t;
 }
 function addExtraLine(box) {
@@ -1638,7 +1641,7 @@ function submitPlan() {
     plan.push(item);
   }));
   if (extraError) { document.getElementById('planStatus').textContent = extraError; return; }
-  document.querySelectorAll('.plan7').forEach(sel => { if (!sel.value) return; const c7 = document.querySelector('.plan7c[data-date="' + sel.dataset.date + '"]'); plan.push({ date: sel.dataset.date, format: sel.value, character: c7 ? c7.value : '' }); });
+  document.querySelectorAll('.plan7').forEach(sel => { if (!sel.value) return; const c7 = document.querySelector('.plan7c[data-date="' + sel.dataset.date + '"]'); plan.push({ date: sel.dataset.date, format: sel.value, character: (c7 && sel.value.indexOf('Brand Lore') !== 0) ? c7.value : '' }); });
   document.querySelectorAll('.plan12').forEach(sel => {
     if (!sel.value) return;
     const c0 = document.querySelector('.plan12c[data-date="' + sel.dataset.date + '"]');
@@ -1675,7 +1678,7 @@ async function openAdhoc() {
     document.getElementById('adProduct').style.display = (f === 'Product' || f === 'Dare to Buy') ? '' : 'none';
     if (f === 'Dare to Buy' && document.getElementById('adTime').value === '18:00') document.getElementById('adTime').value = '19:00';
     const n = (f === 'Day Greeting' || f.indexOf('Brand Lore') === 0 || dow === 0) ? leftFor(f === 'Day Greeting' && dow !== 0 ? DAY_CHAR[dow] : 'SC Logo', f) : leftOther(DAY_CHAR[dow], f);
-    const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (Rotate = any of the six except ' + DAY_CHAR[dow] + '). Up to one a day, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? (dow === 0 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore is Sunday only - pick a Sunday.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (Rotate = any of the six except ' + DAY_CHAR[dow] + '). Up to one a day, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
