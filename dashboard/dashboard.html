@@ -848,7 +848,7 @@ function productVoEdit(notes) {
   if (!/Ticker:/i.test(String(notes || ''))) return '';
   const m = String(notes || '').match(VO_RX);
   return '<div class="field"><label>Voice-over (announcer, spoken over the clip)</label><textarea id="b_vo" data-kind="' + voKind(notes) + '">' + escapeHtml(m ? m[1] : '') + '</textarea>' +
-    '<div style="margin-top:4px;color:var(--dim);font-size:12px">Says what the product is, one double meaning played straight, a claim that is true of the product; spoken in 3.9 to 4.6 seconds (Playbook 7.7.2).</div>' + voPreviewHtml() + '</div>';
+    '<div style="margin-top:4px;color:var(--dim);font-size:12px">Promotes the product, trying not to repeat the ticker\'s words exactly; one double meaning played straight, a claim that is true of the product; spoken in 3.9 to 4.6 seconds (Playbook 7.7.2).</div>' + voPreviewHtml() + '</div>';
 }
 function voPreviewHtml() {
   return '<div style="margin-top:6px"><button type="button" class="btn secondary" id="voPreviewBtn">Preview voice</button><div id="voPreviewStatus" style="font-size:12px;color:var(--dim);margin-top:4px"></div><div id="voPreviewResult"></div></div>';
@@ -870,8 +870,6 @@ async function previewVoice() {
       const sec = list[0].seconds || 0;
       if (sec > 4.6) notes.push('Too long: ' + sec + ' s, so the end may be cut off or run over the tune\'s final hit. Shorten it to 3.9 to 4.6 s.');
       else if (sec < 3.9) notes.push('Short: ' + sec + ' s, leaving a gap at the end. Aim for 3.9 to 4.6 s.');
-      const k = pv.dataset.kind, w = VO_WORDS[k];
-      if (w && !w.test(lines[0])) notes.push('It does not say what the product is (' + k + ').');
     }
     st.textContent = notes.length ? notes.join(' ') : (pv ? 'Fits: ' + list[0].seconds + ' s.' : 'Ready.');
     st.style.color = notes.length ? '#b00' : 'var(--dim)';
