@@ -1012,6 +1012,8 @@ function openDrawer(r) {
       // 10 Oct 2026 (Andy): a posted Dare to Buy with a video can re-post just its Facebook Reel (after the Facebook post was deleted).
       (r.format === 'Dare to Buy' && r.video_url && r.status === 'posted' ? '<button class="btn danger" id="fbOnlyBtn">Facebook only (re-post Reel)</button>' : '') +
       (r.status !== 'posted' ? '<button class="btn secondary" id="reschedBtn">Reschedule</button>' : '') +
+      // 12 Oct 2026 (Andy): Remake rebuilds a post in place (same day, time, type, product and character) with a fresh brief, image and clip.
+      (r.status !== 'posted' ? '<button class="btn secondary" id="remakeBtn">Remake</button>' : '') +
       '<button class="btn secondary" id="rejectBtn">Reject</button>' +
       '<button class="btn danger" id="deleteBtn">Delete</button>' +
       '<button class="btn secondary" id="closeBtn">Close</button>' +
@@ -1037,6 +1039,7 @@ function openDrawer(r) {
   const fb = document.getElementById('fbOnlyBtn'); if (fb) fb.addEventListener('click', () => postFacebookOnly(r.id));
   const rs = document.getElementById('reschedBtn'); if (rs) rs.addEventListener('click', () => openReschedule(r));
   document.getElementById('rejectBtn').addEventListener('click', () => rejectRow(r));
+  const rmk = document.getElementById('remakeBtn'); if (rmk) rmk.addEventListener('click', () => remakeRow(r));
   document.getElementById('deleteBtn').addEventListener('click', () => deleteRow(r));
   const ptb = document.getElementById('previewTextBtn'); if (ptb) ptb.addEventListener('click', () => previewText(r));
   const vpb = document.getElementById('voPreviewBtn'); if (vpb) vpb.addEventListener('click', previewVoice);
@@ -1184,6 +1187,40 @@ async function postNow(id) {
   } catch (e) {
     statusEl.textContent = 'Failed: ' + e.message;
   }
+}
+
+// Remake (12 Oct 2026, Andy): marks the post rejected, then sends the same slot to the planner, which reuses a rejected post in place and
+// runs SC Concept Creator on it again. The product, promotable item and poster clip are read back from the post itself.
+const REMAKE_COST = { 'Day Greeting': '$0.57', 'Wisdom': '$0.57', 'Character Lore': '$0.57', 'Brand Lore': '$0.58', 'Product': '$0.50', 'Travel the World': '$0.47', 'NFT': '$0.06' };
+async function remakeRow(r) {
+  const statusEl = document.getElementById('saveStatus');
+  const notes = String(r.notes || ''), pnotes = String(r.panel_notes || '');
+  const poster = /Clip:\s*posterwall/i.test(notes);
+  const cost = poster ? (r.format === 'Brand Lore' ? '$0.13' : '$0.08') : (REMAKE_COST[r.format] || 'a few cents');
+  const item = { date: londonYmd(r.post_date), format: r.format, character: r.character || '' };
+  if (r.post_time) item.time = r.post_time;
+  if (poster) item.clip = 'posterwall';
+  if (r.format === 'Product' || r.format === 'Dare to Buy') {
+    const handle = ((notes.match(/products\/([a-z0-9-]+)/i) || notes.match(/Source:\s*SHOP:([a-z0-9-]+)/i) || pnotes.match(/Item:\s*([a-z0-9-]+)\s*(?:\||$)/i) || [])[1] || '');
+    const promo = ((notes.match(/Promo:\s*([^.|]+)/i) || (/Source:\s*PROMO:/i.test(notes) ? pnotes.match(/Item:\s*([^|]+)/i) : null) || [])[1] || '').trim();
+    if (handle) { await loadProducts(); const p = (PRODUCTS || []).find(x => x.handle === handle) || {}; item.product_handle = handle; item.product_title = p.title || ''; }
+    else if (promo && r.format === 'Product') item.promo_item = promo;
+    else { statusEl.textContent = 'Could not find this post\'s product. Use Reject, then Add a post.'; return; }
+  }
+  if (!confirm('Remake this post? About ' + cost + '. It keeps the day, time, type, product and character, and makes a new brief, image and clip for your approval.')) return;
+  statusEl.textContent = 'Remaking...';
+  try {
+    const rj = await fetch(UPDATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, panel_status: 'rejected', panel_notes: 'Remake requested' }) });
+    if (!rj.ok) throw new Error('HTTP ' + rj.status);
+    const res = await fetch(PLAN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: [item] }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    let out = null; try { out = await res.json(); } catch (e2) { out = null; }
+    const sk = out && (out.skipped || (Array.isArray(out) && out[0] && out[0].skipped));
+    if (sk && sk.length) throw new Error(sk.map(x => x.why).join('; '));
+    statusEl.textContent = 'Remaking: the new brief takes about a minute; the calendar refreshes itself.';
+    startAutoRefresh();
+    setTimeout(() => { closeDrawer(); loadRows(); }, 1200);
+  } catch (e) { statusEl.textContent = 'Remake failed: ' + e.message; }
 }
 
 async function rejectRow(r) {
