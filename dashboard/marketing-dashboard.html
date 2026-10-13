@@ -130,6 +130,14 @@
   .repeat-days { display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; }
   .repeat-days label { flex-direction: row; align-items: center; gap: 4px; color: var(--ink); font-size: 14px; }
   .gnote { font-size: 13px; color: var(--grey); }
+  .glink { display: flex; gap: 8px; align-items: center; } .glink input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); }
+  .tracker { border: 1px solid var(--line); background: #fff; padding: 12px 14px; margin-bottom: 14px; }
+  .tracker h2 { font-size: 17px; margin: 0; } .tracker .thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; } .tracker .thead .sub { font-size: 13px; color: var(--grey); flex: 1; }
+  .trow { border-top: 1px solid var(--line); padding: 9px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .trow .who { flex: 1 1 220px; min-width: 0; } .trow .who b { font-size: 15px; } .trow .who .fit { font-size: 12.5px; color: var(--grey); }
+  .trow .tacts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tstat { font-size: 12px; font-weight: 700; padding: 2px 7px; border: 1px solid currentColor; white-space: nowrap; }
+  .tstat.due { color: #c62828; background: #fdecea; } .tstat.ok { color: #2a7a2a; } .tstat.wait { color: #2a5db0; } .tstat.todo { color: #b06a00; } .tstat.closed { color: #888; }
   #giftDlg .row { flex-wrap: wrap; } #giftDlg .row label { flex: 1 1 140px; min-width: 0; } #giftDlg input, #giftDlg select { width: 100%; box-sizing: border-box; min-width: 0; }
   header .btn { white-space: nowrap; }
   .gpool { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; max-height: 230px; overflow-y: auto; border: 1px solid var(--line); padding: 6px; }
@@ -186,22 +194,38 @@
 <dialog id="giftDlg">
   <form method="dialog" class="dlg" id="giftForm">
     <h2>Gift a Blueprint NFT</h2>
-    <div class="gnote">One free Blueprint per person, as a £0 shop order. Email: they get the shop email with the Claim button. Wallet: it is minted straight to them.</div>
+    <div class="gnote">One free Blueprint per person, as a £0 shop order. You get a private gift link to paste in the DM; they choose their own wallet or a new email wallet when they open it.</div>
     <div class="row">
       <label>Handle <input id="g_handle" maxlength="60" placeholder="@name" required></label>
       <label>Platform <select id="g_platform"><option>Instagram</option><option>X</option><option>TikTok</option><option>Facebook</option><option>YouTube</option></select></label>
-    </div>
-    <div class="row">
-      <label>Email <input id="g_email" type="email" maxlength="120" placeholder="their email"></label>
-      <label>or Wallet <input id="g_wallet" maxlength="42" placeholder="0x…"></label>
     </div>
     <label>Blueprint <input id="g_search" type="search" placeholder="Search, e.g. 0012"></label>
     <div class="gpool" id="g_pool"><div class="gnote">Loading Blueprints…</div></div>
     <div class="gpick" id="g_pick"></div>
     <div class="gnote" id="g_status"></div>
+    <div class="glink" id="g_link"></div>
     <div class="foot">
       <button type="button" class="btn ghost" id="g_cancel">Close</button>
       <button type="button" class="btn" id="g_send">Send gift</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="tDlg">
+  <form method="dialog" class="dlg" id="tForm">
+    <h2 id="tTitle">Add a person</h2>
+    <div class="row">
+      <label>Handle <input id="t_handle" maxlength="60" placeholder="@name" required></label>
+      <label>Platform <select id="t_platform"><option>X</option><option>Instagram</option><option>TikTok</option><option>Facebook</option><option>YouTube</option></select></label>
+    </div>
+    <label>Profile link <input id="t_url" type="url" placeholder="https://…"></label>
+    <label>Why they fit <input id="t_fit" maxlength="200" placeholder="One line: their audience matches our buyer because…"></label>
+    <label>DM <textarea id="t_dm" rows="4" maxlength="4000"></textarea></label>
+    <label>Follow-up DM <textarea id="t_fu" rows="3" maxlength="4000"></textarea></label>
+    <label>Status <select id="t_status"><option>To send</option><option>Sent</option><option>Replied</option><option>Gift sent</option><option>Claimed</option><option>No reply</option><option>Removed</option></select></label>
+    <label>Note <textarea id="t_notes" rows="2" maxlength="1000"></textarea></label>
+    <div class="foot">
+      <button type="button" class="btn ghost" id="t_cancel">Cancel</button>
+      <button type="button" class="btn" id="t_save">Save</button>
     </div>
   </form>
 </dialog>
@@ -281,7 +305,10 @@ function tabCount(v) {
   const keep = view; view = v; let n;
   if (v === 'Parked' || v === 'Done') n = rows.filter(flatShown).length;
   else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length + rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length : 0);
-  view = keep; return n;
+  view = keep;
+  // Influencers also counts gift-tracker people waiting on Andy: DM to send, replied, follow-up due (13 Oct 2026).
+  if (v === 'Influencers' && track) n += track.filter(t => t.status === 'To send' || t.status === 'Replied' || followDue(t)).length;
+  return n;
 }
 
 function renderTabs() {
@@ -369,7 +396,9 @@ function render() {
     html = (view === 'Now' ? rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r)).map(r => card(r, false)).join('') : '') + ms.map(missionCard).join('');
     if (view === 'Now') html += loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).map(r => card(r, true)).join('');
   }
+  if (view === 'Influencers') html = trackerHtml() + html;
   $('list').innerHTML = html || '<div class="empty">Nothing here.</div>';
+  if (view === 'Influencers') wireTracker();
   $('list').querySelectorAll('.card').forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id);
     c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
@@ -429,7 +458,7 @@ $('addBtn').onclick = () => openDlg(null);
 // Calls SC - NFT Gift (sc-nft-gift): mode pool lists giftable Blueprints; mode gift makes the £0 order, sets up the claim,
 // mints to a wallet when one is given, logs it and tells Andy on Telegram. One gift per handle (the workflow refuses a second).
 const GIFT_URL = BASE + 'sc-nft-gift';
-let giftPool = null, giftPick = null;
+let giftPool = null, giftPick = null, giftRow = null;
 async function loadGiftPool() {
   try {
     const r = await fetch(GIFT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'pool' }) });
@@ -449,33 +478,129 @@ function drawGiftPool() {
 function drawGiftPick() {
   $('g_pick').innerHTML = giftPick ? '<img alt="" src="' + esc(safeUrl(giftPick.image)) + '"><div><b>' + esc(giftPick.title) + '</b><br><span class="gnote">Shop price £' + esc(giftPick.price) + '; given at £0</span></div>' : '';
 }
-function openGift() {
-  ['g_handle', 'g_email', 'g_wallet', 'g_search'].forEach(id => $(id).value = '');
-  giftPick = null; drawGiftPick(); $('g_status').textContent = ''; $('g_send').disabled = false;
+function openGift(row) {
+  giftRow = row || null;
+  ['g_handle', 'g_search'].forEach(id => $(id).value = '');
+  if (giftRow) { $('g_handle').value = giftRow.handle || ''; $('g_platform').value = giftRow.platform || 'X'; }
+  giftPick = null; drawGiftPick(); $('g_status').textContent = ''; $('g_link').innerHTML = ''; $('g_send').disabled = false;
   $('giftDlg').showModal();
   if (giftPool === null) loadGiftPool(); else drawGiftPool();
 }
 async function sendGift() {
-  const handle = $('g_handle').value.trim(), email = $('g_email').value.trim(), wallet = $('g_wallet').value.trim();
+  const handle = $('g_handle').value.trim();
   const miss = [];
   if (handle.replace('@', '').length < 2) miss.push('their handle');
-  if (!email && !wallet) miss.push('an email or a wallet');
-  if (wallet && !/^0x[a-fA-F0-9]{40}$/.test(wallet)) miss.push('a wallet that is 0x followed by 40 characters');
   if (!giftPick) miss.push('a Blueprint');
   if (miss.length) { $('g_status').textContent = 'Please give ' + miss.join(', ') + '.'; return; }
-  if (!confirm('Give ' + giftPick.title + ' to ' + handle + ' (' + $('g_platform').value + ')' + (email ? ', claim email to ' + email : ', minted to ' + wallet) + '? This makes a real £0 order.')) return;
-  $('g_send').disabled = true; $('g_status').textContent = 'Making the gift…' + (wallet ? ' (minting can take a minute)' : '');
+  if (!confirm('Give ' + giftPick.title + ' to ' + handle + ' (' + $('g_platform').value + ')? This makes a real £0 order and gives you the gift link for the DM.')) return;
+  $('g_send').disabled = true; $('g_status').textContent = 'Making the gift…';
   try {
-    const r = await fetch(GIFT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'gift', handle, platform: $('g_platform').value, email, wallet, product_handle: giftPick.handle }) });
+    const r = await fetch(GIFT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'gift', handle, platform: $('g_platform').value, product_handle: giftPick.handle }) });
     const d = await r.json();
     if (!d.ok) { $('g_send').disabled = false; $('g_status').textContent = d.error || d.message || 'The gift was not made.'; return; }
-    $('g_status').textContent = 'Done: ' + d.product_title + ', order ' + d.order_name + ', ' + d.status + '. ' + (d.note || '');
+    $('g_status').textContent = 'Done: ' + d.product_title + ', order ' + d.order_name + ', ' + d.status + '. ' + (d.note || '') + (d.claim_url ? ' Paste this link in your DM:' : '');
+    if (d.claim_url) {
+      $('g_link').innerHTML = '<input readonly value="' + esc(d.claim_url) + '"><button type="button" class="btn small">Copy link</button>';
+      $('g_link').querySelector('button').onclick = () => copyText(d.claim_url, 'Gift link copied');
+    }
     giftPool = giftPool.filter(p => p.handle !== giftPick.handle);
+    // Record the gift on that person's tracker row (13 Oct 2026).
+    const tr = giftRow || (track || []).find(t => String(t.handle).toLowerCase() === ('@' + handle.replace(/^@/, '')).toLowerCase());
+    const base = tr || { handle, platform: $('g_platform').value };
+    saveTrack(Object.assign({}, base, { status: d.status === 'claimed' ? 'Claimed' : 'Gift sent', gift_order_id: d.order_id || '', gift_order_name: d.order_name || '', product_title: d.product_title || '', claim_url: d.claim_url || '', gifted_on: today() }));
     toast('Gift ' + d.status);
   } catch (e) { $('g_send').disabled = false; $('g_status').textContent = 'Could not reach the gift workflow: ' + e.message; }
 }
-$('giftBtn').onclick = openGift;
+$('giftBtn').onclick = () => openGift(null);
 $('g_cancel').onclick = () => $('giftDlg').close();
+// ---------- Gift tracker (13 Oct 2026, NFT Creator Outreach Playbook) ----------
+// One row per influencer in SC Gift Tracker (via SC - Gift Tracker API): DM to send, sent, follow-up due 5 days after Sent
+// with no reply, replied, gift sent (private gift link), claimed (set by the API when the link has been used).
+const TRACK_URL = BASE + 'sc-gift-tracker';
+const FOLLOWUP_DAYS = 5;
+let track = null, trackLoading = false, tEdit = null;
+async function loadTrack() {
+  if (trackLoading) return; trackLoading = true;
+  try {
+    const r = await fetch(TRACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) });
+    const d = await r.json(); track = Array.isArray(d) ? d : [];
+  } catch (e) { track = track || []; toast('Could not load the gift tracker'); }
+  trackLoading = false;
+  render();
+}
+async function saveTrack(row) {
+  try {
+    const r = await fetch(TRACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', row }) });
+    const d = await r.json();
+    if (!d.ok) { toast(d.error || 'Not saved'); return; }
+  } catch (e) { toast('Not saved: ' + e.message); return; }
+  await loadTrack();
+}
+function copyText(t, msg) {
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast(msg || 'Copied'), () => toast('Copy failed'));
+}
+function daysSince(d) { return d ? Math.floor((new Date(today() + 'T12:00:00') - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 86400000) : 0; }
+function followDue(t) { return t.status === 'Sent' && t.sent_on && !t.followup_on && !t.replied_on && daysSince(t.sent_on) >= FOLLOWUP_DAYS; }
+function tStage(t) {
+  if (followDue(t)) return ['Follow-up due', 'due'];
+  if (t.status === 'To send') return ['DM to send', 'todo'];
+  if (t.status === 'Sent') return [t.followup_on ? 'Follow-up sent ' + t.followup_on.slice(5) : 'Sent ' + String(t.sent_on || '').slice(5), 'wait'];
+  if (t.status === 'Replied') return ['Replied: give the gift', 'todo'];
+  if (t.status === 'Gift sent') return ['Gift sent, not claimed yet', 'wait'];
+  if (t.status === 'Claimed') return ['Claimed ' + String(t.claimed_on || '').slice(5), 'ok'];
+  return [t.status, 'closed'];
+}
+function trackerHtml() {
+  if (track === null) { loadTrack(); return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">Loading…</span></div></div>'; }
+  const open = track.filter(t => ['No reply', 'Removed'].indexOf(t.status) === -1);
+  const closed = track.filter(t => t.status === 'No reply');
+  const order = t => followDue(t) ? 0 : ({ 'Replied': 1, 'To send': 2, 'Sent': 3, 'Gift sent': 4, 'Claimed': 5 }[t.status] || 6);
+  const due = open.filter(followDue).length;
+  const rowHtml = t => {
+    const [lbl, cls] = tStage(t); const url = safeUrl(t.profile_url);
+    let b = '';
+    if (t.status === 'To send') b += (t.dm_text ? '<button class="btn small" data-ta="dm">Copy DM</button>' : '') + '<button class="btn small done" data-ta="sent">I sent it</button>';
+    if (t.status === 'Sent') b += (followDue(t) && t.followup_text ? '<button class="btn small warn" data-ta="fu">Copy follow-up</button>' : '') + (followDue(t) ? '<button class="btn small ghost" data-ta="fusent">Follow-up sent</button>' : '') + '<button class="btn small done" data-ta="replied">They replied</button>' + (t.followup_on ? '<button class="btn small ghost" data-ta="noreply">No reply</button>' : '');
+    if (t.status === 'Replied') b += '<button class="btn small" data-ta="gift">Give gift</button>';
+    if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift link</button>';
+    b += (url ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(url) + '">Profile</a>' : '') + '<button class="btn small ghost" data-ta="edit">Edit</button>';
+    return '<div class="trow" data-tid="' + esc(t.id) + '"><div class="who"><b>' + esc(t.handle) + '</b> <span class="gnote">' + esc(t.platform || '') + '</span>' + (t.product_title ? ' <span class="gnote">· ' + esc(t.product_title) + '</span>' : '') + (t.fit ? '<div class="fit">' + esc(t.fit) + '</div>' : '') + '</div><span class="tstat ' + cls + '">' + esc(lbl) + '</span><div class="tacts">' + b + '</div></div>';
+  };
+  return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">' + open.length + ' people' + (due ? ' · <b style="color:#c62828">' + due + ' follow-up due</b>' : '') + '</span><button class="btn small" data-ta="add">+ Person</button></div>'
+    + (open.length ? open.slice().sort((a, b) => order(a) - order(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>')
+    + (closed.length ? '<details><summary class="gnote">No reply (' + closed.length + ')</summary>' + closed.map(rowHtml).join('') + '</details>' : '')
+    + '</div>';
+}
+function wireTracker() {
+  const add = $('list').querySelector('[data-ta=add]'); if (add) add.onclick = () => openTrack(null);
+  $('list').querySelectorAll('.trow').forEach(el => {
+    const t = (track || []).find(x => String(x.id) === el.dataset.tid); if (!t) return;
+    const on = (k, f) => { const b = el.querySelector('[data-ta=' + k + ']'); if (b) b.onclick = f; };
+    on('dm', () => copyText(t.dm_text, 'DM copied'));
+    on('fu', () => copyText(t.followup_text, 'Follow-up copied'));
+    on('link', () => copyText(t.claim_url, 'Gift link copied'));
+    on('sent', () => saveTrack(Object.assign({}, t, { status: 'Sent', sent_on: today() })));
+    on('fusent', () => saveTrack(Object.assign({}, t, { followup_on: today() })));
+    on('replied', () => saveTrack(Object.assign({}, t, { status: 'Replied', replied_on: today() })));
+    on('noreply', () => saveTrack(Object.assign({}, t, { status: 'No reply' })));
+    on('gift', () => openGift(t));
+    on('edit', () => openTrack(t));
+  });
+}
+function openTrack(t) {
+  tEdit = t; $('tTitle').textContent = t ? 'Edit ' + t.handle : 'Add a person';
+  $('t_handle').value = t ? t.handle : ''; $('t_platform').value = t ? (t.platform || 'X') : 'X'; $('t_url').value = t ? (t.profile_url || '') : '';
+  $('t_fit').value = t ? (t.fit || '') : ''; $('t_dm').value = t ? (t.dm_text || '') : ''; $('t_fu').value = t ? (t.followup_text || '') : '';
+  $('t_status').value = t ? (t.status || 'To send') : 'To send'; $('t_notes').value = t ? (t.notes || '') : '';
+  $('tDlg').showModal();
+}
+$('t_cancel').onclick = () => $('tDlg').close();
+$('t_save').onclick = () => {
+  if ($('t_handle').value.trim().replace('@', '').length < 2) { toast('Give their handle'); return; }
+  const row = Object.assign({}, tEdit || {}, { handle: $('t_handle').value.trim(), platform: $('t_platform').value, profile_url: $('t_url').value.trim(), fit: $('t_fit').value.trim(), dm_text: $('t_dm').value, followup_text: $('t_fu').value, status: $('t_status').value, notes: $('t_notes').value });
+  $('tDlg').close(); saveTrack(row);
+};
+
 $('g_send').onclick = sendGift;
 $('g_search').oninput = drawGiftPool;
 $('f_type').onchange = () => { $('f_repeat_wrap').style.display = $('f_type').value === 'DAILY' ? '' : 'none'; };
@@ -708,6 +833,7 @@ async function addFollow(e) {
 }
 
 load();
+loadTrack();
 </script>
 </body>
 </html>
