@@ -98,6 +98,9 @@
   .typehead .cnt { font-weight: 400; color: var(--grey); margin-left: 8px; letter-spacing: 0; }
   .typechip { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 1px 6px; border: 1px solid; margin-right: 6px; }
   .typechip.BUILD { color: var(--c-idea); border-color: var(--c-idea); } .typechip.RUN { color: var(--c-claude); border-color: var(--c-claude); } .typechip.ALERT { color: #c62828; border-color: #c62828; }
+  .card.alert { border-left: 6px solid #c62828; background: #fdecea; }
+  .card.alert .title { color: #8e1b1b; }
+  .tab.alerttab, .tab.alerttab.on { background: #c62828; color: #fff; border-color: #c62828; font-weight: 700; }
   .steps .card { margin-left: 0; }
   .addbar { margin-bottom: 14px; } #addform { display:flex; gap:8px; }
   #addform input { flex:1; min-width:0; font:inherit; font-size:16px; padding:8px 12px; border:1px solid var(--line); background:#fff; }
@@ -245,13 +248,13 @@ function tabCount(v) {
   if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
   const keep = view; view = v; let n;
   if (v === 'Parked' || v === 'Done') n = rows.filter(flatShown).length;
-  else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length : 0);
+  else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length + rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length : 0);
   view = keep; return n;
 }
 
 function renderTabs() {
   const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Parked', 'Done'];
-  $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
+  $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
   $('whoSel').onchange = e => { who = e.target.value; render(); };
@@ -267,7 +270,7 @@ function card(r, showMission) {
   const link = safeUrl(r.link);
   const isA = r.owner === 'Andy';
   const action = r.next_step || r.title;
-  return '<div class="card s-' + esc(r.status) + '" data-id="' + esc(r.id) + '">'
+  return '<div class="card s-' + esc(r.status) + (r.type === 'ALERT' ? ' alert' : '') + '" data-id="' + esc(r.id) + '">'
     + '<div class="body">'
     + '<div class="title">' + (r.type ? '<span class="typechip ' + esc(r.type) + '">' + esc(r.type) + '</span>' : '') + '<span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (isA ? 'Your action' : 'Claude') + '</span>#' + esc(r.id) + ' &middot; ' + esc(r.title) + '</div>'
     + '<div class="action">' + esc(action) + '</div>'
@@ -331,7 +334,7 @@ function render() {
       const ra = nextAction(a), rb = nextAction(b);
       return (ra ? rank[ra.status] : 9) - (rb ? rank[rb.status] : 9);
     });
-    html = ms.map(missionCard).join('');
+    html = (view === 'Now' ? rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r)).map(r => card(r, false)).join('') : '') + ms.map(missionCard).join('');
     if (view === 'Now') html += loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).map(r => card(r, true)).join('');
   }
   $('list').innerHTML = html || '<div class="empty">Nothing here.</div>';
