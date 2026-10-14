@@ -80,6 +80,14 @@ SC - Bank Statement Ingest, SC - Receipt Capture (Gmail), SC - PayPal Ingest, SC
 
 Dashboard: `dashboard/marketing-dashboard.html` has an Alerts tab (urgent display, also in Now).
 
+## Marketing (SC Marketing Playbook; SC NFT Creator Outreach Playbook)
+
+| Workflow (n8n id) | Role |
+|---|---|
+| SC - NFT Gift (`KwoMdqx8lAxMz1PG`) | POST `sc-nft-gift`: pool, gift (£0 gift order + private claim link), reclaim. Called by MAR Gift NFT and Give gift. |
+| SC - Gift Tracker API (`aE1bQDiQAxUfvz9i`) | POST `sc-gift-tracker`: list (marks Claimed when the link is used) or save a row of SC Gift Tracker (`SvGlyFa0aAbDAxWg`, with tier). Called by the MAR Influencers tab. |
+| SC - Content Library API (list) (`JF9XOdrehrt5cloh`) | GET `sc-library-list`: finished media from SC Content Library (`4hhaSTD4VS4v9mRa`). Called by the CM Library tab. |
+
 ## Support bots and knowledge base
 SC - Shared Brain, SC - Web/Discord Bridge, SC - KB Public Read, SC - Instagram DM Channel, SC - Instagram Comment
 Auto-Reply, SC - Facebook Comment Auto-Reply, SC - Messenger Channel, SC - WhatsApp Channel, SC - Telegram Reply Handler,
@@ -93,6 +101,7 @@ SC - Daily Workflow Backup, SC - Daily Data Table Backup, SC - Claims Backup to 
 
 ## Repository layout
 - `dashboard/dashboard.html` — the content calendar dashboard.
+- `dashboard/marketing-dashboard.html` — the marketing dashboard (MAR).
 - `services/hotline-compose/` — the Hotline Compose service (code + README).
 - `rollcall/` — Roll Call assets.
 - `ecards/` — birthday e-card artwork per character.
