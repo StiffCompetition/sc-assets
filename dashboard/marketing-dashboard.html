@@ -321,7 +321,11 @@ function renderTabs() {
 }
 
 function chatUrl(r) {
-  const q = 'Marketing dashboard task #' + r.id + ': ' + r.title + '. Next step: ' + (r.next_step || '') + '. Read this row in the n8n data table SC Marketing Actions, work only on this task, and update the row when done.';
+  const q = 'Marketing dashboard task #' + r.id + ': ' + r.title + '. Next step: ' + (r.next_step || '') + '. Read this row in the n8n data table SC Marketing Actions and work only on this task.'
+    + ' First, save this chat\'s link on the row: get it by calling read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink) with id ' + r.id + ' and that chat_link.'
+    + ' You can edit rows yourself: to update or close this row, call the n8n workflow SC - Marketing Actions API (save) (webhook sc-marketing-save) with this row\'s id and the WHOLE row, because it overwrites every field.'
+    + ' When the work is done set status Done, next_step none, done_on today (YYYY-MM-DD), and put the cause, the fix and the test in notes.'
+    + ' If it now needs Andy, set status Waiting, owner Andy and waiting_on instead. Then read the row back to check it saved.';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
 
@@ -347,6 +351,7 @@ function card(r, showMission) {
     + '<div class="acts"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>'
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
     + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
+    + (safeUrl(r.chat_link) ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(safeUrl(r.chat_link)) + '">Open chat</a>' : '')
     + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">New chat</a>'
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
