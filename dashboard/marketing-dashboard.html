@@ -136,6 +136,7 @@
   .trow { border-top: 1px solid var(--line); padding: 9px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .trow .who { flex: 1 1 220px; min-width: 0; } .trow .who b { font-size: 15px; } .trow .who .fit { font-size: 12.5px; color: var(--grey); }
   .trow .tacts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tier { font-size: 11px; font-weight: 700; padding: 1px 6px; color: #fff; background: #78909c; vertical-align: 2px; } .tier.t1 { background: #2e7d32; } .tier.t2 { background: #ef6c00; } .tier.t3 { background: #6d4c41; }
   .tstat { font-size: 12px; font-weight: 700; padding: 2px 7px; border: 1px solid currentColor; white-space: nowrap; }
   .tstat.due { color: #c62828; background: #fdecea; } .tstat.ok { color: #2a7a2a; } .tstat.wait { color: #2a5db0; } .tstat.todo { color: #b06a00; } .tstat.closed { color: #888; }
   #giftDlg .row { flex-wrap: wrap; } #giftDlg .row label { flex: 1 1 140px; min-width: 0; } #giftDlg input, #giftDlg select { width: 100%; box-sizing: border-box; min-width: 0; }
@@ -560,6 +561,8 @@ function trackerHtml() {
   const open = track.filter(t => ['No reply', 'Removed'].indexOf(t.status) === -1);
   const closed = track.filter(t => t.status === 'No reply');
   const order = t => followDue(t) ? 0 : ({ 'Replied': 1, 'To send': 2, 'Sent': 3, 'Gift sent': 4, 'Claimed': 5 }[t.status] || 6);
+  // Tier (13 Oct 2026): 1 best fit, 2 first widening, 3 second widening; Tier 1 first within each stage.
+  const tierN = t => Number(t.tier) || 9;
   const due = open.filter(followDue).length;
   const rowHtml = t => {
     const [lbl, cls] = tStage(t); const url = safeUrl(t.profile_url);
@@ -569,10 +572,10 @@ function trackerHtml() {
     if (t.status === 'Replied') b += '<button class="btn small" data-ta="gift">Give gift</button>';
     if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift message</button>';
     b += (url ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(url) + '">Profile</a>' : '') + '<button class="btn small ghost" data-ta="edit">Edit</button>';
-    return '<div class="trow" data-tid="' + esc(t.id) + '"><div class="who"><b>' + esc(t.handle) + '</b> <span class="gnote">' + esc(t.platform || '') + '</span>' + (t.product_title ? ' <span class="gnote">· ' + esc(t.product_title) + '</span>' : '') + (t.fit ? '<div class="fit">' + esc(t.fit) + '</div>' : '') + '</div><span class="tstat ' + cls + '">' + esc(lbl) + '</span><div class="tacts">' + b + '</div></div>';
+    return '<div class="trow" data-tid="' + esc(t.id) + '"><div class="who">' + (t.tier ? '<span class="tier t' + esc(t.tier) + '">Tier ' + esc(t.tier) + '</span> ' : '') + '<b>' + esc(t.handle) + '</b> <span class="gnote">' + esc(t.platform || '') + '</span>' + (t.product_title ? ' <span class="gnote">· ' + esc(t.product_title) + '</span>' : '') + (t.fit ? '<div class="fit">' + esc(t.fit) + '</div>' : '') + '</div><span class="tstat ' + cls + '">' + esc(lbl) + '</span><div class="tacts">' + b + '</div></div>';
   };
   return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">' + open.length + ' people' + (due ? ' · <b style="color:#c62828">' + due + ' follow-up due</b>' : '') + '</span><button class="btn small" data-ta="add">+ Person</button></div>'
-    + (open.length ? open.slice().sort((a, b) => order(a) - order(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>')
+    + (open.length ? open.slice().sort((a, b) => order(a) - order(b) || tierN(a) - tierN(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>')
     + (closed.length ? '<details><summary class="gnote">No reply (' + closed.length + ')</summary>' + closed.map(rowHtml).join('') + '</details>' : '')
     + '</div>';
 }
