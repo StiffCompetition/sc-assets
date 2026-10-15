@@ -1006,6 +1006,7 @@ function openDrawer(r) {
     conceptPicker(r) +
     panelBox(r) +
     sourceBox(r.notes) +
+    (r.format === 'Brand Lore' ? '<div class="field"><label>Clip</label><div class="clip-info">' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie poster clip: the six-character poster wall.' : 'Made-to-order clip: a new start image (Gemini) animated by the motion below (Kling). Not a fixed clip.') + '</div></div>' : '') +
     '<div class="field"><label>On-Screen Text (what actually renders in the video)</label></div>' +
     onScreenPreviewHtml(r.notes) +
     previewTextButtonHtml(r) +
