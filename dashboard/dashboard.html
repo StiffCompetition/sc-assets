@@ -1001,7 +1001,7 @@ function openDrawer(r) {
     r.format === 'NFT' ? panelBox(r) + (r.notes ? '<div class="field"><label>NFT (from the shop)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
     // Roll Call (Playbook 7.12): a locked master clip; the announcer voice-over is the only part made per post.
     isRollCall(r.notes) ? panelBox(r) + sourceBox(r.notes) +
-      '<div class="field"><label>Video</label><div class="clip-info">' + (/RollVO:[^|]*\s\/\s/i.test(r.notes || '') ? 'Roll Call portrait clip: the six animated portraits with name tags (crew introduction).' : 'Roll Call comic-page clip: comic pages turning, the six characters in colour.') + ' Fixed clip, ends on the logo.</div></div>' +
+      '<div class="field"><label>Video</label><div class="clip-info">' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie poster clip: the six-character poster wall.' : /RollVO:[^|]*\s\/\s/i.test(r.notes || '') ? 'Roll Call portrait clip: the six animated portraits with name tags (crew introduction).' : 'Roll Call comic-page clip: comic pages turning, the six characters in colour.') + ' Fixed clip, ends on the logo.</div></div>' +
       rollVoEdit(r.notes) : (
     conceptPicker(r) +
     panelBox(r) +
@@ -1667,7 +1667,7 @@ async function openPlanner() {
   await loadProducts();
   drawPlanDays(true);
 }
-function leftFor(ch, f) { return (LEFT[ch] && LEFT[ch][f] != null) ? LEFT[ch][f] : null; }
+function leftFor(ch, f) { if (f === 'Brand Lore (Movie Poster)') f = 'Brand Lore (Poster Wall)'; else if (f === 'Brand Lore (Roll Call)' || f === 'Brand Lore (Roll Call cartoon flick)') f = 'Brand Lore'; return (LEFT[ch] && LEFT[ch][f] != null) ? LEFT[ch][f] : null; }
 // Rows left for a post type across every character except the day's (only the Day Greeting uses the day's character).
 function leftOther(dayCh, f) { let t = null; CHARACTERS.filter(c => c !== dayCh).forEach(c => { const k = leftFor(c, f); if (k != null) t = (t || 0) + k; }); return t; }
 const ROT_TYPES = ['Wisdom', 'Character Lore', 'Travel the World'];
@@ -1695,7 +1695,7 @@ function planDefaults(start, n) {
       if ((!r6 || slotState(r6).gap) && leftFor(ch, 'Day Greeting') !== 0) picks[x.date + '|6am'] = 'Day Greeting';
       const r7 = existingRow(x.date, '7am');
       if (!r7 || slotState(r7).gap) {
-        if (x.dow === 0) { picks[x.date + '|7am'] = (leftFor('SC Logo', 'Brand Lore') === 0) ? '' : 'Brand Lore'; }
+        if (x.dow === 0) { picks[x.date + '|7am'] = (leftFor('SC Logo', 'Brand Lore') === 0) ? '' : 'Brand Lore (Roll Call)'; }
         else {
           const others = CHARACTERS.filter(c => c !== ch);
           const avail = f => others.filter(c => { const k = left[c] && left[c][f]; return k == null || k > 0; });
@@ -1723,7 +1723,7 @@ function formatSelect(date, dow, row, pick) {
   const ch = DAY_CHAR[dow];
   const st = slotState(row);
   // 12 Oct 2026 (Andy): Brand Lore (and the Poster Wall clip, chosen here, never rotated in) on Sunday; Friday and Saturday also offer it.
-  const BL = ['Brand Lore', 'Brand Lore (Poster Wall)'];
+  const BL = ['Brand Lore (Movie Poster)', 'Brand Lore (Roll Call)', 'Brand Lore (Roll Call cartoon flick)'];
   // 12 Oct 2026 (Andy): Character Lore (Poster Wall) is chosen here, Monday to Saturday.
   const CLP = ['Character Lore (Poster Wall)'];
   const types = dow === 0 ? BL : ([5, 6].indexOf(dow) !== -1 ? ROT_TYPES.concat(CLP, BL) : ROT_TYPES.concat(CLP));
@@ -1742,8 +1742,8 @@ function extraCell(date, dow) {
 }
 function extraTypes(dow) {
   const t = ['Day Greeting', 'Wisdom', 'Character Lore', 'Character Lore (Poster Wall)', 'Travel the World', 'Product', 'NFT', 'Dare to Buy'];
-  if (dow === 0) return ['Day Greeting', 'Brand Lore', 'Brand Lore (Poster Wall)', 'Product', 'NFT', 'Dare to Buy'];
-  if (dow === 5 || dow === 6) return t.concat(['Brand Lore', 'Brand Lore (Poster Wall)']);   // 12 Oct 2026 (Andy): Brand Lore on Friday and Saturday too
+  if (dow === 0) return ['Day Greeting', 'Brand Lore (Movie Poster)', 'Brand Lore (Roll Call)', 'Brand Lore (Roll Call cartoon flick)', 'Product', 'NFT', 'Dare to Buy'];
+  if (dow === 5 || dow === 6) return t.concat(['Brand Lore (Movie Poster)', 'Brand Lore (Roll Call)', 'Brand Lore (Roll Call cartoon flick)']);   // 12 Oct 2026 (Andy): Brand Lore on Friday and Saturday too
   return t;
 }
 function addExtraLine(box) {
@@ -1824,7 +1824,7 @@ function drawPlanDays(useDefaults) {
 async function sendPlan(plan, statusEl) {
   if (!plan.length) { statusEl.textContent = 'Nothing selected.'; return; }
   // 12 Oct 2026 (Andy): "Brand Lore (Poster Wall)" is a Brand Lore post that uses the all-six poster clip; the planner marks the row with it.
-  plan.forEach(p => { if (p.format === 'Brand Lore (Poster Wall)') { p.format = 'Brand Lore'; p.clip = 'posterwall'; } if (p.format === 'Character Lore (Poster Wall)') { p.format = 'Character Lore'; p.clip = 'posterwall'; } });
+  plan.forEach(p => { if (p.format === 'Brand Lore (Movie Poster)' || p.format === 'Brand Lore (Poster Wall)') { p.format = 'Brand Lore'; p.clip = 'posterwall'; } else if (p.format === 'Brand Lore (Roll Call)') { p.format = 'Brand Lore'; p.clip = 'rollcall'; } else if (p.format === 'Brand Lore (Roll Call cartoon flick)') { p.format = 'Brand Lore'; p.clip = 'rollcallcomic'; } if (p.format === 'Character Lore (Poster Wall)') { p.format = 'Character Lore'; p.clip = 'posterwall'; } });
   statusEl.textContent = 'Sending...';
   try {
     const res = await fetch(PLAN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: plan }) });
@@ -1877,7 +1877,7 @@ async function openAdhoc() {
     '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
     '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
-    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Character Lore (Poster Wall)</option><option>Travel the World</option><option>Brand Lore</option><option>Brand Lore (Poster Wall)</option><option>Product</option><option>NFT</option><option>Dare to Buy</option></select></div>' +
+    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Character Lore (Poster Wall)</option><option>Travel the World</option><option>Brand Lore (Movie Poster)</option><option>Brand Lore (Roll Call)</option><option>Brand Lore (Roll Call cartoon flick)</option><option>Product</option><option>NFT</option><option>Dare to Buy</option></select></div>' +
     '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('') + '</select></div>' +
     '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
     '<div class="drawer-actions"><button class="btn" id="adGo">Create brief</button><button class="btn secondary" id="adClose">Close</button></div>' +
