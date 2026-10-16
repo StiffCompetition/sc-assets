@@ -300,6 +300,7 @@ function flatShown(r) {
   return false;
 }
 function tabCount(v) {
+  if (v === 'Pages') return '';
   if (v === 'Follow list') return frows.filter(FVIEWS['To follow']).length;
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
   if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
@@ -313,7 +314,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Parked', 'Done'];
+  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Parked', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -384,9 +385,17 @@ function missionCard(m) {
     + '</div>';
 }
 
+// 15 Oct 2026 (Andy): shortcut tab with the quiz and character result page links
+const SHOP = 'https://stiffcompetition.shop/pages/';
+const PAGE_LINKS = [['The quiz: How Stiff Are You?', 'how-stiff'], ['Major Wood', 'you-are-major-wood'], ['The Rear Admiral', 'you-are-the-rear-admiral'], ['Hammerin\u2019 Hanky', 'you-are-hammerin-hanky'], ['Slick Willy', 'you-are-slick-willy'], ['The Velvet Python', 'you-are-the-velvet-python'], ['The Grip', 'you-are-the-grip']];
+function pagesHtml() {
+  return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px">' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>';
+}
+
 function render() {
   renderTabs();
   if (view === 'Follow list') { renderFollow(); return; }
+  if (view === 'Pages') { $('list').innerHTML = pagesHtml(); return; }
   if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
   if (view === 'Parked' || view === 'Done') {
