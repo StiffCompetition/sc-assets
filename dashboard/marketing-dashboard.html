@@ -43,14 +43,14 @@
   .card.s-Next { border-left-color: var(--c-next); }
   .card.s-Waiting { border-left-color: var(--c-wait); background: #fffaf0; }
   .card.s-Idea { border-left-color: var(--c-idea); }
-  .card.s-Parked { border-left-color: var(--c-park); }
   .card.s-Done { border-left-color: var(--c-done); }
   .who-tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:#fff; padding:1px 8px; margin-right:8px; vertical-align:middle; }
   .who-tag.andy { background: var(--c-andy); } .who-tag.claude { background: var(--c-claude); }
   .action { font-size: 17px; font-weight: 600; margin-top: 6px; overflow-wrap:anywhere; }
   .card .title { font-size: 13px; font-weight: 400; color: var(--grey); }
+  .pf { margin-top: 8px; font-size: 14px; color: #333; overflow-wrap: anywhere; } .pf div { margin-top: 5px; } .pf b { color: var(--grey); font-size: 11px; letter-spacing: .8px; text-transform: uppercase; margin-right: 6px; }
   details.more { margin-top: 6px; } details.more summary { cursor:pointer; font-size:13px; color:#2a5db0; }
-  .gt-Today{color:var(--c-today)} .gt-Next{color:var(--c-next)} .gt-Waiting{color:var(--c-wait)} .gt-Idea{color:var(--c-idea)} .gt-Parked{color:var(--c-park)} .gt-Done{color:var(--c-done)}
+  .gt-Today{color:var(--c-today)} .gt-Next{color:var(--c-next)} .gt-Waiting{color:var(--c-wait)} .gt-Idea{color:var(--c-idea)} .gt-Done{color:var(--c-done)}
   .btn.go { background: var(--c-claude); border-color: var(--c-claude); }
   .btn.done { background: var(--c-done); border-color: var(--c-done); }
   .card.done .title { text-decoration: line-through; color: var(--grey); }
@@ -85,7 +85,7 @@
   .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 16px; font-size: 14px; display: none; }
 
   .mission { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--c-park); margin-bottom: 14px; padding: 14px 16px; }
-  .mission.s-Today { border-left-color: var(--c-today); } .mission.s-Next { border-left-color: var(--c-next); } .mission.s-Waiting { border-left-color: var(--c-wait); } .mission.s-Parked, .mission.s-Idea { border-left-color: var(--c-park); }
+  .mission.s-Today { border-left-color: var(--c-today); } .mission.s-Next { border-left-color: var(--c-next); } .mission.s-Waiting { border-left-color: var(--c-wait); } .mission.s-Idea { border-left-color: var(--c-park); }
   .mission .mhead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .mission h2 { margin: 0; font-size: 19px; line-height: 1.3; flex: 1; min-width: 200px; }
   .prog { margin-top: 8px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--grey); }
@@ -184,7 +184,9 @@
     </div>
     <label>Waiting on <input id="f_wait" maxlength="60" placeholder="Leave empty if nothing is holding it up"></label>
     <label>Link <input id="f_link" type="url" placeholder="https://…"></label>
-    <label>Note <textarea id="f_notes" rows="3" maxlength="400"></textarea></label>
+    <label>Problem (required for a task) <textarea id="f_problem" rows="3" maxlength="1000" placeholder="What is wrong or what needs doing, and why it matters"></textarea></label>
+    <label>Proposed solution (if there is one) <textarea id="f_solution" rows="2" maxlength="1000"></textarea></label>
+    <label>Notes summary <textarea id="f_notes" rows="2" maxlength="1000" placeholder="Short summary of anything already known"></textarea></label>
     <div class="foot">
       <button type="button" class="btn ghost" id="cancel">Cancel</button>
       <button type="button" class="btn ghost" id="removeBtn">Remove</button>
@@ -247,7 +249,7 @@ let cal = null, calLoading = false;
 const clipFiles = {};
 
 const CATEGORIES = ['Influencers', 'Follow list', 'Press and media','Posts and boosts', 'Shop', 'Systems', 'Ideas'];
-const STATUSES = ['Today', 'Next', 'Waiting', 'Idea', 'Parked', 'Done'];
+const STATUSES = ['Today', 'Next', 'Waiting', 'Idea', 'Done'];
 const ACTIVE = ['Today', 'Next', 'Waiting'];
 
 let rows = [];
@@ -262,7 +264,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp
 function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => e.style.display = 'none', 2200); }
 function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : ''; }
 function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-const rank = { Today: 0, Next: 1, Waiting: 2, Idea: 3, Parked: 4, Done: 5 };
+const rank = { Today: 0, Next: 1, Waiting: 2, Idea: 3, Done: 4 };
 
 async function load() {
   try {
@@ -295,7 +297,6 @@ function missionShown(m) {
 }
 function flatShown(r) {
   if (r.type === 'MISSION' || !whoOk(r)) return false;
-  if (view === 'Parked') return r.status === 'Parked' || r.status === 'Idea';
   if (view === 'Done') return r.status === 'Done';
   return false;
 }
@@ -305,7 +306,7 @@ function tabCount(v) {
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
   if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
   const keep = view; view = v; let n;
-  if (v === 'Parked' || v === 'Done') n = rows.filter(flatShown).length;
+  if (v === 'Done') n = rows.filter(flatShown).length;
   else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length + rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length : 0);
   view = keep;
   // Influencers also counts gift-tracker people waiting on Andy: DM to send, replied, follow-up due (13 Oct 2026).
@@ -314,7 +315,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Parked', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -326,10 +327,25 @@ function chatUrl(r) {
     + ' First, save this chat\'s link on the row: get it by calling read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink) with id ' + r.id + ' and that chat_link.'
     + ' You can edit rows yourself: to update or close this row, call the n8n workflow SC - Marketing Actions API (save) (webhook sc-marketing-save) with this row\'s id and the WHOLE row, because it overwrites every field.'
     + ' When the work is done set status Done, next_step none, done_on today (YYYY-MM-DD), and put the cause, the fix and the test in notes.'
-    + ' If it now needs Andy, set status Waiting, owner Andy and waiting_on instead. Then read the row back to check it saved.';
+    + ' Keep notes as three lines: Problem: ... / Proposed solution: ... / Notes: ... (a short summary); the save workflow refuses an open task without a Problem. If it now needs Andy, set status Waiting, owner Andy and waiting_on instead. Then read the row back to check it saved.';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
 
+// 18 Oct 2026 (Andy): every open task states the problem, the proposed solution (if there is one) and a short summary of notes.
+// Stored in the notes field as three labelled lines: Problem / Proposed solution / Notes.
+function parseNotes(n) {
+  const m = /^Problem:\s*([\s\S]*?)(?:\n+Proposed solution:\s*([\s\S]*?))?(?:\n+Notes:\s*([\s\S]*))?$/.exec(String(n || '').trim());
+  return m ? { problem: (m[1] || '').trim(), solution: (m[2] || '').trim(), notes: (m[3] || '').trim() } : null;
+}
+function composeNotes(p, sol, n) {
+  if (!p) return n;
+  return 'Problem: ' + p + (sol ? '\nProposed solution: ' + sol : '') + (n ? '\nNotes: ' + n : '');
+}
+function notesHtml(r) {
+  const p = parseNotes(r.notes);
+  if (p) return '<div class="pf"><div><b>Problem</b>' + esc(p.problem) + '</div>' + (p.solution ? '<div><b>Proposed solution</b>' + esc(p.solution) + '</div>' : '') + (p.notes ? '<div><b>Notes</b>' + esc(p.notes) + '</div>' : '') + '</div>';
+  return r.notes ? '<details class="more"><summary>More</summary><div class="step" style="color:#6b6b6b;margin-top:4px">' + esc(r.notes) + '</div></details>' : '';
+}
 function card(r, showMission) {
   const late = r.due && r.due < today() && r.status !== 'Done';
   const link = safeUrl(r.link);
@@ -347,7 +363,7 @@ function card(r, showMission) {
     + (showMission ? '<span class="chip">' + esc(r.category || '') + '</span>' : '')
     + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Open</a>' : '')
     + '</div>'
-    + (r.notes ? '<details class="more"><summary>More</summary><div class="step" style="color:#6b6b6b;margin-top:4px">' + esc(r.notes) + '</div></details>' : '')
+    + notesHtml(r)
     + '</div>'
     + '<div class="acts"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>'
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
@@ -373,6 +389,7 @@ function missionCard(m) {
   });
   const nextHtml = na
     ? '<div class="nextbox"><div class="lbl">Next action</div><div class="action" style="margin-top:2px"><span class="who-tag ' + (na.owner === 'Andy' ? 'andy' : 'claude') + '">' + (na.owner === 'Andy' ? 'You' : 'Claude') + '</span>' + esc(na.next_step || na.title) + '</div>'
+      + (parseNotes(na.notes) ? '<div class="step" style="margin-top:4px">' + esc(parseNotes(na.notes).problem) + '</div>' : '')
       + (na.waiting_on ? '<div class="meta"><span class="chip wait">Waiting on: ' + esc(na.waiting_on) + '</span></div>' : '') + '</div>'
     : '<div class="nextbox"><div class="lbl">Next action</div><div class="step">Nothing active</div></div>';
   return '<div class="mission s-' + esc(lead) + '" data-mid="' + esc(m.id) + '">'
@@ -398,7 +415,7 @@ function render() {
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); return; }
   if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
-  if (view === 'Parked' || view === 'Done') {
+  if (view === 'Done') {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
     html = list.map(r => card(r, true)).join('');
   } else if (view === 'Alerts') {
@@ -437,7 +454,7 @@ async function save(r) {
     const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes, waiting_on: r.waiting_on || '', go: r.go || '', parent: r.parent || '', type: r.type || '', repeat: r.repeat || '', done_on: r.done_on || '' }) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const out = await res.json();
-    if (!out.ok) throw new Error('not saved');
+    if (!out.ok) throw new Error(out.error || 'not saved');
     toast('Saved');
     if (i < 0) await load();
   } catch (e) { rows = prev; render(); toast('Not saved: ' + e.message); }
@@ -460,7 +477,10 @@ function openDlg(r, parentMission) {
   $('f_due').value = r ? r.due || '' : '';
   $('f_link').value = r ? r.link || '' : '';
   $('f_wait').value = r ? r.waiting_on || '' : '';
-  $('f_notes').value = r ? r.notes || '' : '';
+  const pn = r ? parseNotes(r.notes) : null;
+  $('f_problem').value = pn ? pn.problem : '';
+  $('f_solution').value = pn ? pn.solution : '';
+  $('f_notes').value = r ? (pn ? pn.notes : (r.notes || '')) : '';
   const rep = r ? (r.repeat || 'daily') : 'daily';
   $('f_repeat').innerHTML = DAYS.map(d => '<label><input type="checkbox" value="' + d + '"' + (rep === 'daily' || rep.split(',').includes(d) ? ' checked' : '') + '>' + d + '</label>').join('');
   $('f_repeat_wrap').style.display = $('f_type').value === 'DAILY' ? '' : 'none';
@@ -630,7 +650,8 @@ $('cancel').onclick = () => $('dlg').close();
 $('removeBtn').onclick = () => { if (editing) { const e = editing; save(Object.assign({}, e, { status: 'Removed' })); rows = rows.filter(x => String(x.id) !== String(e.id)); render(); } $('dlg').close(); };
 $('form').onsubmit = e => {
   e.preventDefault();
-  const r = Object.assign({}, editing || {}, { title: $('f_title').value.trim(), next_step: $('f_next').value.trim(), category: $('f_cat').value, status: $('f_status').value, owner: $('f_owner').value, due: $('f_due').value, link: $('f_link').value.trim(), waiting_on: $('f_wait').value.trim(), notes: $('f_notes').value.trim(), type: $('f_type').value, parent: $('f_parent').value });
+  const r = Object.assign({}, editing || {}, { title: $('f_title').value.trim(), next_step: $('f_next').value.trim(), category: $('f_cat').value, status: $('f_status').value, owner: $('f_owner').value, due: $('f_due').value, link: $('f_link').value.trim(), waiting_on: $('f_wait').value.trim(), notes: composeNotes($('f_problem').value.trim(), $('f_solution').value.trim(), $('f_notes').value.trim()), type: $('f_type').value, parent: $('f_parent').value });
+  if (r.type !== 'MISSION' && r.type !== 'DAILY' && r.status !== 'Done' && !$('f_problem').value.trim()) { toast('Say what the problem is'); return; }
   if (r.type === 'DAILY') {
     const days = Array.from($('f_repeat').querySelectorAll('input:checked')).map(x => x.value);
     if (!days.length) { toast('Pick at least one day'); return; }
@@ -645,7 +666,7 @@ $('form').onsubmit = e => {
 // ---------- Today's routine (12 Oct 2026, Andy) ----------
 // DAILY rows repeat on their days (repeat = 'daily' or 'Mon,Wed,...'). Ticking sets done_on to today (this device's date);
 // a line is ticked only while done_on is today, so the list clears each morning. A line not ticked on its last due day shows red.
-// Status Today = on the list; Waiting = shown greyed with what it waits on; Parked = only in the Parked tab.
+// Status Today = on the list; Waiting = shown greyed with what it waits on.
 function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function dueOn(r, d) { const rep = String(r.repeat || 'daily'); return rep === 'daily' || rep.split(',').includes(DAYS[d.getDay()]); }
 function lastDueBefore(r) {
