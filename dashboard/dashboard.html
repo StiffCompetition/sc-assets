@@ -351,6 +351,55 @@
 .lib-plat{display:block;font-size:15px;padding:6px 0}
 .lib-warn{font-size:12.5px;color:#8a5200;background:#fff4dc;padding:1px 5px}
 .lib-note{font-size:12.5px;color:#666}
+
+/* ---------- Cartoons board (18 Oct 2026, Andy) ---------- */
+.cb-wrap{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+.cb-pieces{background:#fff;border:1px solid var(--line);padding:10px;max-height:calc(100vh - 180px);overflow:auto}
+.cb-pieces h3,.cb-board h3{margin:0 0 8px;font-size:14px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px}
+.cb-pieces select{width:100%;margin-bottom:8px;min-height:36px}
+.cb-piece{display:flex;gap:8px;align-items:center;border:1px solid var(--line);padding:6px;margin-bottom:6px;background:#fafafa;cursor:grab}
+.cb-piece img,.cb-piece .cb-ph{width:44px;height:78px;object-fit:cover;background:#222;flex-shrink:0;display:block}
+.cb-piece .cb-ph{display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;text-align:center;line-height:1.1}
+.cb-piece .cb-pt{font-size:12.5px;line-height:1.3}
+.cb-piece .cb-pk{font-family:var(--mono);font-size:10.5px;color:#777}
+.cb-piece button{margin-left:auto;min-height:36px;font-size:12px}
+.cb-board{display:flex;flex-direction:column;gap:12px}
+.cb-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid var(--line);padding:10px}
+.cb-head input,.cb-head select{min-height:40px;font-size:14px;padding:6px 8px;border:1px solid var(--line)}
+.cb-head input[type=text]{flex:1 1 220px}
+.cb-stage-row{display:grid;grid-template-columns:270px 1fr;gap:14px;align-items:start}
+.cb-stage{position:relative;width:270px;height:480px;background:#000;overflow:hidden;border:1px solid var(--line)}
+.cb-stage canvas,.cb-stage video,.cb-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cb-stage .cb-card-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#fff;font-family:Impact,'Arial Narrow Bold',sans-serif;font-size:30px;line-height:1.15;text-transform:uppercase;background:#000}
+.cb-stage .cb-needed{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;color:#fff;background:#4a3b00;font-size:14px;gap:8px}
+.cb-stage .cb-needed b{font-family:var(--mono);font-size:12px;letter-spacing:.5px}
+.cb-stage .cb-credits{position:absolute;inset:0;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
+.cb-stage .cb-credits img{position:static;width:120px;height:120px;object-fit:contain}
+.cb-stage .cb-credits div{font-family:Impact,'Arial Narrow Bold',sans-serif;font-size:22px;letter-spacing:1px}
+.cb-stage .cb-credits small{font-family:var(--mono);font-size:11px;color:#E8B923}
+.cb-stage .cb-time{position:absolute;left:6px;bottom:6px;font-family:var(--mono);font-size:11px;color:#fff;background:rgba(0,0,0,.6);padding:2px 6px}
+.cb-controls{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.cb-controls .btn{min-height:40px}
+.cb-totals{background:#fff;border:1px solid var(--line);padding:10px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+.cb-totals b{font-family:var(--mono)}
+.cb-strip{display:flex;gap:10px;overflow-x:auto;padding:10px;background:#fff;border:1px solid var(--line);min-height:300px;align-items:flex-start}
+.cb-shot{flex:0 0 190px;border:1px solid var(--line);border-top:5px solid #777;background:#fafafa;display:flex;flex-direction:column;gap:5px;padding:7px;font-size:12px;position:relative}
+.cb-shot.dragover{outline:3px dashed #F5B800;outline-offset:2px}
+.cb-shot.clip{border-top-color:#2a5db0}.cb-shot.picture{border-top-color:#6a9a3a}.cb-shot.green{border-top-color:#2a9a5a}.cb-shot.text{border-top-color:#111}.cb-shot.credits{border-top-color:#E8B923}.cb-shot.needed{border-top-color:#c27a00;background:#fff4dc}
+.cb-shot .cb-th{width:100%;aspect-ratio:9/16;max-height:200px;object-fit:cover;background:#111;display:block}
+.cb-shot .cb-th.ph{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;text-align:center;padding:8px}
+.cb-shot .cb-n{font-family:var(--mono);font-size:10.5px;color:#777;display:flex;justify-content:space-between}
+.cb-shot .cb-t{font-weight:600;font-size:12.5px;line-height:1.3}
+.cb-shot label{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px}
+.cb-shot input[type=number]{width:62px;min-height:30px;font-size:12px}
+.cb-shot input[type=text],.cb-shot textarea,.cb-shot select{width:100%;font-size:12px;min-height:30px;border:1px solid var(--line);padding:3px 5px}
+.cb-shot textarea{min-height:54px;resize:vertical}
+.cb-shot .cb-row{display:flex;gap:4px}
+.cb-shot .cb-row button{flex:1;min-height:32px;font-size:12px;cursor:pointer;border:1px solid var(--line);background:#fff}
+.cb-shot .cb-cost{font-family:var(--mono);font-size:11px;color:#8a5200}
+.cb-empty{color:#777;font-size:13px;padding:30px;text-align:center;width:100%}
+.cb-status{font-family:var(--mono);font-size:12px;color:#555;min-height:18px}
+@media (max-width: 900px){.cb-wrap{grid-template-columns:1fr}.cb-pieces{max-height:260px}.cb-stage-row{grid-template-columns:1fr}.cb-stage{margin:0 auto}}
 </style>
 </head>
 <body>
@@ -371,6 +420,7 @@
     <button id="btnList">List</button>
     <button id="btnLibrary">Library</button>
     <button id="btnCampaigns">Campaigns</button>
+    <button id="btnCartoons">Cartoons</button>
   </div>
   <div class="tickfilter" id="tf_character"><button type="button">Characters</button><div class="tickpanel"></div></div>
   <div class="tickfilter" id="tf_format"><button type="button">Formats</button><div class="tickpanel"></div></div>
@@ -602,6 +652,7 @@ function makePressCard(p) {
 function render() {
   if (VIEW === 'library') { renderLibrary(); return; }
   if (VIEW === 'campaigns') { renderCampaigns(); return; }
+  if (VIEW === 'cartoons') { renderCartoons(); return; }
   const rows = filteredRows();
   document.getElementById('counts').textContent = rows.length + ' / ' + ROWS.length + ' posts';
   const main = document.getElementById('main');
@@ -1578,6 +1629,7 @@ function setViewButtons() {
   document.getElementById('btnList').classList.toggle('active', VIEW === 'list');
   document.getElementById('btnLibrary').classList.toggle('active', VIEW === 'library');
   document.getElementById('btnCampaigns').classList.toggle('active', VIEW === 'campaigns');
+  document.getElementById('btnCartoons').classList.toggle('active', VIEW === 'cartoons');
 }
 document.getElementById('showPostedRejected').addEventListener('change', render);
 document.getElementById('filterSearch').addEventListener('input', render);
@@ -2098,6 +2150,247 @@ function framer(holder, item, slot, src) {
 document.getElementById('btnBoxes').addEventListener('click', openBoxes);
 
 loadRows();
+
+// ---------- Cartoons board (18 Oct 2026, Andy) ----------
+// A storyboard you assemble by hand from pieces that already exist (SC Content Library rows with kind "cartoon piece"),
+// plus text cards, credits and "needed" cards for clips still to be made. Plays a rough cut for free; saves the recipe
+// to the cartoon's Content Library row (kind "cartoon") through SC - Cartoon Board Save. Nothing here spends money:
+// the needed cards are the build list, quoted before anything runs through SC - Cartoon Clip Maker.
+const CB_SAVE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-cartoon-board-save';
+const CB_LOGO = 'https://res.cloudinary.com/dkapdtxek/image/upload/v1789861830/sc_watermark_logo.png';
+const CB_PRICE = { picture: 0.04, second: 0.084, checks: 0.01 };   // vendor pages 18 Oct 2026: Gemini 3.1 Flash-Lite Image, Kling O3 Standard audio off
+const CB_CHARS = ['Major Wood', "Hammerin' Hanky", 'The Grip', 'The Velvet Python', 'Slick Willy', 'The Rear Admiral'];
+const CB_TYPES = ['approach', 'reaction', 'back-off', 'stunned', 'walk', 'turn', 'other'];
+let CB = { id: '', title: '', character: 'The Grip', shots: [], filter: '' };
+let CB_PLAY = { on: false, idx: 0, t0: 0, raf: 0, stopFn: null };
+
+function cbPieces() {
+  return (LIB || []).filter(l => String(l.kind || '') === 'cartoon piece').map(l => {
+    const n = String(l.notes || '');
+    const kind = /green-screen/i.test(n) ? 'green' : /^Backdrop/i.test(n) ? 'backdrop' : l.video_url ? 'clip' : 'picture';
+    return { id: 'LIB:' + l.id, lib: l, kind, title: l.title || ('Piece ' + l.id), character: l.character || '', video: l.video_url || '', image: l.image_url || '', duration: Number(l.duration || 0), notes: n };
+  });
+}
+function cbCartoons() { return (LIB || []).filter(l => String(l.kind || '') === 'cartoon'); }
+function cbNewShot(piece) {
+  if (piece.kind === 'backdrop') return null;
+  return { type: piece.kind, ref: piece.id, title: piece.title, character: piece.character, video: piece.video, image: piece.image,
+    len: piece.duration > 0 ? Math.min(piece.duration, 5) : 2, src: piece.duration || 0, reverse: false, repeat: 1, trimStart: 0,
+    backdrop: '', bdX: 50, scale: 100, offY: 0 };
+}
+function cbShotCost(s) { return s.type === 'needed' ? Math.round((CB_PRICE.picture + CB_PRICE.checks + Math.max(3, Math.ceil(s.len)) * CB_PRICE.second) * 100) / 100 : 0; }
+function cbShotLen(s) { return Math.max(0.2, Number(s.len) || 0) * Math.max(1, Number(s.repeat) || 1); }
+function cbTotals() {
+  const t = CB.shots.reduce((a, s) => a + cbShotLen(s), 0);
+  const c = CB.shots.reduce((a, s) => a + cbShotCost(s), 0);
+  const n = CB.shots.filter(s => s.type === 'needed').length;
+  return { seconds: Math.round(t * 10) / 10, cost: Math.round(c * 100) / 100, needed: n };
+}
+
+async function renderCartoons() {
+  const main = document.getElementById('main');
+  if (LIB === null) { main.innerHTML = '<div class="loading">Loading pieces…</div>'; await loadLibrary(); if (VIEW !== 'cartoons') return; }
+  cbStop();
+  const pieces = cbPieces().filter(p => !CB.filter || p.character === CB.filter || !p.character);
+  const saved = cbCartoons();
+  main.innerHTML =
+    '<div class="cb-wrap">' +
+    '<div class="cb-pieces"><h3>Pieces</h3>' +
+    '<select id="cbFilter"><option value="">All characters</option>' + CB_CHARS.map(c => '<option' + (CB.filter === c ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join('') + '</select>' +
+    '<div class="cb-piece" draggable="true" data-add="text"><div class="cb-ph">TEXT</div><div><div class="cb-pt">Text card</div><div class="cb-pk">black, white words</div></div><button type="button">Add</button></div>' +
+    '<div class="cb-piece" draggable="true" data-add="credits"><div class="cb-ph">SC</div><div><div class="cb-pt">Credits</div><div class="cb-pk">logo and sign-off</div></div><button type="button">Add</button></div>' +
+    '<div class="cb-piece" draggable="true" data-add="needed"><div class="cb-ph">NEW</div><div><div class="cb-pt">Needed clip</div><div class="cb-pk">to be made by the clip maker</div></div><button type="button">Add</button></div>' +
+    pieces.map(p => '<div class="cb-piece" draggable="true" data-ref="' + escapeHtml(p.id) + '">' +
+      (p.image ? '<img src="' + escapeHtml(p.image) + '" alt="">' : '<div class="cb-ph">' + escapeHtml(p.kind) + '</div>') +
+      '<div><div class="cb-pt">' + escapeHtml(p.title) + '</div><div class="cb-pk">' + escapeHtml(p.kind) + (p.duration ? ' · ' + p.duration + ' s' : '') + '</div></div>' +
+      (p.kind === 'backdrop' ? '' : '<button type="button">Add</button>') + '</div>').join('') +
+    '</div>' +
+    '<div class="cb-board">' +
+    '<div class="cb-head">' +
+    '<select id="cbOpen"><option value="">New cartoon</option>' + saved.map(c => '<option value="' + c.id + '"' + (String(CB.id) === String(c.id) ? ' selected' : '') + '>' + escapeHtml(c.title || ('Cartoon ' + c.id)) + '</option>').join('') + '</select>' +
+    '<input type="text" id="cbTitle" placeholder="Cartoon title (e.g. The Grip - Automatic Door)" value="' + escapeHtml(CB.title) + '">' +
+    '<select id="cbChar">' + CB_CHARS.map(c => '<option' + (CB.character === c ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join('') + '</select>' +
+    '<button class="btn" id="cbSave" type="button">Save board</button>' +
+    '<span class="cb-status" id="cbStatus"></span>' +
+    '</div>' +
+    '<div class="cb-stage-row">' +
+    '<div><div class="cb-stage" id="cbStage"><div class="cb-empty" style="color:#aaa">Rough cut plays here</div><div class="cb-time" id="cbTime">0.0 s</div></div>' +
+    '<div class="cb-controls"><button class="btn" id="cbPlay" type="button">Play rough cut</button><button class="btn secondary" id="cbStopBtn" type="button">Stop</button></div></div>' +
+    '<div class="cb-totals" id="cbTotals"></div>' +
+    '</div>' +
+    '<h3 style="margin:4px 0 0">Shots (drag to reorder, or use the arrows)</h3>' +
+    '<div class="cb-strip" id="cbStrip"></div>' +
+    '</div></div>';
+  document.getElementById('cbFilter').onchange = e => { CB.filter = e.target.value; renderCartoons(); };
+  document.getElementById('cbTitle').oninput = e => { CB.title = e.target.value; };
+  document.getElementById('cbChar').onchange = e => { CB.character = e.target.value; };
+  document.getElementById('cbOpen').onchange = e => cbOpenCartoon(e.target.value);
+  document.getElementById('cbSave').onclick = cbSave;
+  document.getElementById('cbPlay').onclick = cbPlay;
+  document.getElementById('cbStopBtn').onclick = cbStop;
+  main.querySelectorAll('.cb-piece').forEach(el => {
+    const add = () => { const s = el.dataset.add ? cbSpecialShot(el.dataset.add) : cbNewShot(cbPieces().find(p => p.id === el.dataset.ref)); if (s) { CB.shots.push(s); cbRenderStrip(); } };
+    const b = el.querySelector('button'); if (b) b.onclick = add;
+    el.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/plain', JSON.stringify({ add: el.dataset.add || '', ref: el.dataset.ref || '' })); });
+  });
+  const strip = document.getElementById('cbStrip');
+  strip.addEventListener('dragover', ev => { ev.preventDefault(); });
+  strip.addEventListener('drop', ev => {
+    ev.preventDefault(); let d = null; try { d = JSON.parse(ev.dataTransfer.getData('text/plain')); } catch (e) { return; }
+    if (d && (d.add || d.ref)) { const s = d.add ? cbSpecialShot(d.add) : cbNewShot(cbPieces().find(p => p.id === d.ref)); if (s) { CB.shots.push(s); cbRenderStrip(); } }
+  });
+  cbRenderStrip();
+}
+function cbSpecialShot(kind) {
+  if (kind === 'text') return { type: 'text', title: 'Text card', text: 'SOME THINGS OPEN UP\nWHEN YOU BACK OFF.', len: 1.6, repeat: 1 };
+  if (kind === 'credits') return { type: 'credits', title: 'Credits', line1: 'STIFF COMPETITION', line2: 'STARRING ' + CB.character.toUpperCase(), line3: 'STIFFCOMPETITION.SHOP', len: 3, repeat: 1 };
+  return { type: 'needed', title: 'Needed clip', character: CB.character, clipType: 'approach', beat: '', set: '', len: 3, repeat: 1, reverse: false, trimStart: 0 };
+}
+function cbBackdrops() { return cbPieces().filter(p => p.kind === 'backdrop'); }
+function cbRenderStrip() {
+  const strip = document.getElementById('cbStrip'); if (!strip) return;
+  const tot = cbTotals();
+  document.getElementById('cbTotals').innerHTML =
+    '<div>Length <b>' + tot.seconds + ' s</b> over ' + CB.shots.length + ' shots</div>' +
+    '<div>Needed clips <b>' + tot.needed + '</b></div>' +
+    '<div>Build price if all needed clips are made <b>$' + tot.cost.toFixed(2) + '</b> (one picture, checks and video each; retries extra)</div>' +
+    '<div class="lib-note">Existing pieces, text cards, credits, reverse, replay and trim cost nothing. Green pieces play keyed over the chosen backdrop as a rough guide only; the final look-matching is done at assembly.</div>';
+  if (!CB.shots.length) { strip.innerHTML = '<div class="cb-empty">Drag pieces here, or press Add on a piece.</div>'; return; }
+  strip.innerHTML = CB.shots.map((s, i) => cbShotHtml(s, i)).join('');
+  strip.querySelectorAll('.cb-shot').forEach(el => {
+    const i = Number(el.dataset.i); const s = CB.shots[i];
+    el.querySelectorAll('[data-k]').forEach(inp => {
+      inp.oninput = () => { const k = inp.dataset.k; s[k] = inp.type === 'checkbox' ? inp.checked : inp.type === 'number' ? Number(inp.value) : inp.value; if (k === 'len' || k === 'repeat' || k === 'clipType') cbRenderStrip(); };
+    });
+    el.querySelector('[data-act=left]').onclick = () => { if (i > 0) { CB.shots.splice(i - 1, 0, CB.shots.splice(i, 1)[0]); cbRenderStrip(); } };
+    el.querySelector('[data-act=right]').onclick = () => { if (i < CB.shots.length - 1) { CB.shots.splice(i + 1, 0, CB.shots.splice(i, 1)[0]); cbRenderStrip(); } };
+    el.querySelector('[data-act=dup]').onclick = () => { CB.shots.splice(i + 1, 0, JSON.parse(JSON.stringify(s))); cbRenderStrip(); };
+    el.querySelector('[data-act=del]').onclick = () => { CB.shots.splice(i, 1); cbRenderStrip(); };
+    el.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/plain', JSON.stringify({ move: i })); });
+    el.addEventListener('dragover', ev => { ev.preventDefault(); el.classList.add('dragover'); });
+    el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+    el.addEventListener('drop', ev => {
+      ev.preventDefault(); ev.stopPropagation(); el.classList.remove('dragover');
+      let d = null; try { d = JSON.parse(ev.dataTransfer.getData('text/plain')); } catch (e) { return; }
+      if (d && typeof d.move === 'number') { const m = CB.shots.splice(d.move, 1)[0]; const j = d.move < i ? i - 1 : i; CB.shots.splice(j, 0, m); cbRenderStrip(); return; }
+      if (d && (d.add || d.ref)) { const ns = d.add ? cbSpecialShot(d.add) : cbNewShot(cbPieces().find(p => p.id === d.ref)); if (ns) { CB.shots.splice(i, 0, ns); cbRenderStrip(); } }
+    });
+  });
+}
+function cbShotHtml(s, i) {
+  const th = s.type === 'text' ? '<div class="cb-th ph" style="font-family:Impact,sans-serif;text-transform:uppercase">' + escapeHtml(s.text || '') + '</div>'
+    : s.type === 'credits' ? '<div class="cb-th ph">SC credits</div>'
+    : s.type === 'needed' ? '<div class="cb-th ph" style="background:#c27a00">To be made</div>'
+    : s.image ? '<img class="cb-th" src="' + escapeHtml(s.image) + '" alt="">' : '<div class="cb-th ph">' + escapeHtml(s.type) + '</div>';
+  const common = '<label>Length s <input type="number" step="0.1" min="0.2" max="15" data-k="len" value="' + (Number(s.len) || 0) + '"></label>' +
+    '<label>Play times <input type="number" step="1" min="1" max="4" data-k="repeat" value="' + (Number(s.repeat) || 1) + '"></label>';
+  const motion = (s.type === 'clip' || s.type === 'green' || s.type === 'needed') ? '<label>Reverse <input type="checkbox" data-k="reverse"' + (s.reverse ? ' checked' : '') + '></label>' +
+    '<label>Trim start s <input type="number" step="0.1" min="0" data-k="trimStart" value="' + (Number(s.trimStart) || 0) + '"></label>' : '';
+  const green = s.type === 'green' ? '<label>Backdrop</label><select data-k="backdrop"><option value="">none (plain green)</option>' + cbBackdrops().map(b => '<option value="' + escapeHtml(b.id) + '"' + (s.backdrop === b.id ? ' selected' : '') + '>' + escapeHtml(b.title) + '</option>').join('') + '</select>' +
+    '<label>Backdrop position % <input type="number" min="0" max="100" data-k="bdX" value="' + (Number(s.bdX) || 50) + '"></label>' +
+    '<label>Figure size % <input type="number" min="40" max="160" data-k="scale" value="' + (Number(s.scale) || 100) + '"></label>' +
+    '<label>Figure up/down % <input type="number" min="-50" max="50" data-k="offY" value="' + (Number(s.offY) || 0) + '"></label>' : '';
+  const text = s.type === 'text' ? '<textarea data-k="text">' + escapeHtml(s.text || '') + '</textarea>' : '';
+  const credits = s.type === 'credits' ? '<input type="text" data-k="line1" value="' + escapeHtml(s.line1 || '') + '"><input type="text" data-k="line2" value="' + escapeHtml(s.line2 || '') + '"><input type="text" data-k="line3" value="' + escapeHtml(s.line3 || '') + '">' : '';
+  const needed = s.type === 'needed' ? '<select data-k="clipType">' + CB_TYPES.map(t => '<option' + (s.clipType === t ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>' +
+    '<textarea data-k="beat" placeholder="What happens in this clip (the beat)">' + escapeHtml(s.beat || '') + '</textarea>' +
+    '<input type="text" data-k="set" placeholder="Set (e.g. Grocer door, from inside)" value="' + escapeHtml(s.set || '') + '">' +
+    '<div class="cb-cost">about $' + cbShotCost(s).toFixed(2) + ' to make</div>' : '';
+  return '<div class="cb-shot ' + s.type + '" draggable="true" data-i="' + i + '">' +
+    '<div class="cb-n"><span>' + (i + 1) + '</span><span>' + escapeHtml(s.type) + ' · ' + cbShotLen(s).toFixed(1) + ' s</span></div>' + th +
+    '<div class="cb-t">' + escapeHtml(s.title || '') + '</div>' + text + credits + needed + common + motion + green +
+    '<div class="cb-row"><button type="button" data-act="left" title="Move left">&larr;</button><button type="button" data-act="right" title="Move right">&rarr;</button><button type="button" data-act="dup" title="Duplicate">x2</button><button type="button" data-act="del" title="Remove">&times;</button></div>' +
+    '</div>';
+}
+
+// ---- rough-cut player: one shot after another on the 9:16 stage ----
+function cbStop() { CB_PLAY.on = false; if (CB_PLAY.raf) cancelAnimationFrame(CB_PLAY.raf); if (CB_PLAY.stopFn) { try { CB_PLAY.stopFn(); } catch (e) {} } CB_PLAY.stopFn = null; }
+async function cbPlay() {
+  cbStop(); if (!CB.shots.length) return; CB_PLAY.on = true;
+  let clock = 0;
+  for (let i = 0; i < CB.shots.length && CB_PLAY.on; i++) {
+    const s = CB.shots[i]; const reps = Math.max(1, Number(s.repeat) || 1);
+    for (let r = 0; r < reps && CB_PLAY.on; r++) { await cbPlayShot(s, clock); clock += Math.max(0.2, Number(s.len) || 0); }
+  }
+  CB_PLAY.on = false;
+}
+function cbStageSet(html) { const st = document.getElementById('cbStage'); if (!st) return null; st.innerHTML = html + '<div class="cb-time" id="cbTime">0.0 s</div>'; return st; }
+function cbPlayShot(s, clock) {
+  return new Promise(resolve => {
+    const len = Math.max(0.2, Number(s.len) || 0) * 1000;
+    const timeEl = () => document.getElementById('cbTime');
+    const tick = (t0) => { const el = timeEl(); if (el) el.textContent = ((clock * 1000 + (performance.now() - t0)) / 1000).toFixed(1) + ' s'; };
+    const holdWith = (html) => { cbStageSet(html); const t0 = performance.now(); const iv = setInterval(() => tick(t0), 100); CB_PLAY.stopFn = () => clearInterval(iv); setTimeout(() => { clearInterval(iv); resolve(); }, len); };
+    if (s.type === 'text') return holdWith('<div class="cb-card-text">' + escapeHtml(s.text || '').replace(/\n/g, '<br>') + '</div>');
+    if (s.type === 'credits') return holdWith('<div class="cb-credits"><img src="' + CB_LOGO + '" alt=""><div>' + escapeHtml(s.line1 || '') + '</div><small>' + escapeHtml(s.line2 || '') + '</small><small>' + escapeHtml(s.line3 || '') + '</small></div>');
+    if (s.type === 'needed') return holdWith('<div class="cb-needed"><b>TO BE MADE · ' + escapeHtml(s.clipType || '') + (s.reverse ? ' (reversed)' : '') + '</b><div>' + escapeHtml(s.beat || 'no beat written yet') + '</div><small>' + escapeHtml(s.set || '') + '</small></div>');
+    if (s.type === 'picture' || !s.video) return holdWith('<img src="' + escapeHtml(s.image || '') + '" alt="">');
+    // clip or green piece: play the video (reversed by stepping back), green keyed over the backdrop on a canvas
+    const bd = s.type === 'green' && s.backdrop ? cbBackdrops().find(b => b.id === s.backdrop) : null;
+    let cv = null, ctx = null;
+    // Cloudinary clips are played as WebM for the preview (works in every browser); if that fails, the original file is tried.
+    const srcs = /res\.cloudinary\.com\/.*\.mp4$/.test(s.video) ? [s.video.replace(/\.mp4$/, '.webm'), s.video] : [s.video];
+    const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = srcs[0];
+    const bimg = new Image(); if (bd) { bimg.crossOrigin = 'anonymous'; bimg.src = bd.image; }
+    let tainted = false; let t0 = performance.now(); const trim = Math.max(0, Number(s.trimStart) || 0);
+    const draw = () => {
+      if (!CB_PLAY.on) return;
+      const el = Math.min(len, performance.now() - t0) / 1000;
+      if (s.reverse) { const dur = isFinite(v.duration) ? v.duration : (Number(s.src) || 3); v.currentTime = Math.max(0, Math.min(dur - 0.05, dur - trim - el)); }
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 270, 480);
+      if (bd && bimg.complete && bimg.naturalWidth) { const sw = bimg.naturalHeight * 270 / 480; const sx = (bimg.naturalWidth - sw) * (Math.min(100, Math.max(0, Number(s.bdX) || 50)) / 100); ctx.drawImage(bimg, sx, 0, sw, bimg.naturalHeight, 0, 0, 270, 480); }
+      const sc = (Number(s.scale) || 100) / 100; const vw = 270 * sc, vh = 480 * sc; const vx = (270 - vw) / 2, vy = (480 - vh) / 2 + 480 * ((Number(s.offY) || 0) / 100);
+      if (s.type === 'green' && !tainted) {
+        try {
+          const off = document.createElement('canvas'); off.width = 270; off.height = 480; const oc = off.getContext('2d', { willReadFrequently: true });
+          oc.drawImage(v, vx, vy, vw, vh); const im = oc.getImageData(0, 0, 270, 480); const d = im.data;
+          for (let p = 0; p < d.length; p += 4) { const r = d[p], g = d[p + 1], b = d[p + 2]; if (g > 90 && g > r * 1.35 && g > b * 1.35) d[p + 3] = 0; else if (g > r && g > b) { const k = Math.min(r, b); d[p + 1] = Math.min(g, k + 20); } }
+          oc.putImageData(im, 0, 0); ctx.drawImage(off, 0, 0);
+        } catch (e) { tainted = true; ctx.drawImage(v, vx, vy, vw, vh); }
+      } else ctx.drawImage(v, vx, vy, vw, vh);
+      tick(t0);
+      if (performance.now() - t0 < len) CB_PLAY.raf = requestAnimationFrame(draw); else { v.pause(); resolve(); }
+    };
+    CB_PLAY.stopFn = () => { v.pause(); };
+    v.addEventListener('loadedmetadata', () => { v.currentTime = s.reverse ? Math.max(0, (v.duration || 3) - trim - 0.05) : trim; });
+    v.addEventListener('canplay', () => {
+      // the stage switches only once the clip can play, so there is no black gap between shots
+      const st = cbStageSet('<canvas id="cbCanvas" width="270" height="480"></canvas>'); if (!st) return resolve();
+      cv = document.getElementById('cbCanvas'); ctx = cv.getContext('2d', { willReadFrequently: true });
+      t0 = performance.now(); if (!s.reverse) v.play().catch(() => {}); draw();
+    }, { once: true });
+    setTimeout(() => { if (CB_PLAY.on && !cv) { holdWith('<div class="cb-needed">Clip is still loading</div>'); } }, 6000);
+    let srcIdx = 0;
+    v.addEventListener('error', () => { srcIdx += 1; if (srcIdx < srcs.length) { v.src = srcs[srcIdx]; v.load(); return; } holdWith('<div class="cb-needed">Could not load this clip</div>'); });
+  });
+}
+
+// ---- open and save ----
+function cbOpenCartoon(id) {
+  cbStop();
+  if (!id) { CB = { id: '', title: '', character: CB.character, shots: [], filter: CB.filter }; renderCartoons(); return; }
+  const row = cbCartoons().find(c => String(c.id) === String(id)); if (!row) return;
+  let r = {}; try { r = JSON.parse(row.recipe || '{}'); } catch (e) { r = {}; }
+  CB = { id: String(row.id), title: row.title || '', character: row.character || CB.character, shots: Array.isArray(r.shots) ? r.shots : [], filter: CB.filter };
+  renderCartoons();
+}
+async function cbSave() {
+  const st = document.getElementById('cbStatus'); const tot = cbTotals();
+  if (!CB.title.trim()) { st.textContent = 'Give the cartoon a title first.'; return; }
+  st.textContent = 'Saving…';
+  const recipe = { version: 1, shots: CB.shots, totals: tot, saved: new Date().toISOString() };
+  const needed = CB.shots.filter(s => s.type === 'needed').map((s, k) => (k + 1) + '. ' + (s.clipType || '') + ' ' + (s.len || 3) + ' s: ' + (s.beat || '(no beat)') + (s.set ? ' [' + s.set + ']' : ''));
+  const notes = 'Board recipe saved ' + new Date().toISOString().slice(0, 10) + '. ' + CB.shots.length + ' shots, ' + tot.seconds + ' s. Needed clips (' + tot.needed + ', about $' + tot.cost.toFixed(2) + '): ' + (needed.join(' | ') || 'none');
+  try {
+    const res = await fetch(CB_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: CB.id || undefined, title: CB.title.trim(), character: CB.character, recipe, duration: tot.seconds, notes }) });
+    const j = await res.json(); if (!j.ok) throw new Error(j.reason || 'save failed');
+    if (j.id) CB.id = String(j.id);
+    st.textContent = 'Saved to the Content Library' + (tot.needed ? '. ' + tot.needed + ' clip(s) to be made, about $' + tot.cost.toFixed(2) + '.' : '.');
+    LIB = null; await loadLibrary();
+    const sel = document.getElementById('cbOpen'); if (sel) { sel.innerHTML = '<option value="">New cartoon</option>' + cbCartoons().map(c => '<option value="' + c.id + '"' + (String(CB.id) === String(c.id) ? ' selected' : '') + '>' + escapeHtml(c.title || ('Cartoon ' + c.id)) + '</option>').join(''); }
+  } catch (e) { st.textContent = 'Save failed: ' + e.message; }
+}
+document.getElementById('btnCartoons').addEventListener('click', () => { VIEW = 'cartoons'; setViewButtons(); render(); });
 </script>
 </body>
 </html>
