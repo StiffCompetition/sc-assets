@@ -17,23 +17,24 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-  header { background: #fff; border-top: 5px solid var(--c-next); padding: 16px 28px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); }
-  header img.logo-img { height: 56px; width: auto; display: block; flex-shrink: 0; }
-  header .logo { width: 40px; height: 40px; flex-shrink: 0; border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
-  header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
-  header p { margin: 2px 0 0; color: var(--grey); font-size: 13px; }
+  header { background: #fff; border-top: 3px solid var(--c-next); padding: 5px 20px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); }
+  header img.logo-img { height: 30px; width: auto; display: block; flex-shrink: 0; }
+  header .logo { width: 30px; height: 30px; flex-shrink: 0; border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  header h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
+  header p { display: none; }
+  header .btn { padding: 4px 10px; font-size: 13px; }
   header .spacer { flex: 1; }
   button { font-family: inherit; font-size: 14px; cursor: pointer; }
   .btn { padding: 8px 14px; border: 1px solid var(--c-next); background: var(--c-next); color: #fff; }
   .btn.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
   .btn.small { padding: 4px 10px; font-size: 13px; }
 
-  .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 28px; background: var(--panel); border-bottom: 1px solid var(--line); align-items: center; }
-  .tab { padding: 6px 12px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 0; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 20px; background: var(--panel); border-bottom: 1px solid var(--line); align-items: center; }
+  .tab { padding: 3px 10px; font-size: 13px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 0; }
   .tab.on { background: var(--c-next); color: #fff; border-color: var(--c-next); }
   .tab .n { font-family: var(--mono); font-size: 12px; opacity: .7; margin-left: 4px; }
   .tabs .who { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--grey); }
-  .tabs select { font-family: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); background: #fff; }
+  .tabs select { font-family: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line); background: #fff; }
 
   main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
   .group-title { margin: 22px 0 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); }
@@ -148,9 +149,30 @@
   .gpick { display: flex; gap: 10px; align-items: center; font-size: 14px; }
   .gpick img { width: 64px; height: 64px; object-fit: cover; }
   @media (max-width: 640px) {
-    header { padding: 12px 16px; } .tabs { padding: 10px 16px; } .tabs .who { margin-left: 0; width: 100%; }
+    header { padding: 5px 12px; } .tabs { padding: 5px 12px; } .tabs .who { margin-left: 0; width: 100%; }
     .card { flex-direction: column; } .acts { flex-direction: row; width: 100%; }
   }
+  /* Products tab (18 Oct 2026): template-driven product runs */
+  .pbox { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 12px; }
+  .pbox h3 { margin: 0 0 8px; font-size: 15px; }
+  .prow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .prow input[type=text] { flex: 1 1 300px; min-width: 0; font-family: var(--mono); font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); }
+  .tplinfo { margin-top: 8px; font-size: 14px; } .tplinfo b { color: var(--grey); font-size: 11px; letter-spacing: .8px; text-transform: uppercase; margin-right: 6px; }
+  .dpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
+  .dpick label { border: 1px solid var(--line); padding: 6px 8px; font-size: 14px; display: flex; gap: 6px; align-items: center; cursor: pointer; background: #fff; }
+  .dpick label.busy { color: var(--grey); }
+  .prule textarea, .prule input { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); }
+  .prule textarea { min-height: 120px; font-family: var(--mono); font-size: 12.5px; }
+  .prule label { display: block; font-size: 12px; color: var(--grey); margin-top: 8px; }
+  .pex { background: #fafafa; border: 1px dashed var(--line); padding: 8px 10px; margin-top: 8px; font-size: 14px; }
+  .run { border-left: 5px solid var(--c-park); }
+  .run.need { border-left-color: var(--c-today); background: #fff8f7; } .run.prog { border-left-color: var(--c-next); }
+  .run.live { border-left-color: var(--c-done); } .run.bad { border-left-color: #8a8f98; background: #f6f6f6; }
+  .run .pv { width: 100%; max-width: 520px; display: block; margin-top: 8px; border: 1px solid var(--line);
+    background-color: #fff; background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%);
+    background-size: 16px 16px; background-position: 0 0,0 8px,8px -8px,-8px 0; }
+  .run .acts2 { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .run pre { white-space: pre-wrap; font-size: 12px; background: #fafafa; padding: 6px; margin: 4px 0 0; }
 </style>
 </head>
 <body>
@@ -302,6 +324,7 @@ function flatShown(r) {
 }
 function tabCount(v) {
   if (v === 'Pages') return '';
+  if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length : '';
   if (v === 'Follow list') return frows.filter(FVIEWS['To follow']).length;
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
   if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
@@ -315,7 +338,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Products', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -413,6 +436,7 @@ function render() {
   renderTabs();
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); return; }
+  if (view === 'Products') { renderProducts(); return; }
   if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
   if (view === 'Done') {
@@ -873,6 +897,160 @@ async function addFollow(e) {
     toast('Added @' + h);
     await load();
   } catch (err) { toast('Not added: ' + err.message); }
+}
+
+// ===== Products tab (18 Oct 2026, Andy): make products from a design and a Gelato template ID =====
+// Andy makes the template in Gelato, pastes its ID here and presses Check. The template decides the product
+// (t-shirt, mug, ...). The rules for that product type (title, description, tags, pictures) need Andy's yes once.
+// Each run then goes: print fitted to the template -> Andy approves the design -> Gelato product -> Shopify draft
+// -> Andy presses Go live. SC - Product Runner moves runs on every minute; SC - Product API serves this tab.
+const PRODUCT_URL = BASE + 'sc-product-api';
+const prod = { loaded: false, loading: false, designs: [], rules: [], runs: [], tpl: null, tplErr: '', picked: new Set(), timer: null, open: {} };
+const RUN_STEPS = { queued: 'Queued', layout_running: 'Fitting the design', design_ready: 'Design ready', gelato_created: 'Making in Gelato', shopify_arrived: 'Reached Shopify', ready_check: 'Shopify draft', live: 'Live', failed: 'Failed', stopped: 'Stopped' };
+const SHOP_ADMIN = 'https://admin.shopify.com/store/stiifcompnft/products/';
+
+async function productApi(body) {
+  const r = await fetch(PRODUCT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let d = null; try { d = await r.json(); } catch (e) { d = null; }
+  if (!r.ok || !d) throw new Error(d && (d.error || d.message) ? (d.error || d.message) : 'The product service answered ' + r.status);
+  if (d.ok === false) throw new Error(d.error || 'Refused');
+  return d;
+}
+async function loadProducts(quiet) {
+  if (prod.loading) return; prod.loading = true;
+  try { const d = await productApi({ action: 'list' }); prod.designs = d.designs || []; prod.rules = d.rules || []; prod.runs = d.runs || []; prod.loaded = true; }
+  catch (e) { if (!quiet) toast('Could not load products: ' + e.message); }
+  prod.loading = false;
+  if (view === 'Products') renderProducts(); else renderTabs();
+}
+function prodRule(t) { return prod.rules.find(r => r.product_type === t) || null; }
+function openRuns(key, tid) { return prod.runs.filter(r => r.design_key === key && r.template_id === tid && ['failed', 'stopped'].indexOf(r.status) === -1); }
+function fillPattern(s, d, tplTitle) {
+  return String(s || '').split('{NAME}').join(d.name_line).split('{P1}').join(d.phrase_1).split('{P2}').join(d.phrase_2)
+    .split('{CHAR_LINE}').join(d.char_line).split('{CHARACTER}').join(d.character).split('{TEMPLATE_TITLE}').join(tplTitle || '');
+}
+
+function renderProducts() {
+  renderTabs();
+  if (!prod.loaded) { $('list').innerHTML = '<div class="empty">Loading products…</div>'; loadProducts(); return; }
+  clearInterval(prod.timer); prod.timer = setInterval(() => { if (view === 'Products' && !document.hidden && !document.querySelector('.prule :focus, #p_tid:focus')) loadProducts(true); else if (view !== 'Products') clearInterval(prod.timer); }, 30000);
+  const t = prod.tpl;
+  const designs = prod.designs.filter(d => d.status === 'approved');
+  let h = '<div class="pbox"><h3>New product</h3>'
+    + '<div class="prow"><input type="text" id="p_tid" placeholder="Gelato template ID (made in the Gelato dashboard)" value="' + esc(t ? t.templateId : ($('p_tid') ? $('p_tid').value : '')) + '">'
+    + '<button class="btn" id="p_check">Check</button></div>';
+  if (prod.tplErr) h += '<div class="tplinfo" style="color:#c62828">' + esc(prod.tplErr) + '</div>';
+  if (t) {
+    const rule = prodRule(t.product_type);
+    h += '<div class="tplinfo"><div><b>Template</b>' + esc(t.templateName) + '</div>'
+      + '<div><b>Product</b>' + esc(rule ? rule.label : t.product_type) + ' · ' + t.variantCount + ' variant' + (t.variantCount === 1 ? '' : 's') + (t.colours && t.colours.length ? ' · ' + esc(t.colours.join(', ')) : '') + '</div>'
+      + '<div><b>Print area</b>' + esc((t.imageSlots || []).join('; ')) + '</div>'
+      + (!rule ? '<div style="color:#c62828">There are no rules for this product type yet. Runs will wait until Claude has drafted them and you have said yes.</div>'
+        : rule.approved !== 'yes' ? '<div style="color:#b06a00">The ' + esc(rule.label) + ' rules are a draft. Runs wait until you approve them below.</div>' : '')
+      + '</div>';
+    h += '<div class="dpick">' + designs.map(d => {
+      const busy = openRuns(d.key, t.templateId).length > 0;
+      return '<label class="' + (busy ? 'busy' : '') + '"><input type="checkbox" data-dk="' + esc(d.key) + '"' + (busy ? ' disabled' : (prod.picked.has(d.key) ? ' checked' : '')) + '>' + esc(d.character) + (busy ? ' (already made or running)' : '') + '</label>';
+    }).join('') + '</div>';
+    h += '<div class="prow"><button class="btn ghost small" id="p_all">Pick all</button><button class="btn" id="p_start"' + (prod.picked.size ? '' : ' disabled') + '>Start ' + prod.picked.size + ' run' + (prod.picked.size === 1 ? '' : 's') + '</button></div>';
+  }
+  h += '</div>';
+
+  prod.rules.filter(r => r.approved !== 'yes').forEach(r => {
+    const ex = prod.designs[0];
+    h += '<div class="pbox prule" data-pt="' + esc(r.product_type) + '"><h3>' + esc(r.label) + ' rules: draft for your yes</h3>'
+      + '<div class="tplinfo"><div><b>Layout</b>' + esc(r.layout_mode) + '</div><div><b>Ink</b>' + esc(r.ink_rule) + '</div><div><b>Pictures</b>' + esc(r.picture_set) + '</div></div>'
+      + '<label>Title pattern ({NAME}, {P1}, {P2})<input data-f="title_pattern" value="' + esc(r.title_pattern) + '"></label>'
+      + '<label>Description ({P1}, {P2}, {CHAR_LINE}, {TEMPLATE_TITLE})<textarea data-f="description_html">' + esc(r.description_html) + '</textarea></label>'
+      + '<label>Tags (the character tag is added to each product; these decide the collections)<input data-f="tags_extra" value="' + esc(r.tags_extra) + '"></label>'
+      + (ex ? '<div class="pex"><b>Example: ' + esc(ex.character) + '</b><div style="font-weight:600;margin-top:4px">' + esc(fillPattern(r.title_pattern, ex, t && t.product_type === r.product_type ? t.title : '[template title]')) + '</div>'
+        + '<div>' + fillPattern(r.description_html, ex, t && t.product_type === r.product_type ? esc(t.title) : '[template title]') + '</div></div>' : '')
+      + '<div class="prow" style="margin-top:8px"><button class="btn ghost" data-ract="save">Save changes</button><button class="btn done" data-ract="approve">Approve these rules</button></div></div>';
+  });
+
+  const groups = [
+    ['Needs you', r => /^andy_/.test(r.waiting_on || ''), 'need'],
+    ['In progress', r => r.waiting_on === 'runner', 'prog'],
+    ['Live', r => r.status === 'live', 'live'],
+    ['Failed or stopped', r => r.status === 'failed' || r.status === 'stopped', 'bad']
+  ];
+  groups.forEach(g => {
+    const list = prod.runs.filter(g[1]);
+    if (!list.length) return;
+    h += '<div class="group-title">' + g[0] + ' (' + list.length + ')</div>' + list.map(r => runCard(r, g[2])).join('');
+  });
+  if (!prod.runs.length) h += '<div class="empty">No product runs yet.</div>';
+  $('list').innerHTML = h;
+  wireProducts();
+}
+
+function runCard(r, cls) {
+  const d = prod.designs.find(x => x.key === r.design_key) || {};
+  const rule = prodRule(r.product_type);
+  const step = RUN_STEPS[r.status] || r.status;
+  const wait = r.waiting_on === 'andy_design' ? 'Check the print and approve it' : r.waiting_on === 'andy_live' ? 'Check the Shopify draft and press Go live' : r.waiting_on === 'andy_rules' ? 'Approve the ' + (rule ? rule.label : r.product_type) + ' rules above' : '';
+  let h = '<div class="card run ' + cls + '" data-rid="' + r.id + '"><div class="body">'
+    + '<div class="title">' + esc(r.title || ((d.character || r.design_key) + ' · ' + (rule ? rule.label : r.product_type))) + '</div>'
+    + '<div class="step"><b>' + esc(step) + '</b>' + (wait ? ' · ' + esc(wait) : '') + '</div>'
+    + '<div class="step" style="color:var(--grey)">' + esc(r.message || '') + '</div>'
+    + '<div class="step" style="color:var(--grey);font-size:12px">' + esc(r.template_name || r.template_id) + (r.updated_on ? ' · ' + esc(String(r.updated_on).slice(0, 16).replace('T', ' ')) : '') + '</div>';
+  if (r.preview_url && ['design_ready', 'gelato_created', 'shopify_arrived', 'ready_check'].indexOf(r.status) !== -1) h += '<a href="' + esc(safeUrl(r.preview_url)) + '" target="_blank" rel="noopener"><img class="pv" src="' + esc(safeUrl(r.preview_url)) + '" alt="Print file"></a>';
+  if (r.shopify_product_id) h += '<div class="step"><a href="' + SHOP_ADMIN + esc(r.shopify_product_id) + '" target="_blank" rel="noopener">Open in Shopify</a></div>';
+  h += '<div class="acts2">';
+  if (r.waiting_on === 'andy_design') h += '<button class="btn done small" data-pact="approve_design">Approve design</button><button class="btn ghost small" data-pact="reject">Reject</button>';
+  if (r.waiting_on === 'andy_live') h += '<button class="btn done small" data-pact="approve_live">Go live</button>';
+  if (r.status === 'failed' || r.status === 'stopped') h += '<button class="btn ghost small" data-pact="retry">Retry</button>';
+  if (['live', 'failed', 'stopped'].indexOf(r.status) === -1) h += '<button class="btn ghost small" data-pact="stop">Stop</button>';
+  h += '</div>';
+  if (r.log) h += '<details class="more"' + (prod.open[r.id] ? ' open' : '') + '><summary>Log</summary><pre>' + esc(r.log) + '</pre></details>';
+  return h + '</div></div>';
+}
+
+function wireProducts() {
+  $('p_check').onclick = async () => {
+    const id = $('p_tid').value.trim();
+    prod.tpl = null; prod.tplErr = ''; prod.picked.clear();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { prod.tplErr = 'That is not a Gelato template ID. Copy it from the template in the Gelato dashboard.'; renderProducts(); return; }
+    $('p_check').disabled = true; $('p_check').textContent = 'Checking…';
+    try { prod.tpl = await productApi({ action: 'check_template', templateId: id }); }
+    catch (e) { prod.tplErr = 'Gelato could not read that template: ' + e.message; }
+    renderProducts();
+  };
+  $('list').querySelectorAll('.dpick input').forEach(cb => cb.onchange = () => { cb.checked ? prod.picked.add(cb.dataset.dk) : prod.picked.delete(cb.dataset.dk); renderProducts(); });
+  const all = $('p_all'); if (all) all.onclick = () => { $('list').querySelectorAll('.dpick input:not(:disabled)').forEach(cb => prod.picked.add(cb.dataset.dk)); renderProducts(); };
+  const st = $('p_start'); if (st) st.onclick = async () => {
+    const t = prod.tpl; const keys = Array.from(prod.picked);
+    if (!t || !keys.length) return;
+    if (!confirm('Start ' + keys.length + ' ' + (prodRule(t.product_type) ? prodRule(t.product_type).label.toLowerCase() : t.product_type) + ' run(s) from "' + t.templateName + '"? Nothing goes to Gelato or Shopify until you approve each design.')) return;
+    st.disabled = true; st.textContent = 'Starting…';
+    try { const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys }); toast(d.started + ' run(s) queued'); prod.picked.clear(); await loadProducts(); }
+    catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
+  };
+  $('list').querySelectorAll('.prule').forEach(box => {
+    const pt = box.dataset.pt;
+    const vals = () => { const o = {}; box.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.value); return o; };
+    box.querySelectorAll('[data-ract]').forEach(b => b.onclick = async () => {
+      const approve = b.dataset.ract === 'approve';
+      if (approve && !confirm('Approve these rules? Every new product of this type will use them.')) return;
+      b.disabled = true;
+      try { await productApi(Object.assign({ action: 'save_rule', product_type: pt, approve: approve }, vals())); toast(approve ? 'Rules approved' : 'Rules saved'); await loadProducts(); }
+      catch (e) { toast('Could not save: ' + e.message); b.disabled = false; }
+    });
+  });
+  $('list').querySelectorAll('.run').forEach(c => {
+    const rid = c.dataset.rid;
+    const det = c.querySelector('details'); if (det) det.ontoggle = () => { prod.open[rid] = det.open; };
+    c.querySelectorAll('[data-pact]').forEach(b => b.onclick = async () => {
+      const stepName = b.dataset.pact;
+      let note = '';
+      if (stepName === 'approve_live' && !confirm('Put this product live on the shop now?')) return;
+      if (stepName === 'stop' && !confirm('Stop this run?')) return;
+      if (stepName === 'reject') { note = prompt('What is wrong with the design? The run stops and your note is kept in its log.', ''); if (note === null) return; }
+      b.disabled = true;
+      try { await productApi({ action: 'run_update', runId: Number(rid), step: stepName === 'reject' ? 'stop' : stepName, note: stepName === 'reject' ? 'design rejected: ' + note : note }); toast('Done'); await loadProducts(); }
+      catch (e) { toast(e.message); b.disabled = false; }
+    });
+  });
 }
 
 load();
