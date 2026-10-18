@@ -400,6 +400,12 @@
 .cb-empty{color:#777;font-size:13px;padding:30px;text-align:center;width:100%}
 .cb-status{font-family:var(--mono);font-size:12px;color:#555;min-height:18px}
 @media (max-width: 900px){.cb-wrap{grid-template-columns:1fr}.cb-pieces{max-height:260px}.cb-stage-row{grid-template-columns:1fr}.cb-stage{margin:0 auto}}
+
+/* Cartoons mode: the calendar header and filters are hidden so the board has the room */
+body.cb-mode #topbar{display:none}
+body.cb-mode{padding-top:0 !important}
+body.cb-mode main{padding-top:10px}
+.cb-title{font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#555;margin-right:6px}
 </style>
 </head>
 <body>
@@ -1630,6 +1636,7 @@ function setViewButtons() {
   document.getElementById('btnLibrary').classList.toggle('active', VIEW === 'library');
   document.getElementById('btnCampaigns').classList.toggle('active', VIEW === 'campaigns');
   document.getElementById('btnCartoons').classList.toggle('active', VIEW === 'cartoons');
+  if (VIEW !== 'cartoons') { document.body.classList.remove('cb-mode'); if (typeof cbStop === 'function') cbStop(); }
 }
 document.getElementById('showPostedRejected').addEventListener('change', render);
 document.getElementById('filterSearch').addEventListener('input', render);
@@ -2189,6 +2196,7 @@ function cbTotals() {
 
 async function renderCartoons() {
   const main = document.getElementById('main');
+  document.body.classList.add('cb-mode'); updateTopbarHeight();
   if (LIB === null) { main.innerHTML = '<div class="loading">Loading pieces…</div>'; await loadLibrary(); if (VIEW !== 'cartoons') return; }
   cbStop();
   const pieces = cbPieces().filter(p => !CB.filter || p.character === CB.filter || !p.character);
@@ -2207,6 +2215,8 @@ async function renderCartoons() {
     '</div>' +
     '<div class="cb-board">' +
     '<div class="cb-head">' +
+    '<button class="btn secondary" id="cbBack" type="button" title="Back to the calendar">&larr; Dashboard</button>' +
+    '<span class="cb-title">Cartoons</span>' +
     '<select id="cbOpen"><option value="">New cartoon</option>' + saved.map(c => '<option value="' + c.id + '"' + (String(CB.id) === String(c.id) ? ' selected' : '') + '>' + escapeHtml(c.title || ('Cartoon ' + c.id)) + '</option>').join('') + '</select>' +
     '<input type="text" id="cbTitle" placeholder="Cartoon title (e.g. The Grip - Automatic Door)" value="' + escapeHtml(CB.title) + '">' +
     '<select id="cbChar">' + CB_CHARS.map(c => '<option' + (CB.character === c ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join('') + '</select>' +
@@ -2226,6 +2236,7 @@ async function renderCartoons() {
   document.getElementById('cbChar').onchange = e => { CB.character = e.target.value; };
   document.getElementById('cbOpen').onchange = e => cbOpenCartoon(e.target.value);
   document.getElementById('cbSave').onclick = cbSave;
+  document.getElementById('cbBack').onclick = () => { cbStop(); VIEW = 'grid'; setViewButtons(); render(); };
   document.getElementById('cbPlay').onclick = cbPlay;
   document.getElementById('cbStopBtn').onclick = cbStop;
   main.querySelectorAll('.cb-piece').forEach(el => {
