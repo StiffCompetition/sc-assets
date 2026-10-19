@@ -1047,6 +1047,7 @@ function partImg(d, p, ink) {
 function panelHtml(title, d, ps, ink, hex) {
   let inner = '';
   if (!ps.length) inner = '<div class="pv-empty">Nothing printed</div>';
+  else if (d.kind === 'brand' && d['print_' + ink + '_ink']) inner = '<img src="' + esc(safeUrl(d['print_' + ink + '_ink'])) + '" alt="">';   // brand logos print on their own
   else if (ps.length === 4 && d['print_' + ink + '_ink']) inner = '<img src="' + esc(safeUrl(d['print_' + ink + '_ink'])) + '" alt="">';
   else inner = ps.map(p => partImg(d, p, ink) ? '<img src="' + esc(safeUrl(partImg(d, p, ink))) + '" alt="">' : '<div class="pv-miss">no ' + p + ' part</div>').join('');
   return '<figure class="pv-panel"><div class="pv-garment" style="background:' + hex + '"><div class="pv-area">' + inner + '</div></div><figcaption>' + title + '</figcaption></figure>';
@@ -1294,8 +1295,8 @@ function wireProducts() {
 
 // Design library (18 Oct 2026, Andy): each design's picture on its own (no text), and the logos kept separate.
 function libraryHtml() {
-  const ds = prod.designs.filter(d => d.kind !== 'logo' && d.status === 'approved');
-  const logos = prod.designs.filter(d => d.kind === 'logo');
+  const ds = prod.designs.filter(d => d.kind !== 'logo' && d.kind !== 'brand' && d.status === 'approved');
+  const logos = prod.designs.filter(d => d.kind === 'logo' || (d.kind === 'brand' && d.status === 'approved'));
   let h = '<details class="pbox lib"' + (prod.libOpen ? ' open' : '') + ' id="p_lib"><summary><b>Design library</b> · ' + ds.length + ' design' + (ds.length === 1 ? '' : 's') + ', ' + logos.length + ' logo' + (logos.length === 1 ? '' : 's') + '</summary>';
   h += '<div class="libgrid">' + ds.map(d => '<div class="libcard">'
     + (d.art_url ? '<a href="' + esc(safeUrl(d.art_url)) + '" target="_blank" rel="noopener"><img class="chk" src="' + esc(safeUrl(d.art_url)) + '" alt="' + esc(d.character) + ' picture"></a>' : '<div class="noart">No picture yet</div>')
