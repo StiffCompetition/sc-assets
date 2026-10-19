@@ -153,6 +153,15 @@
     .card { flex-direction: column; } .acts { flex-direction: row; width: 100%; }
   }
   /* Products tab (18 Oct 2026): template-driven product runs */
+  .flow .fstep { border-top: 1px solid var(--line); padding: 10px 0; } .flow .fstep:first-of-type { border-top: 0; }
+  .fhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 15px; }
+  .fnum { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; background: var(--c-next); color: #fff; flex: 0 0 auto; }
+  .fstep.done .fnum { background: var(--c-done); } .fstep.lock { opacity: .45; } .fstep.lock .fnum { background: #8a8f98; }
+  .fsum { color: var(--grey); font-size: 13px; } .fbody { margin: 10px 0 0 36px; } @media (max-width: 640px) { .fbody { margin-left: 0; } }
+  .dpick label img { width: 44px; height: 44px; object-fit: contain; flex: 0 0 auto; } .dpick label.on { border-color: var(--c-next); background: #eef4ff; }
+  .dpick label small { color: var(--grey); } .need-title { color: var(--c-today); }
+  a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+  #p_new { margin-top: 10px; border-style: dashed; } #p_new summary { cursor: pointer; font-size: 14px; }
   .pbox { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 12px; }
   .pbox h3 { margin: 0 0 8px; font-size: 15px; }
   .prow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -949,68 +958,113 @@ function fillPattern(s, d, tplTitle) {
     .split('{CHAR_LINE}').join(d.char_line).split('{CHARACTER}').join(d.character).split('{TEMPLATE_TITLE}').join(tplTitle || '');
 }
 
+// Flow (19 Oct 2026, Andy): no instructions; the tab leads on by itself. "Needs you" first, then the four steps
+// (product, rules, characters, make), each opening when the one before is done, then everything already under way.
+const TPL_KEY = 'sc_prod_tpl';
+function ruleBoxHtml(r) {
+  const t = prod.tpl, ex = prod.designs.find(d => d.kind !== 'logo' && d.status === 'approved');
+  const tt = t && t.product_type === r.product_type ? t.title : '[template title]';
+  return '<div class="prule" data-pt="' + esc(r.product_type) + '">'
+    + '<label>Title ({NAME}, {P1}, {P2})<input data-f="title_pattern" value="' + esc(r.title_pattern) + '"></label>'
+    + '<label>Description ({P1}, {P2}, {CHAR_LINE}, {TEMPLATE_TITLE})<textarea data-f="description_html">' + esc(r.description_html) + '</textarea></label>'
+    + '<label>Tags<input data-f="tags_extra" value="' + esc(r.tags_extra) + '"></label>'
+    + (r.layout_mode === 'sides' ? sidesHtml(r) : '')
+    + (ex ? '<div class="pex"><b>How it reads for ' + esc(ex.character) + '</b><div style="font-weight:600;margin-top:4px">' + esc(fillPattern(r.title_pattern, ex, tt)) + '</div>'
+      + '<div>' + fillPattern(r.description_html, ex, esc(tt)) + '</div></div>' : '')
+    + '<div class="prow" style="margin-top:8px"><button class="btn ghost" data-ract="save">Save</button><button class="btn done" data-ract="approve">Approve rules</button></div></div>';
+}
+function fstep(n, title, state, summary, body) {
+  // state: 'now' (open), 'done' (closed, ticked), 'lock' (waits for the step before)
+  return '<div class="fstep ' + state + '"><div class="fhead"><span class="fnum">' + (state === 'done' ? '✓' : n) + '</span><b>' + title + '</b>'
+    + (state === 'done' && summary ? '<span class="fsum">' + summary + '</span>' : '') + '</div>'
+    + (state === 'now' ? '<div class="fbody">' + body + '</div>' : '') + '</div>';
+}
 function renderProducts() {
   renderTabs();
   if (!prod.loaded) { $('list').innerHTML = '<div class="empty">Loading products…</div>'; loadProducts(); return; }
-  clearInterval(prod.timer); prod.timer = setInterval(() => { if (view === 'Products' && !document.hidden && !document.querySelector('.prule :focus, #p_tid:focus')) loadProducts(true); else if (view !== 'Products') clearInterval(prod.timer); }, 30000);
+  clearInterval(prod.timer); prod.timer = setInterval(() => { if (view === 'Products' && !document.hidden && !document.querySelector('.prule :focus, #p_tid:focus, #p_new :focus')) loadProducts(true); else if (view !== 'Products') clearInterval(prod.timer); }, 30000);
+  // the last template checked comes back by itself, so the flow carries on where it was left
+  if (!prod.tpl && !prod.tplErr && !prod.autoTried) { prod.autoTried = true; let k = ''; try { k = localStorage.getItem(TPL_KEY) || ''; } catch (e) {} if (k) { checkTemplate(k); return; } }
   const t = prod.tpl;
   const designs = prod.designs.filter(d => d.status === 'approved' && d.kind !== 'logo');
-  let h = '<div class="pbox"><h3>New product</h3>'
-    + '<div class="prow"><input type="text" id="p_tid" placeholder="Gelato template ID (made in the Gelato dashboard)" value="' + esc(t ? t.templateId : ($('p_tid') ? $('p_tid').value : '')) + '">'
-    + '<button class="btn" id="p_check">Check</button></div>';
-  if (prod.tplErr) h += '<div class="tplinfo" style="color:#c62828">' + esc(prod.tplErr) + '</div>';
-  if (t) {
-    const rule = prodRule(t.product_type);
-    h += '<div class="tplinfo"><div><b>Template</b>' + esc(t.templateName) + '</div>'
-      + '<div><b>Product</b>' + esc(rule ? rule.label : t.product_type) + ' · ' + t.variantCount + ' variant' + (t.variantCount === 1 ? '' : 's') + (t.colours && t.colours.length ? ' · ' + esc(t.colours.join(', ')) : '') + '</div>'
-      + '<div><b>Print area</b>' + esc((t.imageSlots || []).join('; ')) + '</div>'
-      + (!rule ? '<div style="color:#c62828">There are no rules for this product type yet. Runs will wait until Claude has drafted them and you have said yes.</div>'
-        : rule.approved !== 'yes' ? '<div style="color:#b06a00">The ' + esc(rule.label) + ' rules are a draft. Runs wait until you approve them below.</div>' : '')
-      + '</div>';
-    h += '<div class="dpick">' + designs.map(d => {
-      const busy = openRuns(d.key, t.templateId).length > 0;
-      return '<label class="' + (busy ? 'busy' : '') + '"><input type="checkbox" data-dk="' + esc(d.key) + '"' + (busy ? ' disabled' : (prod.picked.has(d.key) ? ' checked' : '')) + '>' + esc(d.character) + (busy ? ' (already made or running)' : '') + '</label>';
-    }).join('') + '</div>';
-    h += '<div class="prow"><button class="btn ghost small" id="p_all">Pick all</button><button class="btn" id="p_start"' + (prod.picked.size ? '' : ' disabled') + '>Start ' + prod.picked.size + ' run' + (prod.picked.size === 1 ? '' : 's') + '</button></div>';
+  const rule = t ? prodRule(t.product_type) : null;
+  const ruleOk = !!(rule && rule.approved === 'yes');
+  let h = '';
+
+  // ---- Needs you: everything waiting on Andy, at the top ----
+  const needRuns = prod.runs.filter(r => r.waiting_on === 'andy_design' || r.waiting_on === 'andy_live');
+  const needDesigns = prod.designs.filter(d => d.kind !== 'logo' && d.waiting_on === 'andy_design');
+  const waitingRules = prod.rules.filter(r => r.approved !== 'yes' && prod.runs.some(x => x.waiting_on === 'andy_rules' && x.product_type === r.product_type) && !(t && t.product_type === r.product_type));
+  if (needRuns.length || needDesigns.length || waitingRules.length) {
+    h += '<div class="group-title need-title">Needs you (' + (needRuns.length + needDesigns.length + waitingRules.length) + ')</div>';
+    h += needDesigns.map(designCard).join('') + needRuns.map(r => runCard(r, 'need')).join('');
+    h += waitingRules.map(r => '<div class="pbox"><h3>' + esc(r.label) + ' rules</h3>' + ruleBoxHtml(r) + '</div>').join('');
   }
+
+  // ---- The four steps ----
+  h += '<div class="pbox flow"><h3>Make products</h3>';
+  const s1 = '<div class="prow"><input type="text" id="p_tid" placeholder="Gelato template ID" value="' + esc($('p_tid') ? $('p_tid').value : '') + '">'
+    + '<button class="btn" id="p_check">Check</button>'
+    + '<a class="btn ghost" href="https://dashboard.gelato.com/" target="_blank" rel="noopener">Open Gelato</a></div>'
+    + (prod.tplErr ? '<div class="tplinfo" style="color:#c62828">' + esc(prod.tplErr) + '</div>' : '');
+  const sum1 = t ? esc(rule ? rule.label : t.product_type) + ' · ' + esc(t.templateName) + (t.colours && t.colours.length ? ' · ' + esc(t.colours.join(', ')) : '') + ' <a href="#" id="p_change">Change</a>' : '';
+  h += fstep(1, 'Product', t ? 'done' : 'now', sum1, s1);
+
+  let s2 = '';
+  if (t && !rule) s2 = '<div class="tplinfo" style="color:#b06a00">Claude is drafting the ' + esc(t.product_type) + ' rules. They appear here for your yes.</div>';
+  else if (t && !ruleOk) s2 = ruleBoxHtml(rule);
+  const sum2 = ruleOk ? esc(rule.label) + ' rules approved' + (rule.layout_mode === 'sides' ? ' · side 1: ' + esc(String(rule.side_1 || '').split(',').join(', ')) + ' · side 2: ' + esc(String(rule.side_2 || '').split(',').join(', ')) : '') : '';
+  h += fstep(2, 'Rules', !t ? 'lock' : ruleOk ? 'done' : 'now', sum2, s2);
+
+  let s3 = '';
+  if (t && ruleOk) {
+    s3 = '<div class="dpick">' + designs.map(d => {
+      const busy = openRuns(d.key, t.templateId).length > 0;
+      return '<label class="' + (busy ? 'busy' : '') + (prod.picked.has(d.key) ? ' on' : '') + '"><input type="checkbox" data-dk="' + esc(d.key) + '"' + (busy ? ' disabled' : (prod.picked.has(d.key) ? ' checked' : '')) + '>'
+        + (d.art_url ? '<img src="' + esc(safeUrl(d.art_url)) + '" alt="">' : '') + '<span>' + esc(d.character) + (busy ? '<br><small>already made</small>' : '') + '</span></label>';
+    }).join('') + '</div>'
+      + '<div class="prow"><button class="btn ghost small" id="p_all">Pick all</button></div>'
+      + newDesignHtml();
+  }
+  const sum3 = prod.picked.size ? prod.picked.size + ' picked' : '';
+  h += fstep(3, 'Characters', !(t && ruleOk) ? 'lock' : 'now', sum3, s3);
+
+  const n = prod.picked.size, what = rule ? rule.label.toLowerCase() : 'product';
+  const s4 = '<div class="prow"><button class="btn" id="p_start">Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') + '</button></div>';
+  h += fstep(4, 'Make', (t && ruleOk && n) ? 'now' : 'lock', '', s4);
   h += '</div>';
 
-  h += newDesignHtml() + designsInProgressHtml() + libraryHtml();
-
-  prod.rules.filter(r => r.approved !== 'yes').forEach(r => {
-    const ex = prod.designs.find(d => d.kind !== 'logo');
-    h += '<div class="pbox prule" data-pt="' + esc(r.product_type) + '"><h3>' + esc(r.label) + ' rules: draft for your yes</h3>'
-      + '<div class="tplinfo"><div><b>Layout</b>' + esc(r.layout_mode) + '</div><div><b>Ink</b>' + esc(r.ink_rule) + '</div><div><b>Pictures</b>' + esc(r.picture_set) + '</div></div>'
-      + '<label>Title pattern ({NAME}, {P1}, {P2})<input data-f="title_pattern" value="' + esc(r.title_pattern) + '"></label>'
-      + '<label>Description ({P1}, {P2}, {CHAR_LINE}, {TEMPLATE_TITLE})<textarea data-f="description_html">' + esc(r.description_html) + '</textarea></label>'
-      + '<label>Tags (the character tag is added to each product; these decide the collections)<input data-f="tags_extra" value="' + esc(r.tags_extra) + '"></label>'
-      + (r.layout_mode === 'sides' ? sidesHtml(r) : '')
-      + (ex ? '<div class="pex"><b>Example: ' + esc(ex.character) + '</b><div style="font-weight:600;margin-top:4px">' + esc(fillPattern(r.title_pattern, ex, t && t.product_type === r.product_type ? t.title : '[template title]')) + '</div>'
-        + '<div>' + fillPattern(r.description_html, ex, t && t.product_type === r.product_type ? esc(t.title) : '[template title]') + '</div></div>' : '')
-      + '<div class="prow" style="margin-top:8px"><button class="btn ghost" data-ract="save">Save changes</button><button class="btn done" data-ract="approve">Approve these rules</button></div></div>';
-  });
-
+  // ---- Everything already under way ----
+  const building = prod.designs.filter(d => d.kind !== 'logo' && d.status !== 'approved' && d.waiting_on !== 'andy_design');
   const groups = [
-    ['Needs you', r => /^andy_/.test(r.waiting_on || ''), 'need'],
-    ['In progress', r => r.waiting_on === 'runner', 'prog'],
+    ['In progress', r => r.waiting_on === 'runner' || r.waiting_on === 'andy_rules', 'prog'],
     ['Live', r => r.status === 'live', 'live'],
     ['Failed or stopped', r => r.status === 'failed' || r.status === 'stopped', 'bad']
   ];
+  if (building.length) h += '<div class="group-title">Designs being built (' + building.length + ')</div>' + building.map(designCard).join('');
   groups.forEach(g => {
     const list = prod.runs.filter(g[1]);
     if (!list.length) return;
     h += '<div class="group-title">' + g[0] + ' (' + list.length + ')</div>' + list.map(r => runCard(r, g[2])).join('');
   });
-  if (!prod.runs.length) h += '<div class="empty">No product runs yet.</div>';
+  h += libraryHtml();
   $('list').innerHTML = h;
   wireProducts();
+}
+async function checkTemplate(id) {
+  prod.tpl = null; prod.tplErr = ''; prod.picked.clear();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { prod.tplErr = 'That is not a Gelato template ID.'; renderProducts(); return; }
+  if ($('p_check')) { $('p_check').disabled = true; $('p_check').textContent = 'Checking…'; } else $('list').innerHTML = '<div class="empty">Loading products…</div>';
+  try { prod.tpl = await productApi({ action: 'check_template', templateId: id }); try { localStorage.setItem(TPL_KEY, id); } catch (e) {} }
+  catch (e) { prod.tplErr = 'Gelato could not read that template: ' + e.message; try { localStorage.removeItem(TPL_KEY); } catch (x) {} }
+  renderProducts();
 }
 
 function runCard(r, cls) {
   const d = prod.designs.find(x => x.key === r.design_key) || {};
   const rule = prodRule(r.product_type);
   const step = RUN_STEPS[r.status] || r.status;
-  const wait = r.waiting_on === 'andy_design' ? 'Check the print and approve it' : r.waiting_on === 'andy_live' ? 'Check the Shopify draft and press Go live' : r.waiting_on === 'andy_rules' ? 'Approve the ' + (rule ? rule.label : r.product_type) + ' rules above' : '';
+  const wait = r.waiting_on === 'andy_design' ? 'Check the print and approve it' : r.waiting_on === 'andy_live' ? 'Check the Shopify draft and press Go live' : r.waiting_on === 'andy_rules' ? 'Waiting for the ' + (rule ? rule.label : r.product_type) + ' rules' : '';
   let h = '<div class="card run ' + cls + '" data-rid="' + r.id + '"><div class="body">'
     + '<div class="title">' + esc(r.title || ((d.character || r.design_key) + ' · ' + (rule ? rule.label : r.product_type))) + '</div>'
     + '<div class="step"><b>' + esc(step) + '</b>' + (wait ? ' · ' + esc(wait) : '') + '</div>'
@@ -1031,15 +1085,8 @@ function runCard(r, cls) {
 function wireProducts() {
   const lib = $('p_lib'); if (lib) lib.ontoggle = () => { prod.libOpen = lib.open; };
   wireDesigns();
-  $('p_check').onclick = async () => {
-    const id = $('p_tid').value.trim();
-    prod.tpl = null; prod.tplErr = ''; prod.picked.clear();
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { prod.tplErr = 'That is not a Gelato template ID. Copy it from the template in the Gelato dashboard.'; renderProducts(); return; }
-    $('p_check').disabled = true; $('p_check').textContent = 'Checking…';
-    try { prod.tpl = await productApi({ action: 'check_template', templateId: id }); }
-    catch (e) { prod.tplErr = 'Gelato could not read that template: ' + e.message; }
-    renderProducts();
-  };
+  const ck = $('p_check'); if (ck) ck.onclick = () => checkTemplate($('p_tid').value.trim());
+  const chg = $('p_change'); if (chg) chg.onclick = (e) => { e.preventDefault(); prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); try { localStorage.removeItem(TPL_KEY); } catch (x) {} renderProducts(); };
   $('list').querySelectorAll('.dpick input').forEach(cb => cb.onchange = () => { cb.checked ? prod.picked.add(cb.dataset.dk) : prod.picked.delete(cb.dataset.dk); renderProducts(); });
   const all = $('p_all'); if (all) all.onclick = () => { $('list').querySelectorAll('.dpick input:not(:disabled)').forEach(cb => prod.picked.add(cb.dataset.dk)); renderProducts(); };
   const st = $('p_start'); if (st) st.onclick = async () => {
@@ -1110,15 +1157,15 @@ function sidesHtml(r) {
   const has = (n, p) => String(r['side_' + n] || '').split(',').map(x => x.trim()).indexOf(p) !== -1;
   const row = n => '<div class="sides"><b>Side ' + n + (n === 1 ? ' (faces out when held in the right hand)' : ' (faces the drinker)') + '</b>'
     + PARTS.map(([p, l]) => '<label class="tick"><input type="checkbox" data-side="' + n + '" value="' + p + '"' + (has(n, p) ? ' checked' : '') + '> ' + l + '</label>').join('') + '</div>';
-  return '<div class="pex"><b>What goes on each side of the mug</b><div style="color:var(--grey);font-size:13px">Parts are stacked top to bottom in this order and fitted to their side. Each side is centred on one face of the mug.</div>' + row(1) + row(2)
-    + '<label>Side 1 sits on the <select data-f="side_1_half"><option value="left"' + (r.side_1_half !== 'right' ? ' selected' : '') + '>left half</option><option value="right"' + (r.side_1_half === 'right' ? ' selected' : '') + '>right half</option></select> of the print file (checked against the template\'s Gelato preview on the first mug)</label></div>';
+  return '<div class="pex"><b>What goes on each side</b>' + row(1) + row(2)
+    + '<label>Side 1 sits on the <select data-f="side_1_half"><option value="left"' + (r.side_1_half !== 'right' ? ' selected' : '') + '>left half</option><option value="right"' + (r.side_1_half === 'right' ? ' selected' : '') + '>right half</option></select> of the print file</label></div>';
 }
 
 // ===== New design from reference images (Andy, 18 Oct 2026) =====
 const CLOUD_UPLOAD = 'https://api.cloudinary.com/v1_1/dkapdtxek/image/upload';
 const DESIGN_STEPS = { requested: 'Queued', phrase_check: 'Checking the phrase', generate: 'Making the picture', picture_ready: 'Picture made', building: 'Building and checking', review: 'Ready for your approval', failed: 'Failed', stopped: 'Stopped' };
 function newDesignHtml() {
-  return '<details class="pbox lib" id="p_new"' + (prod.newOpen ? ' open' : '') + '><summary><b>New design from reference images</b></summary>'
+  return '<details class="pbox lib" id="p_new"' + (prod.newOpen ? ' open' : '') + '><summary>A character is missing? <b>New design</b></summary>'
     + '<div class="prule">'
     + '<label>Character name<input id="nd_char" placeholder="For example: Hammerin\' Hanky"></label>'
     + '<label>Name line on the print (leave empty to use the character name)<input id="nd_name"></label>'
@@ -1131,10 +1178,7 @@ function newDesignHtml() {
     + '<b>About $0.13 per attempt, at most 3 attempts ($0.40).</b> Pressing Build is your yes for that cost. You approve the result before it joins the library.</div>'
     + '<div class="prow" style="margin-top:8px"><button class="btn" id="nd_go">Build design</button></div></div></details>';
 }
-function designsInProgressHtml() {
-  const list = prod.designs.filter(d => d.kind !== 'logo' && d.status !== 'approved');
-  if (!list.length) return '';
-  return '<div class="group-title">Designs being built (' + list.length + ')</div>' + list.map(d => {
+function designCard(d) {
     const need = d.waiting_on === 'andy_design', bad = d.status === 'failed' || d.status === 'stopped';
     let h = '<div class="card run ' + (need ? 'need' : bad ? 'bad' : 'prog') + '" data-did="' + d.id + '"><div class="body">'
       + '<div class="title">' + esc(d.character) + ' · ' + esc(d.phrase_1 || '') + ' / ' + esc(d.phrase_2 || '') + '</div>'
@@ -1149,8 +1193,7 @@ function designsInProgressHtml() {
     if (!bad && !need) h += '<button class="btn ghost small" data-dact="stop">Stop</button>';
     h += '</div>';
     if (d.log) h += '<details class="more"><summary>Log</summary><pre>' + esc(d.log) + '</pre></details>';
-    return h + '</div></div>';
-  }).join('');
+  return h + '</div></div>';
 }
 async function uploadRef(file, i) {
   const fd = new FormData(); fd.append('file', file); fd.append('upload_preset', 'SCSMAuto');
