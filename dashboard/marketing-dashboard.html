@@ -1233,7 +1233,7 @@ function prCalc(x) {
 }
 function prTone(profit, margin, floor) {
   if (profit <= 0) return ['#f8d0d0', '#7f1414'];
-  if (margin < Math.max(floor, 10)) return ['#ffe9a8', '#6b4a00'];
+  if (floor !== null && margin < floor) return ['#ffe9a8', '#6b4a00'];
   return ['#d4f0dc', '#11502a'];
 }
 const PR_COLS = [['product', 'Product'], ['market', 'Market'], ['price', 'Price'], ['cost', 'Gelato cost + shipping'], ['profit', 'Profit'], ['after', 'Profit after code'], ['free', 'If shipping were free, after code']];
@@ -1255,14 +1255,14 @@ function renderPricing() {
   const f = n => (n < 0 ? '-' : '') + '£' + Math.abs(n).toFixed(2);
   const calc = pr.rows.map(x => { const c = prCalc(x), fl = c.floorV; return [x, c]; });
   const floorOf = x => pr.floors[/^Europe/.test(x.market) ? 'Europe' : x.market] || 0;
-  const worst = ([x, c]) => { const pd = c.pg * (1 - pr.promo / 100); const t1 = prTone(c.profit, c.margin, floorOf(x)), t2 = prTone(c.profitD, c.profitD / pd * 100, floorOf(x)); return (t1[0] === '#f8d0d0' || t2[0] === '#f8d0d0') ? 'red' : (t1[0] === '#ffe9a8' || t2[0] === '#ffe9a8') ? 'amber' : 'green'; };
+  const worst = ([x, c]) => { const pd = c.pg * (1 - pr.promo / 100); const t1 = prTone(c.profit, c.margin, floorOf(x)), t2 = prTone(c.profitD, 0, null); return (t1[0] === '#f8d0d0' || t2[0] === '#f8d0d0') ? 'red' : (t1[0] === '#ffe9a8' || t2[0] === '#ffe9a8') ? 'amber' : 'green'; };
   const nRed = calc.filter(r => worst(r) === 'red').length, nAmb = calc.filter(r => worst(r) === 'amber').length, nGrn = calc.length - nRed - nAmb;
   const shown = calc.filter(([x, c]) => (pr.mkt === 'All' || x.market === pr.mkt) && (!pr.prob || worst([x, c]) !== 'green'))
     .sort((p, q) => { const a = prKey(p[0], p[1], pr.sort), b = prKey(q[0], q[1], pr.sort); return (a < b ? -1 : a > b ? 1 : 0) * pr.dir; });
   const tile = (n, label, bg, fg) => '<div style="flex:1;min-width:120px;padding:10px 12px;border-radius:8px;background:' + bg + ';color:' + fg + '"><div style="font-size:24px;font-weight:700;line-height:1">' + n + '</div><div style="font-size:12px">' + label + '</div></div>';
   let h = '<style>.prtab{width:100%;border-collapse:collapse;font-size:13px}.prtab th{text-align:left;padding:6px;border-bottom:2px solid #bbb;cursor:pointer;user-select:none;vertical-align:bottom}.prtab td{padding:5px 6px;border-bottom:1px solid #e6e6e6;vertical-align:top}.prtab .sub{display:block;font-size:11px;opacity:.7}@media(max-width:700px){.prtab{font-size:12px}.prtab th,.prtab td{padding:4px 3px}}</style>'
     + '<div class="pbox"><h3>Pricing, shipping and profit</h3>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">' + tile(nRed, 'losing money (before or after the code)', '#f8d0d0', '#7f1414') + tile(nAmb, 'thin (margin under ' + 10 + '% or the market floor)', '#ffe9a8', '#6b4a00') + tile(nGrn, 'healthy', '#d4f0dc', '#11502a') + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">' + tile(nRed, 'losing money (before or after the code)', '#f8d0d0', '#7f1414') + tile(nAmb, 'under the margin floor', '#ffe9a8', '#6b4a00') + tile(nGrn, 'healthy', '#d4f0dc', '#11502a') + '</div>'
     + '<div class="prow" style="flex-wrap:wrap;gap:10px;align-items:center"><label>Sort by <select id="pr_s">' + PR_COLS.map(c => '<option value="' + c[0] + '"' + (c[0] === pr.sort ? ' selected' : '') + '>' + c[1] + '</option>').join('') + '</select></label>'
     + '<button class="btn" id="pr_d">' + (pr.dir === 1 ? 'Lowest first ↑' : 'Highest first ↓') + '</button>'
     + '<label>Market <select id="pr_m">' + markets.map(m => '<option' + (m === pr.mkt ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></label>'
@@ -1274,7 +1274,7 @@ function renderPricing() {
     + '<table class="prtab"><thead><tr>' + PR_COLS.map(c => '<th data-k="' + c[0] + '">' + c[1] + (pr.sort === c[0] ? (pr.dir === 1 ? ' ↑' : ' ↓') : '') + '</th>').join('') + '</tr></thead><tbody>';
   shown.forEach(([x, c]) => {
     const pd = c.pg * (1 - pr.promo / 100), fl = floorOf(x);
-    const t1 = prTone(c.profit, c.margin, fl), t2 = prTone(c.profitD, c.profitD / pd * 100, fl), t3 = prTone(c.freeD, c.freeD / pd * 100, fl);
+    const t1 = prTone(c.profit, c.margin, fl), t2 = prTone(c.profitD, 0, null), t3 = prTone(c.freeD, 0, null);
     const cell = (t, main, sub) => '<td style="background:' + t[0] + ';color:' + t[1] + '"><b>' + main + '</b><span class="sub">' + sub + '</span></td>';
     h += '<tr><td><b>' + esc(x.product.replace(/^\d+ /, '')) + '</b><span class="sub">' + esc(x.size === '-' ? '' : x.size) + '</span></td>'
       + '<td>' + esc(x.market.replace('Europe: ', '')) + '<span class="sub">' + (/^Europe/.test(x.market) ? 'Europe · ' : '') + 'made in ' + esc(x.made_in) + '</span></td>'
