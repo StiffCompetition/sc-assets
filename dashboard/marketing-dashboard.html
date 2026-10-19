@@ -184,6 +184,11 @@
   .libcard.logo { grid-column: span 2; } .libcard.logo .lgw, .libcard.logo .lgd { padding: 10px; } .libcard.logo .lgd { background: #1e1e1e; }
   .libcard.logo img { width: 100%; display: block; }
   @media (max-width: 640px) { .libcard.logo { grid-column: span 1; } }
+  .sides { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; } .sides b { flex-basis: 100%; font-size: 13px; }
+  .tick { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 5px; font-size: 14px !important; color: var(--ink) !important; margin: 0 !important; }
+  .prule .tick input { width: auto; }
+  .sheets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; } .sheets img { width: 100%; display: block; border: 1px solid var(--line); }
+  @media (max-width: 640px) { .sheets { grid-template-columns: 1fr; } }
   .run pre { white-space: pre-wrap; font-size: 12px; background: #fafafa; padding: 6px; margin: 4px 0 0; }
 </style>
 </head>
@@ -336,7 +341,7 @@ function flatShown(r) {
 }
 function tabCount(v) {
   if (v === 'Pages') return '';
-  if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length : '';
+  if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Follow list') return frows.filter(FVIEWS['To follow']).length;
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
   if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
@@ -968,7 +973,7 @@ function renderProducts() {
   }
   h += '</div>';
 
-  h += libraryHtml();
+  h += newDesignHtml() + designsInProgressHtml() + libraryHtml();
 
   prod.rules.filter(r => r.approved !== 'yes').forEach(r => {
     const ex = prod.designs.find(d => d.kind !== 'logo');
@@ -977,6 +982,7 @@ function renderProducts() {
       + '<label>Title pattern ({NAME}, {P1}, {P2})<input data-f="title_pattern" value="' + esc(r.title_pattern) + '"></label>'
       + '<label>Description ({P1}, {P2}, {CHAR_LINE}, {TEMPLATE_TITLE})<textarea data-f="description_html">' + esc(r.description_html) + '</textarea></label>'
       + '<label>Tags (the character tag is added to each product; these decide the collections)<input data-f="tags_extra" value="' + esc(r.tags_extra) + '"></label>'
+      + (r.layout_mode === 'sides' ? sidesHtml(r) : '')
       + (ex ? '<div class="pex"><b>Example: ' + esc(ex.character) + '</b><div style="font-weight:600;margin-top:4px">' + esc(fillPattern(r.title_pattern, ex, t && t.product_type === r.product_type ? t.title : '[template title]')) + '</div>'
         + '<div>' + fillPattern(r.description_html, ex, t && t.product_type === r.product_type ? esc(t.title) : '[template title]') + '</div></div>' : '')
       + '<div class="prow" style="margin-top:8px"><button class="btn ghost" data-ract="save">Save changes</button><button class="btn done" data-ract="approve">Approve these rules</button></div></div>';
@@ -1022,6 +1028,7 @@ function runCard(r, cls) {
 
 function wireProducts() {
   const lib = $('p_lib'); if (lib) lib.ontoggle = () => { prod.libOpen = lib.open; };
+  wireDesigns();
   $('p_check').onclick = async () => {
     const id = $('p_tid').value.trim();
     prod.tpl = null; prod.tplErr = ''; prod.picked.clear();
@@ -1043,12 +1050,18 @@ function wireProducts() {
   };
   $('list').querySelectorAll('.prule').forEach(box => {
     const pt = box.dataset.pt;
-    const vals = () => { const o = {}; box.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.value); return o; };
+    const vals = () => {
+      const o = {}; box.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.value);
+      [1, 2].forEach(n => { const ticks = box.querySelectorAll('[data-side="' + n + '"]'); if (ticks.length) o['side_' + n] = Array.from(ticks).filter(c => c.checked).map(c => c.value).join(','); });
+      return o;
+    };
     box.querySelectorAll('[data-ract]').forEach(b => b.onclick = async () => {
       const approve = b.dataset.ract === 'approve';
+      const v = vals();
+      if (box.querySelector('[data-side]') && (!v.side_1 || !v.side_2)) { toast('Pick at least one part for each side'); return; }
       if (approve && !confirm('Approve these rules? Every new product of this type will use them.')) return;
       b.disabled = true;
-      try { await productApi(Object.assign({ action: 'save_rule', product_type: pt, approve: approve }, vals())); toast(approve ? 'Rules approved' : 'Rules saved'); await loadProducts(); }
+      try { await productApi(Object.assign({ action: 'save_rule', product_type: pt, approve: approve }, v)); toast(approve ? 'Rules approved' : 'Rules saved'); await loadProducts(); }
       catch (e) { toast('Could not save: ' + e.message); b.disabled = false; }
     });
   });
@@ -1087,6 +1100,94 @@ function libraryHtml() {
       + '<div class="liblinks"><a href="' + esc(safeUrl(l.print_dark_ink)) + '" target="_blank" rel="noopener">Dark ink</a> · <a href="' + esc(safeUrl(l.print_light_ink)) + '" target="_blank" rel="noopener">Light ink</a></div></div>').join('') + '</div>';
   }
   return h + '</details>';
+}
+
+// ===== Mug sides (Andy, 18 Oct 2026): a different layout on each side, chosen once in the rules =====
+const PARTS = [['picture', 'Picture'], ['name', 'Name'], ['phrase', 'Phrase lines'], ['logo', 'Logo']];
+function sidesHtml(r) {
+  const has = (n, p) => String(r['side_' + n] || '').split(',').map(x => x.trim()).indexOf(p) !== -1;
+  const row = n => '<div class="sides"><b>Side ' + n + (n === 1 ? ' (faces out when held in the right hand)' : ' (faces the drinker)') + '</b>'
+    + PARTS.map(([p, l]) => '<label class="tick"><input type="checkbox" data-side="' + n + '" value="' + p + '"' + (has(n, p) ? ' checked' : '') + '> ' + l + '</label>').join('') + '</div>';
+  return '<div class="pex"><b>What goes on each side of the mug</b><div style="color:var(--grey);font-size:13px">Parts are stacked top to bottom in this order and fitted to their side. Each side is centred on one face of the mug.</div>' + row(1) + row(2)
+    + '<label>Side 1 sits on the <select data-f="side_1_half"><option value="left"' + (r.side_1_half !== 'right' ? ' selected' : '') + '>left half</option><option value="right"' + (r.side_1_half === 'right' ? ' selected' : '') + '>right half</option></select> of the print file (checked against the template\'s Gelato preview on the first mug)</label></div>';
+}
+
+// ===== New design from reference images (Andy, 18 Oct 2026) =====
+const CLOUD_UPLOAD = 'https://api.cloudinary.com/v1_1/dkapdtxek/image/upload';
+const DESIGN_STEPS = { requested: 'Queued', phrase_check: 'Checking the phrase', generate: 'Making the picture', picture_ready: 'Picture made', building: 'Building and checking', review: 'Ready for your approval', failed: 'Failed', stopped: 'Stopped' };
+function newDesignHtml() {
+  return '<details class="pbox lib" id="p_new"' + (prod.newOpen ? ' open' : '') + '><summary><b>New design from reference images</b></summary>'
+    + '<div class="prule">'
+    + '<label>Character name<input id="nd_char" placeholder="For example: Hammerin\' Hanky"></label>'
+    + '<label>Name line on the print (leave empty to use the character name)<input id="nd_name"></label>'
+    + '<label>Phrase line 1<input id="nd_p1" placeholder="For example: TOOLS OUT"></label>'
+    + '<label>Phrase line 2<input id="nd_p2" placeholder="For example: HARD HAT ON"></label>'
+    + '<label>Character line for product descriptions<input id="nd_line" placeholder="For example: Hammerin\' Hanky is fully extended and ready to work."></label>'
+    + '<label>Reference pictures (the smiling face first, then front, back and any master art)<input type="file" id="nd_refs" accept="image/png,image/jpeg,image/webp" multiple></label>'
+    + '<div id="nd_thumbs" class="libgrid"></div>'
+    + '<div class="pex">The phrase is checked first, free. Then one picture is made from your references and built to the Hammerin\' Hanky standard with every check. '
+    + '<b>About $0.13 per attempt, at most 3 attempts ($0.40).</b> Pressing Build is your yes for that cost. You approve the result before it joins the library.</div>'
+    + '<div class="prow" style="margin-top:8px"><button class="btn" id="nd_go">Build design</button></div></div></details>';
+}
+function designsInProgressHtml() {
+  const list = prod.designs.filter(d => d.kind !== 'logo' && d.status !== 'approved');
+  if (!list.length) return '';
+  return '<div class="group-title">Designs being built (' + list.length + ')</div>' + list.map(d => {
+    const need = d.waiting_on === 'andy_design', bad = d.status === 'failed' || d.status === 'stopped';
+    let h = '<div class="card run ' + (need ? 'need' : bad ? 'bad' : 'prog') + '" data-did="' + d.id + '"><div class="body">'
+      + '<div class="title">' + esc(d.character) + ' · ' + esc(d.phrase_1 || '') + ' / ' + esc(d.phrase_2 || '') + '</div>'
+      + '<div class="step"><b>' + esc(DESIGN_STEPS[d.status] || d.status) + '</b>' + (Number(d.attempts || 0) ? ' · attempt ' + esc(d.attempts) + ' of 3' : '') + ' · spent $' + esc(Number(d.spent_usd || 0).toFixed(2)) + '</div>'
+      + '<div class="step" style="color:var(--grey)">' + esc(d.message || '') + '</div>';
+    if (d.sheet_url) h += '<div class="sheets"><a href="' + esc(safeUrl(d.sheet_url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(d.sheet_url)) + '" alt="Comparison with Hammerin\' Hanky"></a>'
+      + '<a href="' + esc(safeUrl(d.likeness_url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(d.likeness_url)) + '" alt="Likeness against the smiling reference"></a></div>';
+    else if (d.picture_url) h += '<a href="' + esc(safeUrl(d.picture_url)) + '" target="_blank" rel="noopener"><img class="pv" src="' + esc(safeUrl(d.picture_url)) + '" alt="Latest picture"></a>';
+    h += '<div class="acts2">';
+    if (need) h += '<button class="btn done small" data-dact="approve">Approve design</button><button class="btn ghost small" data-dact="reject">Reject</button>';
+    if (bad) h += '<button class="btn ghost small" data-dact="retry">Retry (new quote, $0.40 at most)</button>';
+    if (!bad && !need) h += '<button class="btn ghost small" data-dact="stop">Stop</button>';
+    h += '</div>';
+    if (d.log) h += '<details class="more"><summary>Log</summary><pre>' + esc(d.log) + '</pre></details>';
+    return h + '</div></div>';
+  }).join('');
+}
+async function uploadRef(file, i) {
+  const fd = new FormData(); fd.append('file', file); fd.append('upload_preset', 'SCSMAuto');
+  fd.append('public_id', 'design_refs/' + Date.now() + '_' + i);
+  const r = await fetch(CLOUD_UPLOAD, { method: 'POST', body: fd }); const d = await r.json();
+  if (!d.secure_url) throw new Error('Upload failed for ' + file.name);
+  return d.secure_url;
+}
+function wireDesigns() {
+  const nd = $('p_new'); if (nd) nd.ontoggle = () => { prod.newOpen = nd.open; };
+  const inp = $('nd_refs');
+  if (inp) inp.onchange = () => { $('nd_thumbs').innerHTML = Array.from(inp.files).map((f, i) => '<div class="libcard"><img class="chk" src="' + URL.createObjectURL(f) + '" alt=""><div class="libph">' + (i === 0 ? 'Smiling face' : 'Reference ' + (i + 1)) + '</div></div>').join(''); };
+  const go = $('nd_go');
+  if (go) go.onclick = async () => {
+    const v = id => $(id).value.trim();
+    const files = Array.from($('nd_refs').files || []);
+    if (!v('nd_char') || !v('nd_p1') || !v('nd_p2') || !v('nd_line')) { toast('Fill in the name, both phrase lines and the character line'); return; }
+    if (!files.length) { toast('Add the reference pictures, the smiling face first'); return; }
+    if (!confirm('Build the ' + v('nd_char') + ' design? About $0.13 per attempt, $0.40 at most.')) return;
+    go.disabled = true; go.textContent = 'Uploading pictures…';
+    try {
+      const refs = []; for (let i = 0; i < files.length; i++) refs.push(await uploadRef(files[i], i));
+      go.textContent = 'Starting…';
+      const d = await productApi({ action: 'new_design', character: v('nd_char'), name_line: v('nd_name'), phrase_1: v('nd_p1'), phrase_2: v('nd_p2'), char_line: v('nd_line'), refs: refs });
+      toast('Design ' + d.key + ' queued'); prod.newOpen = false; await loadProducts();
+    } catch (e) { toast('Could not start: ' + e.message); go.disabled = false; go.textContent = 'Build design'; }
+  };
+  $('list').querySelectorAll('[data-did]').forEach(c => {
+    c.querySelectorAll('[data-dact]').forEach(b => b.onclick = async () => {
+      let step = b.dataset.dact, note = '';
+      if (step === 'approve' && !confirm('Approve this design? It joins the library and the product list.')) return;
+      if (step === 'reject') { note = prompt('What is wrong with the design? It stops and your note is kept in its log.', ''); if (note === null) return; step = 'stop'; note = 'design rejected: ' + note; }
+      if (step === 'stop' && !note && !confirm('Stop building this design?')) return;
+      if (step === 'retry' && !confirm('Start again with up to 3 new attempts? About $0.13 each, $0.40 at most.')) return;
+      b.disabled = true;
+      try { await productApi({ action: 'design_update', designId: Number(c.dataset.did), step: step, note: note }); toast('Done'); await loadProducts(); }
+      catch (e) { toast(e.message); b.disabled = false; }
+    });
+  });
 }
 
 load();
