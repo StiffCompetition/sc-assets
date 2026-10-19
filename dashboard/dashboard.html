@@ -1785,10 +1785,37 @@ function savedClip(handle) {
   if (!handle || handle.indexOf('promo:') === 0) return null;
   return ROWS.filter(r => r.format === 'Product' && r.video_url && ['approved', 'scheduled', 'posted'].indexOf(r.status) !== -1 && (r.notes || '').indexOf('SHOP:' + handle) !== -1)[0] || null;
 }
+// 19 Oct 2026 (Andy): shop products grouped under bold product-type headers, each with a short name
+// (character and what it is, plus dark or light shirts for t-shirts), sorted by character. The full title shows on hover.
+const PRODUCT_GROUPS = [['T-Shirt', 'T-Shirts'], ['Mug', 'Mugs'], ['Hoodie', 'Hoodies'], ['Tote bag', 'Tote Bags'], ['Print Material', 'Museum Prints'], ['Digital Download', 'Poster Downloads']];
+function titleCase(t) { return String(t || '').toLowerCase().replace(/(^|[\s'"(\-/:])([a-z])/g, (m, a, b) => a + b.toUpperCase()).replace(/\bSc-94\b/g, 'SC-94'); }
+function productLabel(p) {
+  let t = String(p.title || '');
+  const ch = p.character || '';
+  const slogan = p.type === 'T-Shirt' ? t.match(/'([^']+)'/) : null;   // older slogan shirts keep their whole slogan
+  if (slogan) return titleCase(slogan[1]) + (p.range ? ' · ' + p.range + ' shirts' : '');
+  t = t.replace(/\(\s*\d+\s*oz[^)]*\)/ig, '').replace(/\(\s*\d+\s*x\s*\d+[^)]*\)/ig, '').replace(/\(print it yourself\)/ig, '')
+       .replace(/\/\/\s*1994 series/ig, '').replace(/\bpremium tote bag( natural)?\b/ig, '').replace(/\bmuseum print\b/ig, '').replace(/\bposter download\b/ig, '')
+       .replace(/\bmuseum art:?/ig, '').replace(/\bt-shirt:?/ig, '').replace(/\bSC-94\b/ig, '');
+  if (ch) { t = t.replace(new RegExp(ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/^The /i, '(The )?'), 'ig'), ''); t = t.replace(/\bvelvet python\b/ig, ''); }
+  t = t.replace(/["']{2,}/g, '').replace(/^["'\s:\-]+|["'\s:\-]+$/g, '').replace(/\s{2,}/g, ' ').trim();
+  if (p.type === 'T-Shirt' && /^\(.*\)$/.test(t)) t = '';                         // new character shirts: the phrase is in the design
+  t = t.replace(/^\((.*)\)$/, '$1').replace(/^["']|["']$/g, '').trim();
+  let label = (ch ? ch : '') + (t ? (ch ? ' · ' : '') + titleCase(t) : '');
+  if (p.range) label += ' · ' + p.range + ' shirts';
+  label = label || p.title;
+  return label.length > 56 ? label.slice(0, 54).trim() + '…' : label;
+}
 function productOptions(sel) {
+  const ORDER = CHARACTERS.concat(['']);
+  const groups = {};
+  (PRODUCTS || []).forEach(p => { const g = (PRODUCT_GROUPS.find(x => x[0].toLowerCase() === String(p.type || '').toLowerCase()) || [p.type, p.type || 'Other'])[1]; (groups[g] = groups[g] || []).push(p); });
+  const names = PRODUCT_GROUPS.map(x => x[1]).filter(g => groups[g]).concat(Object.keys(groups).filter(g => !PRODUCT_GROUPS.some(x => x[1] === g)).sort());
+  const rank = p => { const i = ORDER.indexOf(p.character || ''); return i === -1 ? ORDER.length : i; };
   return '<option value="">No product post</option>' +
     ((PROMOS || []).length ? '<optgroup label="Promotable items">' + PROMOS.map(p => '<option value="promo:' + escapeHtml(p.item) + '"' + ('promo:' + p.item === sel ? ' selected' : '') + '>' + escapeHtml(p.item) + '</option>').join('') + '</optgroup>' : '') +
-    '<optgroup label="Shop products">' + (PRODUCTS || []).map(p => '<option value="' + escapeHtml(p.handle) + '" title="' + escapeHtml(p.title).replace(/"/g, '&quot;') + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(shortTitle(p.title)) + '</option>').join('') + '</optgroup>';
+    names.map(g => '<optgroup label="' + escapeHtml(g) + '">' + groups[g].slice().sort((a, b) => rank(a) - rank(b) || productLabel(a).localeCompare(productLabel(b))).map(p =>
+      '<option value="' + escapeHtml(p.handle) + '" title="' + escapeHtml(p.title).replace(/"/g, '&quot;') + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(productLabel(p)) + '</option>').join('') + '</optgroup>').join('');
 }
 // 7 Oct 2026 (Andy): only the Day Greeting uses the day's character, so every other picker leaves him out (exclude).
 function charOptions(sel, exclude) { return '<option value=""' + (sel ? '' : ' selected') + '>Rotate</option>' + CHARACTERS.filter(c => c !== exclude).map(c => '<option' + (c === sel ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join(''); }
