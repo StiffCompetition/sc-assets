@@ -1808,14 +1808,15 @@ function productLabel(p) {
   label = label || p.title;
   return label.length > 56 ? label.slice(0, 54).trim() + '…' : label;
 }
-function productOptions(sel) {
+// 19 Oct 2026 (Andy): Dare to Buy lists only shop products with a price, never promotable items (shopOnly).
+function productOptions(sel, shopOnly) {
   const ORDER = CHARACTERS.concat(['']);
   const groups = {};
   (PRODUCTS || []).forEach(p => { const g = (PRODUCT_GROUPS.find(x => x[0].toLowerCase() === String(p.type || '').toLowerCase()) || [p.type, p.type || 'Other'])[1]; (groups[g] = groups[g] || []).push(p); });
   const names = PRODUCT_GROUPS.map(x => x[1]).filter(g => groups[g]).concat(Object.keys(groups).filter(g => !PRODUCT_GROUPS.some(x => x[1] === g)).sort());
   const rank = p => { const i = ORDER.indexOf(p.character || ''); return i === -1 ? ORDER.length : i; };
   return '<option value="">No product post</option>' +
-    ((PROMOS || []).length ? '<optgroup label="Promotable items">' + PROMOS.map(p => '<option value="promo:' + escapeHtml(p.item) + '"' + ('promo:' + p.item === sel ? ' selected' : '') + '>' + escapeHtml(p.item) + '</option>').join('') + '</optgroup>' : '') +
+    (!shopOnly && (PROMOS || []).length ? '<optgroup label="Promotable items">' + PROMOS.map(p => '<option value="promo:' + escapeHtml(p.item) + '"' + ('promo:' + p.item === sel ? ' selected' : '') + '>' + escapeHtml(p.item) + '</option>').join('') + '</optgroup>' : '') +
     names.map(g => '<optgroup label="' + escapeHtml(g) + '">' + groups[g].slice().sort((a, b) => rank(a) - rank(b) || productLabel(a).localeCompare(productLabel(b))).map(p =>
       '<option value="' + escapeHtml(p.handle) + '" title="' + escapeHtml(p.title).replace(/"/g, '&quot;') + '"' + (p.handle === sel ? ' selected' : '') + '>' + escapeHtml(productLabel(p)) + '</option>').join('') + '</optgroup>').join('');
 }
@@ -1938,7 +1939,7 @@ function addExtraLine(box) {
     '<button type="button" class="btn secondary ex-remove" style="padding:0 8px;font-size:12px">x</button>';
   box.appendChild(line);
   const fmt = line.querySelector('.ex-format');
-  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value !== 'Day Greeting' && fmt.value.indexOf('Brand Lore') !== 0) ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = (fmt.value === 'Product' || fmt.value === 'Dare to Buy') ? 'inline' : 'none'; if (fmt.value === 'Dare to Buy') line.querySelector('.ex-time').value = '19:00'; const prodPost = fmt.value === 'Product' || fmt.value === 'Dare to Buy'; const xc = line.querySelector('.ex-char'); const cv = xc.value; xc.innerHTML = charOptions(cv === ch && !prodPost ? '' : cv, prodPost ? '' : ch); });   // 19 Oct 2026 (Andy): product posts may use the day's character
+  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value !== 'Day Greeting' && fmt.value.indexOf('Brand Lore') !== 0) ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = (fmt.value === 'Product' || fmt.value === 'Dare to Buy') ? 'inline' : 'none'; if (fmt.value === 'Dare to Buy') line.querySelector('.ex-time').value = '19:00'; const prodPost = fmt.value === 'Product' || fmt.value === 'Dare to Buy'; const xp = line.querySelector('.ex-product'); const pv = xp.value; xp.innerHTML = productOptions(fmt.value === 'Dare to Buy' && pv.indexOf('promo:') === 0 ? '' : pv, fmt.value === 'Dare to Buy'); const xc = line.querySelector('.ex-char'); const cv = xc.value; xc.innerHTML = charOptions(cv === ch && !prodPost ? '' : cv, prodPost ? '' : ch); });   // 19 Oct 2026 (Andy): product posts may use the day's character
   line.querySelector('.ex-product').addEventListener('change', (e) => { const p = (PRODUCTS || []).find(x => x.handle === e.target.value); line.querySelector('.ex-char').value = (p && p.character) ? p.character : ''; });
   line.querySelector('.ex-remove').addEventListener('click', () => line.remove());
 }
@@ -2074,6 +2075,7 @@ async function openAdhoc() {
     const prodPost = f === 'Product' || f === 'Dare to Buy';   // 19 Oct 2026 (Andy): a product post may use the day's character
     document.getElementById('adChar').innerHTML = charOptions(cur === DAY_CHAR[dow] && !prodPost ? '' : cur, prodPost ? '' : DAY_CHAR[dow]);
     document.getElementById('adProduct').style.display = (f === 'Product' || f === 'Dare to Buy') ? '' : 'none';
+    { const ap = document.getElementById('adProduct'); const av = ap.value; ap.innerHTML = productOptions(f === 'Dare to Buy' && av.indexOf('promo:') === 0 ? '' : av, f === 'Dare to Buy'); }
     if (f === 'Dare to Buy' && document.getElementById('adTime').value === '18:00') document.getElementById('adTime').value = '19:00';
     const n = (f === 'Day Greeting' || f.indexOf('Brand Lore') === 0 || dow === 0) ? leftFor(f === 'Day Greeting' && dow !== 0 ? DAY_CHAR[dow] : 'SC Logo', f) : leftOther(DAY_CHAR[dow], f);
     const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (any of the six, the day\'s character included). Up to one a day, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
