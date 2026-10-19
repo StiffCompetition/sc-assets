@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAR</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #fafafa;
+    --panel: #ffffff;
+    --grey: #6b6b6b;
+    --line: #d8d8d8;
+    --today: #1a1a1a;
+    --mono: 'Courier New', Courier, monospace;
+    --c-today:#e8453c; --c-next:#2f6fed; --c-wait:#e49b0f; --c-idea:#8a4fd6; --c-park:#8a8f98; --c-done:#2e9e5b; --c-andy:#2f6fed; --c-claude:#12a39a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  header { background: #fff; border-top: 3px solid var(--c-next); padding: 5px 20px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); }
+  header img.logo-img { height: 30px; width: auto; display: block; flex-shrink: 0; }
+  header .logo { width: 30px; height: 30px; flex-shrink: 0; border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  header h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
+  header p { display: none; }
+  header .btn { padding: 4px 10px; font-size: 13px; }
+  header .spacer { flex: 1; }
+  button { font-family: inherit; font-size: 14px; cursor: pointer; }
+  .btn { padding: 8px 14px; border: 1px solid var(--c-next); background: var(--c-next); color: #fff; }
+  .btn.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
+  .btn.small { padding: 4px 10px; font-size: 13px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 20px; background: var(--panel); border-bottom: 1px solid var(--line); align-items: center; }
+  .tab { padding: 3px 10px; font-size: 13px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 0; }
+  .tab.on { background: var(--c-next); color: #fff; border-color: var(--c-next); }
+  .tab .n { font-family: var(--mono); font-size: 12px; opacity: .7; margin-left: 4px; }
+  .tabs .who { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--grey); }
+  .tabs select { font-family: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line); background: #fff; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
+  .group-title { margin: 22px 0 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
+  .card { border-left: 5px solid var(--c-park); }
+  .card.s-Today { border-left-color: var(--c-today); background: #fff8f7; }
+  .card.s-Next { border-left-color: var(--c-next); }
+  .card.s-Waiting { border-left-color: var(--c-wait); background: #fffaf0; }
+  .card.s-Idea { border-left-color: var(--c-idea); }
+  .card.s-Done { border-left-color: var(--c-done); }
+  .who-tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:#fff; padding:1px 8px; margin-right:8px; vertical-align:middle; }
+  .who-tag.andy { background: var(--c-andy); } .who-tag.claude { background: var(--c-claude); }
+  .action { font-size: 17px; font-weight: 600; margin-top: 6px; overflow-wrap:anywhere; }
+  .card .title { font-size: 13px; font-weight: 400; color: var(--grey); }
+  .pf { margin-top: 8px; font-size: 14px; color: #333; overflow-wrap: anywhere; } .pf div { margin-top: 5px; } .pf b { color: var(--grey); font-size: 11px; letter-spacing: .8px; text-transform: uppercase; margin-right: 6px; }
+  details.more { margin-top: 6px; } details.more summary { cursor:pointer; font-size:13px; color:#2a5db0; }
+  .gt-Today{color:var(--c-today)} .gt-Next{color:var(--c-next)} .gt-Waiting{color:var(--c-wait)} .gt-Idea{color:var(--c-idea)} .gt-Done{color:var(--c-done)}
+  .btn.go { background: var(--c-claude); border-color: var(--c-claude); }
+  .btn.done { background: var(--c-done); border-color: var(--c-done); }
+  .card.done .title { text-decoration: line-through; color: var(--grey); }
+  .card .body { flex: 1; min-width: 0; }
+  .title { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+  .step { color: #333; font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
+  .meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { font-size: 12px; padding: 1px 8px; border: 1px solid var(--line); color: var(--grey); background: #fff; }
+  .chip.me { border-color: var(--c-andy); color: var(--c-andy); }
+  .chip.cl { border-color: var(--c-claude); color: var(--c-claude); }
+  .chip.num { font-family: var(--mono); border: none; padding-left: 0; }
+  .chip.wait { border-color: #b36b00; color: #b36b00; }
+  .chip.go { background: var(--c-claude); color: #fff; border-color: var(--c-claude); }
+  .chip.nogo { border-style: dashed; }
+  .chip.due { font-family: var(--mono); }
+  .chip.late { border-color: #b00020; color: #b00020; }
+  .acts { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+  .acts select { font-size: 13px; padding: 4px; border: 1px solid var(--line); background: #fff; }
+  a.chatlnk { text-decoration: none; text-align: center; display: block; }
+  a.lnk { font-size: 13px; color: #2a5db0; text-decoration: none; }
+  .empty { color: var(--grey); padding: 40px 0; text-align: center; }
+  .error-state { background: #fff; border: 1px solid #b00020; color: #b00020; padding: 14px; margin: 20px 0; }
+
+  dialog { border: 1px solid var(--ink); padding: 0; width: min(520px, 94vw); }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  .dlg { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .dlg h2 { margin: 0 0 4px; font-size: 18px; }
+  .dlg label { font-size: 12px; color: var(--grey); display: flex; flex-direction: column; gap: 3px; }
+  .dlg input, .dlg select, .dlg textarea { font-family: inherit; font-size: 15px; padding: 7px 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  .dlg .row { display: flex; gap: 10px; } .dlg .row > label { flex: 1; }
+  .dlg .foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 16px; font-size: 14px; display: none; }
+
+  .mission { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--c-park); margin-bottom: 14px; padding: 14px 16px; }
+  .mission.s-Today { border-left-color: var(--c-today); } .mission.s-Next { border-left-color: var(--c-next); } .mission.s-Waiting { border-left-color: var(--c-wait); } .mission.s-Idea { border-left-color: var(--c-park); }
+  .mission .mhead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .mission h2 { margin: 0; font-size: 19px; line-height: 1.3; flex: 1; min-width: 200px; }
+  .prog { margin-top: 8px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--grey); }
+  .bar { flex: 1; height: 8px; background: #eceef1; max-width: 260px; } .bar > i { display: block; height: 100%; background: var(--c-done); }
+  .nextbox { margin-top: 10px; padding: 10px 12px; background: #f3f7ff; border: 1px solid #d5e3ff; }
+  .nextbox .lbl { font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: var(--grey); font-weight: 700; }
+  details.steps { margin-top: 10px; } details.steps > summary { cursor: pointer; font-size: 14px; color: #2a5db0; font-weight: 600; }
+  .typehead { margin: 14px 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 1px; font-family: var(--mono); }
+  .typehead.BUILD { color: var(--c-idea); } .typehead.RUN { color: var(--c-claude); }
+  .typehead .cnt { font-weight: 400; color: var(--grey); margin-left: 8px; letter-spacing: 0; }
+  .typechip { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 1px 6px; border: 1px solid; margin-right: 6px; }
+  .typechip.BUILD { color: var(--c-idea); border-color: var(--c-idea); } .typechip.RUN { color: var(--c-claude); border-color: var(--c-claude); } .typechip.ALERT { color: #c62828; border-color: #c62828; }
+  .card.alert { border-left: 6px solid #c62828; background: #fdecea; }
+  .card.alert .title { color: #8e1b1b; }
+  .tab.alerttab, .tab.alerttab.on { background: #c62828; color: #fff; border-color: #c62828; font-weight: 700; }
+  .steps .card { margin-left: 0; }
+  .addbar { margin-bottom: 14px; } #addform { display:flex; gap:8px; }
+  #addform input { flex:1; min-width:0; font:inherit; font-size:16px; padding:8px 12px; border:1px solid var(--line); background:#fff; }
+  #addform .btn { min-width:90px; }
+  .subtabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .hint { background:#f3f7ff; border:1px solid #d5e3ff; padding:10px 14px; font-size:14px; margin-bottom:12px; }
+  .card.f-Followed { border-left-color: var(--c-wait); } .card.f-FollowedBack { border-left-color: var(--c-done); } .card.f-Skipped { border-left-color: var(--c-park); } .card.f-due { border-left-color: var(--c-today); background:#fff8f7; }
+  .fhandle { font-weight:700; font-size:17px; } .fhandle a { color:inherit; text-decoration:none; } .fnm { color:var(--grey); font-size:13px; margin-left:6px; }
+  .fwhy { font-size:13px; color:var(--c-idea); margin-top:4px; } .fmeta { font-size:12px; color:var(--grey); margin-top:4px; font-family:var(--mono); }
+  .btn.warn { background: var(--c-today); border-color: var(--c-today); }
+  /* Today's routine (12 Oct 2026): daily lines that repeat, ticked each day */
+  .routine { background: var(--panel); border: 1px solid var(--line); border-top: 5px solid var(--c-today); padding: 14px 16px; margin-bottom: 18px; }
+  .routine h2 { margin: 0 0 4px; font-size: 19px; } .routine .sub { font-size: 13px; color: var(--grey); margin-bottom: 8px; }
+  .dline { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid #eee; }
+  .dline:first-of-type { border-top: none; }
+  .dline input[type=checkbox] { width: 26px; height: 26px; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--c-done); cursor: pointer; }
+  .dline .body { flex: 1; min-width: 0; }
+  .dline.ticked .action { text-decoration: line-through; color: var(--grey); }
+  .dline.missed .action { color: var(--c-today); }
+  .dline.later { opacity: .55; }
+  .dline .dacts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .clips { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .clip { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; background: #f6f7f9; border: 1px solid #e6e8ec; font-size: 14px; }
+  .clip .cn { flex: 1; min-width: 160px; }
+  .clip.posted .cn { color: var(--grey); }
+  .btn.tt { background: #111; border-color: #111; }
+  .repeat-days { display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; }
+  .repeat-days label { flex-direction: row; align-items: center; gap: 4px; color: var(--ink); font-size: 14px; }
+  .gnote { font-size: 13px; color: var(--grey); }
+  .glink { display: flex; gap: 8px; align-items: center; } .glink input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); }
+  .tracker { border: 1px solid var(--line); background: #fff; padding: 12px 14px; margin-bottom: 14px; }
+  .tracker h2 { font-size: 17px; margin: 0; } .tracker .thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; } .tracker .thead .sub { font-size: 13px; color: var(--grey); flex: 1; }
+  .trow { border-top: 1px solid var(--line); padding: 9px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .trow .who { flex: 1 1 220px; min-width: 0; } .trow .who b { font-size: 15px; } .trow .who .fit { font-size: 12.5px; color: var(--grey); }
+  .trow .tacts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tier { font-size: 11px; font-weight: 700; padding: 1px 6px; color: #fff; background: #78909c; vertical-align: 2px; } .tier.t1 { background: #2e7d32; } .tier.t2 { background: #ef6c00; } .tier.t3 { background: #6d4c41; }
+  .tstat { font-size: 12px; font-weight: 700; padding: 2px 7px; border: 1px solid currentColor; white-space: nowrap; }
+  .tstat.due { color: #c62828; background: #fdecea; } .tstat.ok { color: #2a7a2a; } .tstat.wait { color: #2a5db0; } .tstat.todo { color: #b06a00; } .tstat.closed { color: #888; }
+  #giftDlg .row { flex-wrap: wrap; } #giftDlg .row label { flex: 1 1 140px; min-width: 0; } #giftDlg input, #giftDlg select { width: 100%; box-sizing: border-box; min-width: 0; }
+  header .btn { white-space: nowrap; }
+  .gpool { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; max-height: 230px; overflow-y: auto; border: 1px solid var(--line); padding: 6px; }
+  .gpool button { border: 2px solid transparent; padding: 0; background: #fff; cursor: pointer; font: inherit; font-size: 10.5px; line-height: 1.2; text-align: center; color: var(--ink); }
+  .gpool button.on { border-color: var(--ink); }
+  .gpool img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #eee; }
+  .gpick { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+  .gpick img { width: 64px; height: 64px; object-fit: cover; }
+  @media (max-width: 640px) {
+    header { padding: 5px 12px; } .tabs { padding: 5px 12px; } .tabs .who { margin-left: 0; width: 100%; }
+    .card { flex-direction: column; } .acts { flex-direction: row; width: 100%; }
+  }
+  /* Products tab (18 Oct 2026): template-driven product runs */
+  .flow .fstep { border-top: 1px solid var(--line); padding: 10px 0; } .flow .fstep:first-of-type { border-top: 0; }
+  .fhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 15px; }
+  .fnum { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; background: var(--c-next); color: #fff; flex: 0 0 auto; }
+  .fstep.done .fnum { background: var(--c-done); } .fstep.lock { opacity: .45; } .fstep.lock .fnum { background: #8a8f98; }
+  .fsum { color: var(--grey); font-size: 13px; } .fbody { margin: 10px 0 0 36px; } @media (max-width: 640px) { .fbody { margin-left: 0; } }
+  .dpick label img { width: 44px; height: 44px; object-fit: contain; flex: 0 0 auto; } .dpick label.on { border-color: var(--c-next); background: #eef4ff; }
+  .dpick label small { color: var(--grey); } .need-title { color: var(--c-today); }
+  a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+  #p_new { margin-top: 10px; border-style: dashed; } #p_new summary { cursor: pointer; font-size: 14px; }
+  .pbox { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 12px; }
+  .pbox h3 { margin: 0 0 8px; font-size: 15px; }
+  .prow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .prow input[type=text] { flex: 1 1 300px; min-width: 0; font-family: var(--mono); font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); }
+  .tplinfo { margin-top: 8px; font-size: 14px; } .tplinfo b { color: var(--grey); font-size: 11px; letter-spacing: .8px; text-transform: uppercase; margin-right: 6px; }
+  .dpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
+  .dpick label { border: 1px solid var(--line); padding: 6px 8px; font-size: 14px; display: flex; gap: 6px; align-items: center; cursor: pointer; background: #fff; }
+  .dpick label.busy { color: var(--grey); }
+  .prule textarea, .prule input { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); }
+  .prule textarea { min-height: 120px; font-family: var(--mono); font-size: 12.5px; }
+  .prule label { display: block; font-size: 12px; color: var(--grey); margin-top: 8px; }
+  .pex { background: #fafafa; border: 1px dashed var(--line); padding: 8px 10px; margin-top: 8px; font-size: 14px; }
+  .run { border-left: 5px solid var(--c-park); }
+  .run.need { border-left-color: var(--c-today); background: #fff8f7; } .run.prog { border-left-color: var(--c-next); }
+  .run.live { border-left-color: var(--c-done); } .run.bad { border-left-color: #8a8f98; background: #f6f6f6; }
+  .run .pv { width: 100%; max-width: 520px; display: block; margin-top: 8px; border: 1px solid var(--line);
+    background-color: #fff; background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%);
+    background-size: 16px 16px; background-position: 0 0,0 8px,8px -8px,-8px 0; }
+  .run .acts2 { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .lib summary { cursor: pointer; font-size: 15px; }
+  .libgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+  .libcard { border: 1px solid var(--line); padding: 8px; background: #fff; font-size: 13px; min-width: 0; }
+  .libcard img.chk { width: 100%; aspect-ratio: 1; object-fit: contain; display: block;
+    background-color: #fff; background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%);
+    background-size: 14px 14px; background-position: 0 0,0 7px,7px -7px,-7px 0; }
+  .libcard .noart { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; color: var(--grey); background: #f3f3f3; }
+  .libname { font-weight: 600; margin-top: 6px; } .libph { color: var(--grey); font-size: 12px; }
+  .liblinks { font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+  .libcard.logo { grid-column: span 2; } .libcard.logo .lgw, .libcard.logo .lgd { padding: 10px; } .libcard.logo .lgd { background: #1e1e1e; }
+  .libcard.logo img { width: 100%; display: block; }
+  @media (max-width: 640px) { .libcard.logo { grid-column: span 1; } }
+  .sides { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; } .sides b { flex-basis: 100%; font-size: 13px; }
+  .tick { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 5px; font-size: 14px !important; color: var(--ink) !important; margin: 0 !important; }
+  .prule .tick input { width: auto; }
+  .sheets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; } .sheets img { width: 100%; display: block; border: 1px solid var(--line); }
+  @media (max-width: 640px) { .sheets { grid-template-columns: 1fr; } }
+  .run pre { white-space: pre-wrap; font-size: 12px; background: #fafafa; padding: 6px; margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<header>
+  <img class="logo-img" src="https://res.cloudinary.com/dkapdtxek/image/upload/v1791598843/SCSMAuto/sc_letters_logo_header_v1.png" alt="SC" onerror="this.outerHTML='<div class=&quot;logo&quot;>SC</div>'">
+  <div><h1>Marketing</h1><p>What needs doing, in order</p></div>
+  <div class="spacer"></div>
+  <button class="btn ghost" id="giftBtn">Gift NFT</button>
+  <button class="btn" id="addBtn">+ Add</button>
+</header>
+<div class="tabs" id="tabs"></div>
+<main id="list"><div class="empty">Loading…</div></main>
+
+<dialog id="dlg">
+  <form method="dialog" class="dlg" id="form">
+    <h2 id="dlgTitle">Add</h2>
+    <label>What <input id="f_title" maxlength="80" required placeholder="Short and clear"></label>
+    <label>Next step <input id="f_next" maxlength="100" placeholder="One line"></label>
+    <div class="row">
+      <label>Type <select id="f_type"><option>BUILD</option><option>RUN</option><option>MISSION</option><option value="DAILY">DAILY (repeats)</option></select></label>
+      <label>Mission <select id="f_parent"></select></label>
+    </div>
+    <div id="f_repeat_wrap"><label>Repeat on</label><div class="repeat-days" id="f_repeat"></div></div>
+    <div class="row">
+      <label>Category <select id="f_cat"></select></label>
+      <label>Status <select id="f_status"></select></label>
+    </div>
+    <div class="row">
+      <label>Who <select id="f_owner"><option>Andy</option><option>Claude</option></select></label>
+      <label>Due <input id="f_due" type="date"></label>
+    </div>
+    <label>Waiting on <input id="f_wait" maxlength="60" placeholder="Leave empty if nothing is holding it up"></label>
+    <label>Link <input id="f_link" type="url" placeholder="https://…"></label>
+    <label>Problem (required for a task) <textarea id="f_problem" rows="3" maxlength="1000" placeholder="What is wrong or what needs doing, and why it matters"></textarea></label>
+    <label>Proposed solution (if there is one) <textarea id="f_solution" rows="2" maxlength="1000"></textarea></label>
+    <label>Notes summary <textarea id="f_notes" rows="2" maxlength="1000" placeholder="Short summary of anything already known"></textarea></label>
+    <div class="foot">
+      <button type="button" class="btn ghost" id="cancel">Cancel</button>
+      <button type="button" class="btn ghost" id="removeBtn">Remove</button>
+      <button type="submit" class="btn" id="saveBtn">Save</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="giftDlg">
+  <form method="dialog" class="dlg" id="giftForm">
+    <h2>Gift a Blueprint NFT</h2>
+    <div class="gnote">One free Blueprint per person, as a £0 shop order. You get a private gift link to paste in the DM; they choose their own wallet or a new email wallet when they open it.</div>
+    <div class="row">
+      <label>Handle <input id="g_handle" maxlength="60" placeholder="@name" required></label>
+      <label>Platform <select id="g_platform"><option>Instagram</option><option>X</option><option>TikTok</option><option>Facebook</option><option>YouTube</option></select></label>
+    </div>
+    <label>Blueprint <input id="g_search" type="search" placeholder="Search, e.g. 0012"></label>
+    <div class="gpool" id="g_pool"><div class="gnote">Loading Blueprints…</div></div>
+    <div class="gpick" id="g_pick"></div>
+    <div class="gnote" id="g_status"></div>
+    <div class="glink" id="g_link"></div>
+    <div class="foot">
+      <button type="button" class="btn ghost" id="g_cancel">Close</button>
+      <button type="button" class="btn" id="g_send">Send gift</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="tDlg">
+  <form method="dialog" class="dlg" id="tForm">
+    <h2 id="tTitle">Add a person</h2>
+    <div class="row">
+      <label>Handle <input id="t_handle" maxlength="60" placeholder="@name" required></label>
+      <label>Platform <select id="t_platform"><option>X</option><option>Instagram</option><option>TikTok</option><option>Facebook</option><option>YouTube</option></select></label>
+    </div>
+    <label>Profile link <input id="t_url" type="url" placeholder="https://…"></label>
+    <label>Why they fit <input id="t_fit" maxlength="200" placeholder="One line: their audience matches our buyer because…"></label>
+    <label>DM <textarea id="t_dm" rows="4" maxlength="4000"></textarea></label>
+    <label>Follow-up DM <textarea id="t_fu" rows="3" maxlength="4000"></textarea></label>
+    <label>Status <select id="t_status"><option>To send</option><option>Sent</option><option>Replied</option><option>Gift sent</option><option>Claimed</option><option>No reply</option><option>Removed</option></select></label>
+    <label>Note <textarea id="t_notes" rows="2" maxlength="1000"></textarea></label>
+    <div class="foot">
+      <button type="button" class="btn ghost" id="t_cancel">Cancel</button>
+      <button type="button" class="btn" id="t_save">Save</button>
+    </div>
+  </form>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = 'https://n8n-production-afc2.up.railway.app/webhook/';
+const LIST_URL = BASE + 'sc-marketing-list';
+const SAVE_URL = BASE + 'sc-marketing-save';
+const FOLLOW_LIST_URL = BASE + 'sc-follow-list';
+const FOLLOW_SAVE_URL = BASE + 'sc-follow-save';
+const UNFOLLOW_AFTER_DAYS = 7;
+const CAL_URL = BASE + 'sc-calendar-list';
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Clips shown on the TikTok line: today's video posts (every video post also goes to YouTube; Dare to Buy slides do not).
+const CLIP_STATUSES = ['approved', 'scheduled', 'posted'];
+let cal = null, calLoading = false;
+const clipFiles = {};
+
+const CATEGORIES = ['Influencers', 'Follow list', 'Press and media','Posts and boosts', 'Shop', 'Systems', 'Ideas'];
+const STATUSES = ['Today', 'Next', 'Waiting', 'Idea', 'Done'];
+const ACTIVE = ['Today', 'Next', 'Waiting'];
+
+let rows = [];
+let frows = [];
+let fview = 'To follow';
+let showDone = false;   // 13 Oct 2026 (Andy): lines ticked today are hidden unless asked for
+let view = 'Today';   // 12 Oct 2026 (Andy): the daily routine has its own tab, shown first
+let who = 'Everyone';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => e.style.display = 'none', 2200); }
+function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : ''; }
+function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+const rank = { Today: 0, Next: 1, Waiting: 2, Idea: 3, Done: 4 };
+
+async function load() {
+  try {
+    const res = await fetch(LIST_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    rows = (Array.isArray(data) ? data : []).filter(r => r.status !== 'Removed');
+    try { const fr = await fetch(FOLLOW_LIST_URL); if (fr.ok) { const fd = await fr.json(); frows = Array.isArray(fd) ? fd : []; } } catch (e2) { frows = []; }
+    render();
+  } catch (e) {
+    $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
+  }
+}
+
+const missions = () => rows.filter(r => r.type === 'MISSION');
+const kids = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && r.type !== 'DAILY');
+const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && !missions().some(m => String(m.id) === String(r.parent)));
+const dailies = () => rows.filter(r => r.type === 'DAILY');
+const whoOk = r => who === 'Everyone' || r.owner === who;
+
+function nextAction(m) {
+  const act = kids(m).filter(r => ACTIVE.includes(r.status) && whoOk(r)).sort((a, b) => rank[a.status] - rank[b.status]);
+  return act[0] || null;
+}
+function missionShown(m) {
+  const ks = kids(m);
+  if (view === 'Now') return ks.some(r => ACTIVE.includes(r.status) && whoOk(r)) || (!ks.length && ACTIVE.includes(m.status));
+  if (CATEGORIES.includes(view)) return m.category === view && m.status !== 'Done';
+  return false;
+}
+function flatShown(r) {
+  if (r.type === 'MISSION' || !whoOk(r)) return false;
+  if (view === 'Done') return r.status === 'Done';
+  return false;
+}
+function tabCount(v) {
+  if (v === 'Pages') return '';
+  if (v === 'Pricing') return pr.loaded ? pr.rows.filter(x => prCalc(x).flag).length || '' : '';
+  if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
+  if (v === 'Follow list') return frows.filter(FVIEWS['To follow']).length;
+  if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
+  if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
+  const keep = view; view = v; let n;
+  if (v === 'Done') n = rows.filter(flatShown).length;
+  else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length + rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length : 0);
+  view = keep;
+  // Influencers also counts gift-tracker people waiting on Andy: DM to send, replied, follow-up due (13 Oct 2026).
+  if (v === 'Influencers' && track) n += track.filter(t => t.status === 'To send' || t.status === 'Replied' || followDue(t)).length;
+  return n;
+}
+
+function renderTabs() {
+  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Products', 'Pricing', 'Done', 'Pages'];
+  $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
+    + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
+  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
+  $('whoSel').onchange = e => { who = e.target.value; render(); };
+}
+
+function chatUrl(r) {
+  const q = 'Marketing dashboard task #' + r.id + ': ' + r.title + '. Next step: ' + (r.next_step || '') + '. Read this row in the n8n data table SC Marketing Actions and work only on this task.'
+    + ' First, save this chat\'s link on the row: get it by calling read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink) with id ' + r.id + ' and that chat_link.'
+    + ' You can edit rows yourself: to update or close this row, call the n8n workflow SC - Marketing Actions API (save) (webhook sc-marketing-save) with this row\'s id and the WHOLE row, because it overwrites every field.'
+    + ' When the work is done set status Done, next_step none, done_on today (YYYY-MM-DD), and put the cause, the fix and the test in notes.'
+    + ' Keep notes as three lines: Problem: ... / Proposed solution: ... / Notes: ... (a short summary); the save workflow refuses an open task without a Problem. If it now needs Andy, set status Waiting, owner Andy and waiting_on instead. Then read the row back to check it saved.';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+
+// 18 Oct 2026 (Andy): every open task states the problem, the proposed solution (if there is one) and a short summary of notes.
+// Stored in the notes field as three labelled lines: Problem / Proposed solution / Notes.
+function parseNotes(n) {
+  const m = /^Problem:\s*([\s\S]*?)(?:\n+Proposed solution:\s*([\s\S]*?))?(?:\n+Notes:\s*([\s\S]*))?$/.exec(String(n || '').trim());
+  return m ? { problem: (m[1] || '').trim(), solution: (m[2] || '').trim(), notes: (m[3] || '').trim() } : null;
+}
+function composeNotes(p, sol, n) {
+  if (!p) return n;
+  return 'Problem: ' + p + (sol ? '\nProposed solution: ' + sol : '') + (n ? '\nNotes: ' + n : '');
+}
+function notesHtml(r) {
+  const p = parseNotes(r.notes);
+  if (p) return '<div class="pf"><div><b>Problem</b>' + esc(p.problem) + '</div>' + (p.solution ? '<div><b>Proposed solution</b>' + esc(p.solution) + '</div>' : '') + (p.notes ? '<div><b>Notes</b>' + esc(p.notes) + '</div>' : '') + '</div>';
+  return r.notes ? '<details class="more"><summary>More</summary><div class="step" style="color:#6b6b6b;margin-top:4px">' + esc(r.notes) + '</div></details>' : '';
+}
+function card(r, showMission) {
+  const late = r.due && r.due < today() && r.status !== 'Done';
+  const link = safeUrl(r.link);
+  const isA = r.owner === 'Andy';
+  const action = r.next_step || r.title;
+  return '<div class="card s-' + esc(r.status) + (r.type === 'ALERT' ? ' alert' : '') + '" data-id="' + esc(r.id) + '">'
+    + '<div class="body">'
+    + '<div class="title">' + (r.type ? '<span class="typechip ' + esc(r.type) + '">' + esc(r.type) + '</span>' : '') + '<span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (isA ? 'Your action' : 'Claude') + '</span>#' + esc(r.id) + ' &middot; ' + esc(r.title) + '</div>'
+    + '<div class="action">' + esc(action) + '</div>'
+    + '<div class="meta">'
+    + (r.waiting_on ? '<span class="chip wait">Waiting on: ' + esc(r.waiting_on) + '</span>' : '')
+    + (!isA && r.status !== 'Done' ? (r.go === 'yes' ? '<span class="chip go">Approved for Claude</span>' : '<span class="chip nogo">Not approved</span>') : '')
+    + (r.type === 'ALERT' && Number(r.alert_count) > 1 ? '<span class="chip due late">' + esc(r.alert_count) + ' times</span>' : '')
+    + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
+    + (showMission ? '<span class="chip">' + esc(r.category || '') + '</span>' : '')
+    + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Open</a>' : '')
+    + '</div>'
+    + notesHtml(r)
+    + '</div>'
+    + '<div class="acts"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>'
+    + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
+    + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
+    + (safeUrl(r.chat_link) ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(safeUrl(r.chat_link)) + '">Open chat</a>' : '')
+    + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">New chat</a>'
+    + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
+}
+
+function missionCard(m) {
+  const ks = kids(m);
+  const done = ks.filter(r => r.status === 'Done').length;
+  const na = nextAction(m);
+  const lead = na ? na.status : m.status;
+  const pct = ks.length ? Math.round(done * 100 / ks.length) : 0;
+  const link = safeUrl(m.link);
+  let steps = '';
+  ['BUILD', 'RUN'].forEach(t => {
+    const list = ks.filter(r => (r.type || 'BUILD') === t).sort((a, b) => rank[a.status] - rank[b.status]);
+    if (!list.length) return;
+    const cnt = {}; list.forEach(r => cnt[r.status] = (cnt[r.status] || 0) + 1);
+    steps += '<div class="typehead ' + t + '">' + t + (t === 'BUILD' ? ' (process and first test)' : ' (one per contact)') + '<span class="cnt">' + Object.keys(cnt).sort((a, b) => rank[a] - rank[b]).map(k => cnt[k] + ' ' + k.toLowerCase()).join(' · ') + '</span></div>' + list.map(r => card(r, false)).join('');
+  });
+  const nextHtml = na
+    ? '<div class="nextbox"><div class="lbl">Next action</div><div class="action" style="margin-top:2px"><span class="who-tag ' + (na.owner === 'Andy' ? 'andy' : 'claude') + '">' + (na.owner === 'Andy' ? 'You' : 'Claude') + '</span>' + esc(na.next_step || na.title) + '</div>'
+      + (parseNotes(na.notes) ? '<div class="step" style="margin-top:4px">' + esc(parseNotes(na.notes).problem) + '</div>' : '')
+      + (na.waiting_on ? '<div class="meta"><span class="chip wait">Waiting on: ' + esc(na.waiting_on) + '</span></div>' : '') + '</div>'
+    : '<div class="nextbox"><div class="lbl">Next action</div><div class="step">Nothing active</div></div>';
+  return '<div class="mission s-' + esc(lead) + '" data-mid="' + esc(m.id) + '">'
+    + '<div class="mhead"><h2>' + esc(m.title) + '</h2><span class="chip">' + esc(m.category || '') + '</span>'
+    + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Open</a>' : '')
+    + '<button class="btn small ghost" data-mact="addstep">+ Step</button><button class="btn small ghost" data-mact="edit">Edit</button></div>'
+    + '<div class="prog"><div class="bar"><i style="width:' + pct + '%"></i></div>' + done + ' of ' + ks.length + ' done</div>'
+    + nextHtml
+    + (ks.length ? '<details class="steps"><summary>All steps (' + ks.length + ')</summary>' + steps + '</details>' : '')
+    + '</div>';
+}
+
+// 15 Oct 2026 (Andy): shortcut tab with the quiz and character result page links
+const SHOP = 'https://stiffcompetition.shop/pages/';
+const PAGE_LINKS = [['The quiz: How Stiff Are You?', 'how-stiff'], ['Major Wood', 'you-are-major-wood'], ['The Rear Admiral', 'you-are-the-rear-admiral'], ['Hammerin\u2019 Hanky', 'you-are-hammerin-hanky'], ['Slick Willy', 'you-are-slick-willy'], ['The Velvet Python', 'you-are-the-velvet-python'], ['The Grip', 'you-are-the-grip']];
+function pagesHtml() {
+  return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px">' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>';
+}
+
+function render() {
+  renderTabs();
+  if (view === 'Follow list') { renderFollow(); return; }
+  if (view === 'Pages') { $('list').innerHTML = pagesHtml(); return; }
+  if (view === 'Products') { renderProducts(); return; }
+  if (view === 'Pricing') { renderPricing(); return; }
+  if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
+  let html = '';
+  if (view === 'Done') {
+    const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
+    html = list.map(r => card(r, true)).join('');
+  } else if (view === 'Alerts') {
+    html = rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r)).sort((a, b) => String(b.last_seen || '').localeCompare(String(a.last_seen || ''))).map(r => card(r, false)).join('') || '<div class="empty">No open alerts.</div>';
+  } else {
+    const ms = missions().filter(missionShown).sort((a, b) => {
+      const ra = nextAction(a), rb = nextAction(b);
+      return (ra ? rank[ra.status] : 9) - (rb ? rank[rb.status] : 9);
+    });
+    html = (view === 'Now' ? rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r)).map(r => card(r, false)).join('') : '') + ms.map(missionCard).join('');
+    if (view === 'Now') html += loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).map(r => card(r, true)).join('');
+  }
+  if (view === 'Influencers') html = trackerHtml() + html;
+  $('list').innerHTML = html || '<div class="empty">Nothing here.</div>';
+  if (view === 'Influencers') wireTracker();
+  $('list').querySelectorAll('.card').forEach(c => {
+    const r = rows.find(x => String(x.id) === c.dataset.id);
+    c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
+    const g = c.querySelector('[data-act=go]'); if (g) g.onclick = () => save(Object.assign({}, r, { go: r.go === 'yes' ? '' : 'yes' }));
+    const d = c.querySelector('[data-act=done]'); if (d) d.onclick = () => save(Object.assign({}, r, { status: 'Done' }));
+    c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
+  });
+  $('list').querySelectorAll('.mission').forEach(c => {
+    const m = rows.find(x => String(x.id) === c.dataset.mid);
+    c.querySelector('[data-mact=edit]').onclick = () => openDlg(m);
+    c.querySelector('[data-mact=addstep]').onclick = () => openDlg(null, m);
+  });
+}
+
+async function save(r) {
+  const prev = rows.slice();
+  const i = rows.findIndex(x => String(x.id) === String(r.id));
+  if (i >= 0) rows[i] = r;
+  render();
+  try {
+    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes, waiting_on: r.waiting_on || '', go: r.go || '', parent: r.parent || '', type: r.type || '', repeat: r.repeat || '', done_on: r.done_on || '' }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'not saved');
+    toast('Saved');
+    if (i < 0) await load();
+  } catch (e) { rows = prev; render(); toast('Not saved: ' + e.message); }
+}
+
+let editing = null;
+function openDlg(r, parentMission) {
+  editing = r || null;
+  $('dlgTitle').textContent = r ? 'Edit' : 'Add';
+  $('f_cat').innerHTML = CATEGORIES.map(c => '<option>' + c + '</option>').join('');
+  $('f_status').innerHTML = STATUSES.map(c => '<option>' + c + '</option>').join('');
+  $('f_parent').innerHTML = '<option value="">(none)</option>' + missions().map(m => '<option value="' + esc(m.id) + '">' + esc(m.title) + '</option>').join('');
+  $('f_title').value = r ? r.title : '';
+  $('f_next').value = r ? r.next_step || '' : '';
+  $('f_type').value = r ? (r.type || 'BUILD') : (parentMission ? 'BUILD' : 'MISSION');
+  $('f_parent').value = r ? (r.parent || '') : (parentMission ? String(parentMission.id) : '');
+  $('f_cat').value = r ? r.category : (parentMission ? parentMission.category : (CATEGORIES.includes(view) ? view : 'Influencers'));
+  $('f_status').value = r ? r.status : 'Next';
+  $('f_owner').value = r ? r.owner || 'Andy' : 'Andy';
+  $('f_due').value = r ? r.due || '' : '';
+  $('f_link').value = r ? r.link || '' : '';
+  $('f_wait').value = r ? r.waiting_on || '' : '';
+  const pn = r ? parseNotes(r.notes) : null;
+  $('f_problem').value = pn ? pn.problem : '';
+  $('f_solution').value = pn ? pn.solution : '';
+  $('f_notes').value = r ? (pn ? pn.notes : (r.notes || '')) : '';
+  const rep = r ? (r.repeat || 'daily') : 'daily';
+  $('f_repeat').innerHTML = DAYS.map(d => '<label><input type="checkbox" value="' + d + '"' + (rep === 'daily' || rep.split(',').includes(d) ? ' checked' : '') + '>' + d + '</label>').join('');
+  $('f_repeat_wrap').style.display = $('f_type').value === 'DAILY' ? '' : 'none';
+  $('removeBtn').style.display = r ? '' : 'none';
+  $('dlg').showModal();
+}
+$('addBtn').onclick = () => openDlg(null);
+
+// ---------- Gift NFT (13 Oct 2026, NFT Creator Outreach Playbook) ----------
+// Calls SC - NFT Gift (sc-nft-gift): mode pool lists giftable Blueprints; mode gift makes the £0 order, sets up the claim,
+// mints to a wallet when one is given, logs it and tells Andy on Telegram. One gift per handle (the workflow refuses a second).
+const GIFT_URL = BASE + 'sc-nft-gift';
+let giftPool = null, giftPick = null, giftRow = null;
+async function loadGiftPool() {
+  try {
+    const r = await fetch(GIFT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'pool' }) });
+    const d = await r.json();
+    giftPool = (d && d.pool) || [];
+  } catch (e) { giftPool = []; $('g_status').textContent = 'Could not load the Blueprints: ' + e.message; }
+  drawGiftPool();
+}
+function drawGiftPool() {
+  if (!giftPool) return;
+  const q = $('g_search').value.trim().toLowerCase();
+  const list = giftPool.filter(p => !q || p.title.toLowerCase().includes(q) || p.handle.toLowerCase().includes(q)).slice(0, 60);
+  $('g_pool').innerHTML = list.length ? list.map(p => '<button type="button" data-h="' + esc(p.handle) + '"' + (giftPick && giftPick.handle === p.handle ? ' class="on"' : '') + '><img loading="lazy" alt="" src="' + esc(safeUrl(p.image)) + '">' + esc(p.title.replace(/^Blueprint\s*/i, '')) + '</button>').join('')
+    : '<div class="gnote">' + (giftPool.length ? 'No Blueprint matches.' : 'No Blueprints are free to gift.') + '</div>';
+  $('g_pool').querySelectorAll('button').forEach(b => b.onclick = () => { giftPick = giftPool.find(p => p.handle === b.dataset.h); drawGiftPool(); drawGiftPick(); });
+}
+function drawGiftPick() {
+  $('g_pick').innerHTML = giftPick ? '<img alt="" src="' + esc(safeUrl(giftPick.image)) + '"><div><b>' + esc(giftPick.title) + '</b><br><span class="gnote">Shop price £' + esc(giftPick.price) + '; given at £0</span></div>' : '';
+}
+function openGift(row) {
+  giftRow = row || null;
+  ['g_handle', 'g_search'].forEach(id => $(id).value = '');
+  if (giftRow) { $('g_handle').value = giftRow.handle || ''; $('g_platform').value = giftRow.platform || 'X'; }
+  giftPick = null; drawGiftPick(); $('g_status').textContent = ''; $('g_link').innerHTML = ''; $('g_send').disabled = false;
+  $('giftDlg').showModal();
+  if (giftPool === null) loadGiftPool(); else drawGiftPool();
+}
+async function sendGift() {
+  const handle = $('g_handle').value.trim();
+  const miss = [];
+  if (handle.replace('@', '').length < 2) miss.push('their handle');
+  if (!giftPick) miss.push('a Blueprint');
+  if (miss.length) { $('g_status').textContent = 'Please give ' + miss.join(', ') + '.'; return; }
+  if (!confirm('Give ' + giftPick.title + ' to ' + handle + ' (' + $('g_platform').value + ')? This makes a real £0 order and gives you the gift link for the DM.')) return;
+  $('g_send').disabled = true; $('g_status').textContent = 'Making the gift…';
+  try {
+    const r = await fetch(GIFT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'gift', handle, platform: $('g_platform').value, product_handle: giftPick.handle }) });
+    const d = await r.json();
+    if (!d.ok) { $('g_send').disabled = false; $('g_status').textContent = d.error || d.message || 'The gift was not made.'; return; }
+    $('g_status').textContent = 'Done: ' + d.product_title + ', order ' + d.order_name + ', ' + d.status + '. ' + (d.note || '') + (d.claim_url ? ' Copy the gift message (link included) into your DM:' : '');
+    if (d.claim_url) {
+      $('g_link').innerHTML = '<input readonly value="' + esc(d.claim_url) + '"><button type="button" class="btn small">Copy gift message</button>';
+      $('g_link').querySelector('button').onclick = () => copyText(giftMessage(d.claim_url), 'Gift message copied');
+    }
+    giftPool = giftPool.filter(p => p.handle !== giftPick.handle);
+    // Record the gift on that person's tracker row (13 Oct 2026).
+    const tr = giftRow || (track || []).find(t => String(t.handle).toLowerCase() === ('@' + handle.replace(/^@/, '')).toLowerCase());
+    const base = tr || { handle, platform: $('g_platform').value };
+    saveTrack(Object.assign({}, base, { status: d.status === 'claimed' ? 'Claimed' : 'Gift sent', gift_order_id: d.order_id || '', gift_order_name: d.order_name || '', product_title: d.product_title || '', claim_url: d.claim_url || '', gifted_on: today() }));
+    toast('Gift ' + d.status);
+  } catch (e) { $('g_send').disabled = false; $('g_status').textContent = 'Could not reach the gift workflow: ' + e.message; }
+}
+$('giftBtn').onclick = () => openGift(null);
+$('g_cancel').onclick = () => $('giftDlg').close();
+// ---------- Gift tracker (13 Oct 2026, NFT Creator Outreach Playbook) ----------
+// One row per influencer in SC Gift Tracker (via SC - Gift Tracker API): DM to send, sent, follow-up due 5 days after Sent
+// with no reply, replied, gift sent (private gift link), claimed (set by the API when the link has been used).
+const TRACK_URL = BASE + 'sc-gift-tracker';
+const FOLLOWUP_DAYS = 5;
+// Message wording agreed with Andy 13 Oct 2026 (NFT Creator Outreach Playbook). [why] is written per person.
+const DM_TEMPLATE = "Hey [name], I'm Andy. I'm a nobody who started Stiff Competition with no knowledge of coding, NFTs or selling online, just an idea, and built the whole thing myself.\nIt's six characters from a 1994 action-figure line that never made the shelves: one-of-one NFTs on Polygon, merch, and plenty of cheeky British innuendo. [why]\nWe're a tiny brand and we need eyes on us. I'd love to gift you one of the character NFTs, and if it makes you laugh, a share or a shout-out to your followers would mean a lot. Say yes and I'll send you a private link to claim it.";
+const GIFT_TEMPLATE = "Brilliant, here it is: [gift link]\nOpen it and choose where your NFT goes: your own wallet, or a free wallet we make for you with just your email. If you post about it, tag us and we'll share it back. Enjoy.";
+const FOLLOWUP_TEMPLATE = "Hi, Andy again from Stiff Competition. Just bumping this in case it got buried: a free character NFT is yours if you'd like one, and a share with your followers would really help a small brand like ours. If it's not for you, no worries at all.";
+const giftMessage = url => GIFT_TEMPLATE.replace('[gift link]', url);
+let track = null, trackLoading = false, tEdit = null;
+async function loadTrack() {
+  if (trackLoading) return; trackLoading = true;
+  try {
+    const r = await fetch(TRACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) });
+    const d = await r.json(); track = Array.isArray(d) ? d : [];
+  } catch (e) { track = track || []; toast('Could not load the gift tracker'); }
+  trackLoading = false;
+  render();
+}
+async function saveTrack(row) {
+  try {
+    const r = await fetch(TRACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', row }) });
+    const d = await r.json();
+    if (!d.ok) { toast(d.error || 'Not saved'); return; }
+  } catch (e) { toast('Not saved: ' + e.message); return; }
+  await loadTrack();
+}
+function copyText(t, msg) {
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast(msg || 'Copied'), () => toast('Copy failed'));
+}
+function daysSince(d) { return d ? Math.floor((new Date(today() + 'T12:00:00') - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 86400000) : 0; }
+function followDue(t) { return t.status === 'Sent' && t.sent_on && !t.followup_on && !t.replied_on && daysSince(t.sent_on) >= FOLLOWUP_DAYS; }
+function tStage(t) {
+  if (followDue(t)) return ['Follow-up due', 'due'];
+  if (t.status === 'To send') return ['DM to send', 'todo'];
+  if (t.status === 'Sent') return [t.followup_on ? 'Follow-up sent ' + t.followup_on.slice(5) : 'Sent ' + String(t.sent_on || '').slice(5), 'wait'];
+  if (t.status === 'Replied') return ['Replied: give the gift', 'todo'];
+  if (t.status === 'Gift sent') return ['Gift sent, not claimed yet', 'wait'];
+  if (t.status === 'Claimed') return ['Claimed ' + String(t.claimed_on || '').slice(5), 'ok'];
+  return [t.status, 'closed'];
+}
+function trackerHtml() {
+  if (track === null) { loadTrack(); return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">Loading…</span></div></div>'; }
+  const open = track.filter(t => ['No reply', 'Removed'].indexOf(t.status) === -1);
+  const closed = track.filter(t => t.status === 'No reply');
+  const order = t => followDue(t) ? 0 : ({ 'Replied': 1, 'To send': 2, 'Sent': 3, 'Gift sent': 4, 'Claimed': 5 }[t.status] || 6);
+  // Tier (13 Oct 2026): 1 best fit, 2 first widening, 3 second widening; Tier 1 first within each stage.
+  const tierN = t => Number(t.tier) || 9;
+  const due = open.filter(followDue).length;
+  const rowHtml = t => {
+    const [lbl, cls] = tStage(t); const url = safeUrl(t.profile_url);
+    let b = '';
+    if (t.status === 'To send') b += (t.dm_text ? '<button class="btn small" data-ta="dm">Copy DM</button>' : '') + '<button class="btn small done" data-ta="sent">I sent it</button>';
+    if (t.status === 'Sent') b += (followDue(t) ? '<button class="btn small warn" data-ta="fu">Copy follow-up</button>' : '') + (followDue(t) ? '<button class="btn small ghost" data-ta="fusent">Follow-up sent</button>' : '') + '<button class="btn small done" data-ta="replied">They replied</button>' + (t.followup_on ? '<button class="btn small ghost" data-ta="noreply">No reply</button>' : '');
+    if (t.status === 'Replied') b += '<button class="btn small" data-ta="gift">Give gift</button>';
+    if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift message</button>';
+    b += (url ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(url) + '">Profile</a>' : '') + '<button class="btn small ghost" data-ta="edit">Edit</button>';
+    return '<div class="trow" data-tid="' + esc(t.id) + '"><div class="who">' + (t.tier ? '<span class="tier t' + esc(t.tier) + '">Tier ' + esc(t.tier) + '</span> ' : '') + '<b>' + esc(t.handle) + '</b> <span class="gnote">' + esc(t.platform || '') + '</span>' + (t.product_title ? ' <span class="gnote">· ' + esc(t.product_title) + '</span>' : '') + (t.fit ? '<div class="fit">' + esc(t.fit) + '</div>' : '') + '</div><span class="tstat ' + cls + '">' + esc(lbl) + '</span><div class="tacts">' + b + '</div></div>';
+  };
+  return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">' + open.length + ' people' + (due ? ' · <b style="color:#c62828">' + due + ' follow-up due</b>' : '') + '</span><button class="btn small" data-ta="add">+ Person</button></div>'
+    + (open.length ? open.slice().sort((a, b) => order(a) - order(b) || tierN(a) - tierN(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>')
+    + (closed.length ? '<details><summary class="gnote">No reply (' + closed.length + ')</summary>' + closed.map(rowHtml).join('') + '</details>' : '')
+    + '</div>';
+}
+function wireTracker() {
+  const add = $('list').querySelector('[data-ta=add]'); if (add) add.onclick = () => openTrack(null);
+  $('list').querySelectorAll('.trow').forEach(el => {
+    const t = (track || []).find(x => String(x.id) === el.dataset.tid); if (!t) return;
+    const on = (k, f) => { const b = el.querySelector('[data-ta=' + k + ']'); if (b) b.onclick = f; };
+    on('dm', () => { if (/\[(name|why)\]/.test(t.dm_text)) { toast('Fill in [name] and [why] first (Edit)'); return; } copyText(t.dm_text, 'DM copied'); });
+    on('fu', () => copyText(t.followup_text || FOLLOWUP_TEMPLATE, 'Follow-up copied'));
+    on('link', () => copyText(giftMessage(t.claim_url), 'Gift message copied'));
+    on('sent', () => saveTrack(Object.assign({}, t, { status: 'Sent', sent_on: today() })));
+    on('fusent', () => saveTrack(Object.assign({}, t, { followup_on: today() })));
+    on('replied', () => saveTrack(Object.assign({}, t, { status: 'Replied', replied_on: today() })));
+    on('noreply', () => saveTrack(Object.assign({}, t, { status: 'No reply' })));
+    on('gift', () => openGift(t));
+    on('edit', () => openTrack(t));
+  });
+}
+function openTrack(t) {
+  tEdit = t; $('tTitle').textContent = t ? 'Edit ' + t.handle : 'Add a person';
+  $('t_handle').value = t ? t.handle : ''; $('t_platform').value = t ? (t.platform || 'X') : 'X'; $('t_url').value = t ? (t.profile_url || '') : '';
+  $('t_fit').value = t ? (t.fit || '') : ''; $('t_dm').value = t ? (t.dm_text || '') : DM_TEMPLATE; $('t_fu').value = t ? (t.followup_text || '') : FOLLOWUP_TEMPLATE;
+  $('t_status').value = t ? (t.status || 'To send') : 'To send'; $('t_notes').value = t ? (t.notes || '') : '';
+  $('tDlg').showModal();
+}
+$('t_cancel').onclick = () => $('tDlg').close();
+$('t_save').onclick = () => {
+  if ($('t_handle').value.trim().replace('@', '').length < 2) { toast('Give their handle'); return; }
+  const row = Object.assign({}, tEdit || {}, { handle: $('t_handle').value.trim(), platform: $('t_platform').value, profile_url: $('t_url').value.trim(), fit: $('t_fit').value.trim(), dm_text: $('t_dm').value, followup_text: $('t_fu').value, status: $('t_status').value, notes: $('t_notes').value });
+  $('tDlg').close(); saveTrack(row);
+};
+
+$('g_send').onclick = sendGift;
+$('g_search').oninput = drawGiftPool;
+$('f_type').onchange = () => { $('f_repeat_wrap').style.display = $('f_type').value === 'DAILY' ? '' : 'none'; };
+$('cancel').onclick = () => $('dlg').close();
+$('removeBtn').onclick = () => { if (editing) { const e = editing; save(Object.assign({}, e, { status: 'Removed' })); rows = rows.filter(x => String(x.id) !== String(e.id)); render(); } $('dlg').close(); };
+$('form').onsubmit = e => {
+  e.preventDefault();
+  const r = Object.assign({}, editing || {}, { title: $('f_title').value.trim(), next_step: $('f_next').value.trim(), category: $('f_cat').value, status: $('f_status').value, owner: $('f_owner').value, due: $('f_due').value, link: $('f_link').value.trim(), waiting_on: $('f_wait').value.trim(), notes: composeNotes($('f_problem').value.trim(), $('f_solution').value.trim(), $('f_notes').value.trim()), type: $('f_type').value, parent: $('f_parent').value });
+  if (r.type !== 'MISSION' && r.type !== 'DAILY' && r.status !== 'Done' && !$('f_problem').value.trim()) { toast('Say what the problem is'); return; }
+  if (r.type === 'DAILY') {
+    const days = Array.from($('f_repeat').querySelectorAll('input:checked')).map(x => x.value);
+    if (!days.length) { toast('Pick at least one day'); return; }
+    r.repeat = days.length === 7 ? 'daily' : days.join(',');
+    r.parent = '';
+  } else { r.repeat = ''; }
+  if (!r.title) return;
+  $('dlg').close();
+  save(r);
+};
+
+// ---------- Today's routine (12 Oct 2026, Andy) ----------
+// DAILY rows repeat on their days (repeat = 'daily' or 'Mon,Wed,...'). Ticking sets done_on to today (this device's date);
+// a line is ticked only while done_on is today, so the list clears each morning. A line not ticked on its last due day shows red.
+// Status Today = on the list; Waiting = shown greyed with what it waits on.
+function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dueOn(r, d) { const rep = String(r.repeat || 'daily'); return rep === 'daily' || rep.split(',').includes(DAYS[d.getDay()]); }
+function lastDueBefore(r) {
+  for (let i = 1; i <= 7; i++) { const d = new Date(); d.setDate(d.getDate() - i); if (dueOn(r, d)) return ymd(d); }
+  return '';
+}
+function missedOn(r) {
+  const last = lastDueBefore(r);
+  if (!last || r.status !== 'Today') return '';
+  const made = r.createdAt ? ymd(new Date(r.createdAt)) : '';
+  if (made && made > last) return '';
+  return (r.done_on || '') < last ? last : '';
+}
+const routineDue = () => dailies().filter(r => whoOk(r) && (r.status === 'Today' || r.status === 'Waiting') && dueOn(r, new Date()));
+function dayName(s) { return DAYS[new Date(s + 'T12:00:00').getDay()]; }
+
+function todaysClips() {
+  if (!cal) return null;
+  const t = today();
+  return cal.filter(c => String(c.post_date || '').slice(0, 10) === t && c.video_url && CLIP_STATUSES.includes(c.status) && /YouTube/.test(c.platforms || ''))
+    .sort((a, b) => String(a.post_date).localeCompare(String(b.post_date)));
+}
+async function loadCal() {
+  if (cal || calLoading) return;
+  calLoading = true;
+  try { const res = await fetch(CAL_URL); const d = await res.json(); cal = Array.isArray(d) ? d : (d.rows || d.data || []); }
+  catch (e) { cal = []; toast('Could not load today\'s clips'); }
+  calLoading = false;
+  if (view === 'Today') render();
+}
+
+function clipsHtml(r) {
+  const list = todaysClips();
+  if (!list) return '<div class="clips"><div class="step">Loading today\'s clips…</div></div>';
+  if (!list.length) return '<div class="clips"><div class="step">No finished clips for today yet.</div></div>';
+  return '<div class="clips">' + list.map(c => {
+    const ready = !!clipFiles[c.id];
+    return '<div class="clip" data-cid="' + esc(c.id) + '"><span class="cn">#' + esc(c.id) + ' · ' + esc(c.format) + ' · ' + esc(c.character) + '</span>'
+      + '<button class="btn small tt" data-ca="post">' + (ready ? 'Post to TikTok' : 'Get clip') + '</button>'
+      + '<button class="btn small ghost" data-ca="caption">Copy caption</button>'
+      + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(safeUrl(c.video_url)) + '">Open</a></div>';
+  }).join('') + '</div>';
+}
+
+function dlineHtml(r) {
+  const ticked = r.done_on === today();
+  const waiting = r.status === 'Waiting';
+  const missed = !ticked && !waiting ? missedOn(r) : '';
+  const cls = ticked ? ' ticked' : (waiting ? ' later' : (missed ? ' missed' : ''));
+  const link = safeUrl(r.link);
+  let extra = '';
+  if (r.link === 'sc:clips-today' && !waiting) extra = clipsHtml(r);
+  const acts = (r.link === 'sc:follow' ? '<button class="btn small ghost" data-da="follow">Open Follow list</button>' : '')
+    + (link ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(link) + '">Open</a>' : '')
+    + '<button class="btn small ghost" data-da="edit">Edit</button>';
+  return '<div class="dline' + cls + '" data-did="' + esc(r.id) + '">'
+    + '<input type="checkbox" data-da="tick"' + (ticked ? ' checked' : '') + (waiting ? ' disabled' : '') + ' aria-label="Done today">'
+    + '<div class="body"><div class="title"><span class="who-tag ' + (r.owner === 'Andy' ? 'andy' : 'claude') + '">' + (r.owner === 'Andy' ? 'Your action' : 'Claude') + '</span>#' + esc(r.id) + ' &middot; ' + esc(r.title) + '</div>'
+    + '<div class="action">' + esc(r.next_step || r.title) + '</div>'
+    + '<div class="meta">'
+    + (waiting ? '<span class="chip wait">Starts when: ' + esc(r.waiting_on || 'ready') + '</span>' : '')
+    + (missed ? '<span class="chip late">Not done ' + esc(dayName(missed)) + '</span>' : '')
+    + (r.repeat && r.repeat !== 'daily' ? '<span class="chip">' + esc(r.repeat.replace(/,/g, ' ')) + '</span>' : '')
+    + '</div>' + extra
+    + '<div class="dacts" style="margin-top:6px">' + acts + '</div></div></div>';
+}
+
+function routineHtml() {
+  const list = routineDue().sort((a, b) => (a.status === 'Waiting') - (b.status === 'Waiting') || (a.done_on === today()) - (b.done_on === today()) || a.id - b.id);
+  const left = list.filter(r => r.status === 'Today' && r.done_on !== today()).length;
+  if (list.some(r => r.link === 'sc:clips-today' && r.status === 'Today')) loadCal();
+  const doneN = list.filter(r => r.done_on === today()).length;
+  const shown = showDone ? list : list.filter(r => r.done_on !== today());
+  return '<div class="routine"><h2>Today\'s routine</h2><div class="sub">' + (left ? left + ' to do today' : 'All done for today') + '</div>'
+    + shown.map(dlineHtml).join('')
+    + (doneN ? '<div style="margin-top:8px"><a href="#" class="lnk" id="toggleDone">' + (showDone ? 'Hide done' : 'Show done (' + doneN + ')') + '</a></div>' : '')
+    + '<div class="addbar" style="margin:10px 0 0"><form id="dailyform" style="display:flex;gap:8px"><input id="dailytitle" type="text" maxlength="80" placeholder="Add a daily line" style="flex:1;min-width:0;font:inherit;font-size:16px;padding:8px 12px;border:1px solid var(--line)"><button class="btn" type="submit">Add</button></form></div>'
+    + '</div>';
+}
+
+async function getClipFile(c) {
+  if (clipFiles[c.id]) return clipFiles[c.id];
+  const res = await fetch(c.video_url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const blob = await res.blob();
+  clipFiles[c.id] = new File([blob], 'stiff-competition-' + c.id + '.mp4', { type: 'video/mp4' });
+  return clipFiles[c.id];
+}
+function copyText(t) { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } }
+
+function wireRoutine() {
+  const td = $('toggleDone'); if (td) td.onclick = e => { e.preventDefault(); showDone = !showDone; render(); };
+  const f = $('dailyform');
+  if (f) f.onsubmit = e => {
+    e.preventDefault();
+    const t = $('dailytitle').value.trim();
+    if (!t) return;
+    save({ title: t, next_step: t, category: 'Posts and boosts', status: 'Today', owner: 'Andy', due: '', link: '', notes: '', waiting_on: '', go: '', parent: '', type: 'DAILY', repeat: 'daily', done_on: '' });
+  };
+  $('list').querySelectorAll('.dline').forEach(el => {
+    const r = rows.find(x => String(x.id) === el.dataset.did);
+    const tick = el.querySelector('[data-da=tick]');
+    tick.onchange = () => save(Object.assign({}, r, { done_on: tick.checked ? today() : '' }));
+    el.querySelector('[data-da=edit]').onclick = () => openDlg(r);
+    const fo = el.querySelector('[data-da=follow]'); if (fo) fo.onclick = () => { view = 'Follow list'; render(); };
+    el.querySelectorAll('.clip').forEach(ce => {
+      const c = (cal || []).find(x => String(x.id) === ce.dataset.cid);
+      const cap = (c && (c.caption_instagram || c.text_content)) || '';
+      ce.querySelector('[data-ca=caption]').onclick = () => toast(copyText(cap) ? 'Caption copied' : 'Could not copy');
+      const pb = ce.querySelector('[data-ca=post]');
+      pb.onclick = async () => {
+        // A phone only opens the share sheet straight from a tap, so the first tap downloads the clip and the second shares it.
+        if (!clipFiles[c.id]) {
+          pb.textContent = 'Getting clip…'; pb.disabled = true;
+          try { await getClipFile(c); pb.textContent = 'Post to TikTok'; toast('Clip ready: tap Post to TikTok'); }
+          catch (e) { pb.textContent = 'Get clip'; toast('Could not get the clip: ' + e.message); }
+          pb.disabled = false;
+          return;
+        }
+        const file = clipFiles[c.id];
+        copyText(cap);
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try { await navigator.share({ files: [file] }); toast('Pick TikTok, then paste the caption'); }
+          catch (e) { if (e.name !== 'AbortError') toast('Share failed: ' + e.message); }
+        } else {
+          const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+          toast('Clip saved and caption copied. Upload it in TikTok.');
+        }
+      };
+    });
+  });
+}
+
+// ---------- Follow list (inside this dashboard) ----------
+function daysSince(d) { return d ? Math.floor((Date.now() - new Date(d + 'T00:00:00').getTime()) / 86400000) : 0; }
+const isDue = r => r.status === 'Followed' && daysSince(r.followed_on) >= UNFOLLOW_AFTER_DAYS;
+const FVIEWS = {
+  'To follow': r => r.status === 'To follow',
+  'Waiting for follow-back': r => r.status === 'Followed' && !isDue(r),
+  'Followed back': r => r.status === 'Followed back',
+  'Unfollow due': r => isDue(r),
+  'Skipped': r => r.status === 'Skipped'
+};
+function cleanHandle(s) { return String(s || '').trim().replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, '').replace(/^@/, '').split(/[\/?\s]/)[0]; }
+
+function followCard(r) {
+  const cls = isDue(r) ? 'f-due' : 'f-' + String(r.status).replace(' ', '');
+  const url = 'https://x.com/' + encodeURIComponent(r.handle);
+  let btns;
+  if (r.status === 'To follow') btns = '<a class="btn small" target="_blank" rel="noopener" href="' + url + '">Open profile</a><button class="btn small done" data-fa="followed">I followed</button><button class="btn small ghost" data-fa="skip">Skip</button>';
+  else if (r.status === 'Followed') btns = '<a class="btn small ghost" target="_blank" rel="noopener" href="' + url + '">Open profile</a><button class="btn small done" data-fa="back">Followed back</button>' + (isDue(r) ? '<button class="btn small warn" data-fa="unfollowed">I unfollowed</button>' : '');
+  else btns = '<a class="btn small ghost" target="_blank" rel="noopener" href="' + url + '">Open profile</a>';
+  return '<div class="card ' + cls + '" data-fid="' + esc(r.id) + '"><div class="body"><div class="fhandle"><a target="_blank" rel="noopener" href="' + url + '">@' + esc(r.handle) + '</a><span class="fnm">' + esc(r.name) + '</span></div>'
+    + (r.bio ? '<div class="step">' + esc(r.bio) + '</div>' : '') + (r.why ? '<div class="fwhy">' + esc(r.why) + '</div>' : '')
+    + '<div class="fmeta">from ' + esc(r.seed) + (r.followed_on ? ' · followed ' + esc(r.followed_on) : '') + (isDue(r) ? ' · no follow-back after ' + UNFOLLOW_AFTER_DAYS + ' days' : '') + '</div></div>'
+    + '<div class="acts">' + btns + '</div></div>';
+}
+
+function renderFollow() {
+  const sub = '<div class="subtabs">' + Object.keys(FVIEWS).map(v => '<button class="tab' + (v === fview ? ' on' : '') + '" data-fv="' + esc(v) + '">' + esc(v) + '<span class="n">' + frows.filter(FVIEWS[v]).length + '</span></button>').join('') + '</div>';
+  const add = '<div class="addbar"><form id="addform"><input id="addhandle" type="text" placeholder="Add a username you followed, e.g. @name" autocomplete="off" autocapitalize="off"><button class="btn" type="submit">Add</button></form></div>';
+  let hint = '';
+  if (fview === 'To follow') hint = '<div class="hint">Follow these by hand: open the profile, press Follow on X, then press "I followed" here. About 25 a day is safe.</div>';
+  if (fview === 'Unfollow due') hint = '<div class="hint">No follow-back after ' + UNFOLLOW_AFTER_DAYS + ' days. Unfollow by hand on X, then press "I unfollowed".</div>';
+  const list = frows.filter(FVIEWS[fview]);
+  $('list').innerHTML = add + sub + hint + (list.length ? list.map(followCard).join('') : '<div class="empty">Nothing here.</div>');
+  $('addform').onsubmit = addFollow;
+  $('list').querySelectorAll('[data-fv]').forEach(b => b.onclick = () => { fview = b.dataset.fv; render(); });
+  $('list').querySelectorAll('[data-fid]').forEach(c => {
+    const r = frows.find(x => String(x.id) === c.dataset.fid);
+    c.querySelectorAll('[data-fa]').forEach(b => b.onclick = () => {
+      const a = b.dataset.fa;
+      if (a === 'followed') saveFollow(Object.assign({}, r, { status: 'Followed', followed_on: today() }));
+      if (a === 'skip') saveFollow(Object.assign({}, r, { status: 'Skipped' }));
+      if (a === 'back') saveFollow(Object.assign({}, r, { status: 'Followed back', checked_on: today() }));
+      if (a === 'unfollowed') saveFollow(Object.assign({}, r, { status: 'Skipped', checked_on: today() }));
+    });
+  });
+}
+
+async function saveFollow(r) {
+  const prev = frows.slice();
+  const i = frows.findIndex(x => String(x.id) === String(r.id));
+  frows[i] = r; render();
+  try {
+    const res = await fetch(FOLLOW_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, status: r.status, followed_on: r.followed_on || '', checked_on: r.checked_on || '' }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const out = await res.json(); if (!out.ok) throw new Error('not saved');
+    toast('Saved');
+  } catch (e) { frows = prev; render(); toast('Not saved: ' + e.message); }
+}
+
+async function addFollow(e) {
+  e.preventDefault();
+  const h = cleanHandle($('addhandle').value);
+  if (!h) return;
+  const dup = frows.find(r => String(r.handle).toLowerCase() === h.toLowerCase());
+  if (dup) { toast('Already on the list: ' + dup.status); return; }
+  try {
+    const res = await fetch(FOLLOW_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: h, status: 'Followed', followed_on: today(), checked_on: '' }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const out = await res.json(); if (!out.ok) throw new Error('not saved');
+    fview = 'Waiting for follow-back';
+    toast('Added @' + h);
+    await load();
+  } catch (err) { toast('Not added: ' + err.message); }
+}
+
+// ===== Products tab (18 Oct 2026, Andy): make products from a design and a Gelato template ID =====
+// Andy makes the template in Gelato, pastes its ID here and presses Check. The template decides the product
+// (t-shirt, mug, ...). The rules for that product type (title, description, tags, pictures) need Andy's yes once.
+// Each run then goes: print fitted to the template -> Andy approves the design -> Gelato product -> Shopify draft
+// -> Andy presses Go live. SC - Product Runner moves runs on every minute; SC - Product API serves this tab.
+const PRODUCT_URL = BASE + 'sc-product-api';
+const prod = { loaded: false, loading: false, designs: [], rules: [], runs: [], tpl: null, tplErr: '', picked: new Set(), timer: null, open: {} };
+const RUN_STEPS = { queued: 'Queued', layout_running: 'Fitting the design', design_ready: 'Design ready', gelato_created: 'Making in Gelato', shopify_arrived: 'Reached Shopify', ready_check: 'Shopify draft', live: 'Live', failed: 'Failed', stopped: 'Stopped' };
+const SHOP_ADMIN = 'https://admin.shopify.com/store/stiifcompnft/products/';
+
+async function productApi(body) {
+  const r = await fetch(PRODUCT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let d = null; try { d = await r.json(); } catch (e) { d = null; }
+  if (!r.ok || !d) throw new Error(d && (d.error || d.message) ? (d.error || d.message) : 'The product service answered ' + r.status);
+  if (d.ok === false) throw new Error(d.error || 'Refused');
+  return d;
+}
+async function loadProducts(quiet) {
+  if (prod.loading) return; prod.loading = true;
+  try { const d = await productApi({ action: 'list' }); prod.designs = d.designs || []; prod.rules = d.rules || []; prod.runs = d.runs || []; prod.loaded = true; }
+  catch (e) { if (!quiet) toast('Could not load products: ' + e.message); }
+  prod.loading = false;
+  if (view === 'Products') renderProducts(); else renderTabs();
+}
+function prodRule(t) { return prod.rules.find(r => r.product_type === t) || null; }
+function openRuns(key, tid) { return prod.runs.filter(r => r.design_key === key && r.template_id === tid && ['failed', 'stopped'].indexOf(r.status) === -1); }
+function fillPattern(s, d, tplTitle) {
+  return String(s || '').split('{NAME}').join(d.name_line).split('{P1}').join(d.phrase_1).split('{P2}').join(d.phrase_2)
+    .split('{CHAR_LINE}').join(d.char_line).split('{CHARACTER}').join(d.character).split('{TEMPLATE_TITLE}').join(tplTitle || '');
+}
+
+// Flow (19 Oct 2026, Andy): no instructions; the tab leads on by itself. "Needs you" first, then the four steps
+// (product, rules, characters, make), each opening when the one before is done, then everything already under way.
+const TPL_KEY = 'sc_prod_tpl';
+function ruleBoxHtml(r) {
+  const t = prod.tpl, ex = prod.designs.find(d => d.kind !== 'logo' && d.status === 'approved');
+  const tt = t && t.product_type === r.product_type ? t.title : '[template title]';
+  return '<div class="prule" data-pt="' + esc(r.product_type) + '">'
+    + '<label>Title ({NAME}, {P1}, {P2})<input data-f="title_pattern" value="' + esc(r.title_pattern) + '"></label>'
+    + '<label>Description ({P1}, {P2}, {CHAR_LINE}, {TEMPLATE_TITLE})<textarea data-f="description_html">' + esc(r.description_html) + '</textarea></label>'
+    + '<label>Tags<input data-f="tags_extra" value="' + esc(r.tags_extra) + '"></label>'
+    + (r.layout_mode === 'sides' ? sidesHtml(r) : '')
+    + (ex ? '<div class="pex"><b>How it reads for ' + esc(ex.character) + '</b><div style="font-weight:600;margin-top:4px">' + esc(fillPattern(r.title_pattern, ex, tt)) + '</div>'
+      + '<div>' + fillPattern(r.description_html, ex, esc(tt)) + '</div></div>' : '')
+    + '<div class="prow" style="margin-top:8px"><button class="btn ghost" data-ract="save">Save</button><button class="btn done" data-ract="approve">Approve rules</button></div></div>';
+}
+function fstep(n, title, state, summary, body) {
+  // state: 'now' (open), 'done' (closed, ticked), 'lock' (waits for the step before)
+  return '<div class="fstep ' + state + '"><div class="fhead"><span class="fnum">' + (state === 'done' ? '✓' : n) + '</span><b>' + title + '</b>'
+    + (state === 'done' && summary ? '<span class="fsum">' + summary + '</span>' : '') + '</div>'
+    + (state === 'now' ? '<div class="fbody">' + body + '</div>' : '') + '</div>';
+}
+function renderProducts() {
+  renderTabs();
+  if (!prod.loaded) { $('list').innerHTML = '<div class="empty">Loading products…</div>'; loadProducts(); return; }
+  clearInterval(prod.timer); prod.timer = setInterval(() => { if (view === 'Products' && !document.hidden && !document.querySelector('.prule :focus, #p_tid:focus, #p_new :focus')) loadProducts(true); else if (view !== 'Products') clearInterval(prod.timer); }, 30000);
+  // the last template checked comes back by itself, so the flow carries on where it was left
+  if (!prod.tpl && !prod.tplErr && !prod.autoTried) { prod.autoTried = true; let k = ''; try { k = localStorage.getItem(TPL_KEY) || ''; } catch (e) {} if (k) { checkTemplate(k); return; } }
+  const t = prod.tpl;
+  const designs = prod.designs.filter(d => d.status === 'approved' && d.kind !== 'logo');
+  const rule = t ? prodRule(t.product_type) : null;
+  const ruleOk = !!(rule && rule.approved === 'yes');
+  let h = '';
+
+  // ---- Needs you: everything waiting on Andy, at the top ----
+  const needRuns = prod.runs.filter(r => r.waiting_on === 'andy_design' || r.waiting_on === 'andy_live');
+  const needDesigns = prod.designs.filter(d => d.kind !== 'logo' && d.waiting_on === 'andy_design');
+  const waitingRules = prod.rules.filter(r => r.approved !== 'yes' && prod.runs.some(x => x.waiting_on === 'andy_rules' && x.product_type === r.product_type) && !(t && t.product_type === r.product_type));
+  if (needRuns.length || needDesigns.length || waitingRules.length) {
+    h += '<div class="group-title need-title">Needs you (' + (needRuns.length + needDesigns.length + waitingRules.length) + ')</div>';
+    h += needDesigns.map(designCard).join('') + needRuns.map(r => runCard(r, 'need')).join('');
+    h += waitingRules.map(r => '<div class="pbox"><h3>' + esc(r.label) + ' rules</h3>' + ruleBoxHtml(r) + '</div>').join('');
+  }
+
+  // ---- The four steps ----
+  h += '<div class="pbox flow"><h3>Make products</h3>';
+  const s1 = '<div class="prow"><input type="text" id="p_tid" placeholder="Gelato template ID" value="' + esc($('p_tid') ? $('p_tid').value : '') + '">'
+    + '<button class="btn" id="p_check">Check</button>'
+    + '<a class="btn ghost" href="https://dashboard.gelato.com/" target="_blank" rel="noopener">Open Gelato</a></div>'
+    + (prod.tplErr ? '<div class="tplinfo" style="color:#c62828">' + esc(prod.tplErr) + '</div>' : '');
+  const sum1 = t ? esc(rule ? rule.label : t.product_type) + ' · ' + esc(t.templateName) + (t.colours && t.colours.length ? ' · ' + esc(t.colours.join(', ')) : '') + ' <a href="#" id="p_change">Change</a>' : '';
+  h += fstep(1, 'Product', t ? 'done' : 'now', sum1, s1);
+
+  let s2 = '';
+  if (t && !rule) s2 = '<div class="tplinfo" style="color:#b06a00">Claude is drafting the ' + esc(t.product_type) + ' rules. They appear here for your yes.</div>';
+  else if (t && !ruleOk) s2 = ruleBoxHtml(rule);
+  const sum2 = ruleOk ? esc(rule.label) + ' rules approved' + (rule.layout_mode === 'sides' ? ' · side 1: ' + esc(String(rule.side_1 || '').split(',').join(', ')) + ' · side 2: ' + esc(String(rule.side_2 || '').split(',').join(', ')) : '') : '';
+  h += fstep(2, 'Rules', !t ? 'lock' : ruleOk ? 'done' : 'now', sum2, s2);
+
+  let s3 = '';
+  if (t && ruleOk) {
+    s3 = '<div class="dpick">' + designs.map(d => {
+      const busy = openRuns(d.key, t.templateId).length > 0;
+      return '<label class="' + (busy ? 'busy' : '') + (prod.picked.has(d.key) ? ' on' : '') + '"><input type="checkbox" data-dk="' + esc(d.key) + '"' + (busy ? ' disabled' : (prod.picked.has(d.key) ? ' checked' : '')) + '>'
+        + (d.art_url ? '<img src="' + esc(safeUrl(d.art_url)) + '" alt="">' : '') + '<span>' + esc(d.character) + (busy ? '<br><small>already made</small>' : '') + '</span></label>';
+    }).join('') + '</div>'
+      + '<div class="prow"><button class="btn ghost small" id="p_all">Pick all</button></div>'
+      + newDesignHtml();
+  }
+  const sum3 = prod.picked.size ? prod.picked.size + ' picked' : '';
+  h += fstep(3, 'Characters', !(t && ruleOk) ? 'lock' : 'now', sum3, s3);
+
+  const n = prod.picked.size, what = rule ? rule.label.toLowerCase() : 'product';
+  const s4 = '<div class="prow"><button class="btn" id="p_start">Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') + '</button></div>';
+  h += fstep(4, 'Make', (t && ruleOk && n) ? 'now' : 'lock', '', s4);
+  h += '</div>';
+
+  // ---- Everything already under way ----
+  const building = prod.designs.filter(d => d.kind !== 'logo' && d.status !== 'approved' && d.waiting_on !== 'andy_design');
+  const groups = [
+    ['In progress', r => r.waiting_on === 'runner' || r.waiting_on === 'andy_rules', 'prog'],
+    ['Live', r => r.status === 'live', 'live'],
+    ['Failed or stopped', r => r.status === 'failed' || r.status === 'stopped', 'bad']
+  ];
+  if (building.length) h += '<div class="group-title">Designs being built (' + building.length + ')</div>' + building.map(designCard).join('');
+  groups.forEach(g => {
+    const list = prod.runs.filter(g[1]);
+    if (!list.length) return;
+    h += '<div class="group-title">' + g[0] + ' (' + list.length + ')</div>' + list.map(r => runCard(r, g[2])).join('');
+  });
+  h += libraryHtml();
+  $('list').innerHTML = h;
+  wireProducts();
+}
+async function checkTemplate(id) {
+  prod.tpl = null; prod.tplErr = ''; prod.picked.clear();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { prod.tplErr = 'That is not a Gelato template ID.'; renderProducts(); return; }
+  if ($('p_check')) { $('p_check').disabled = true; $('p_check').textContent = 'Checking…'; } else $('list').innerHTML = '<div class="empty">Loading products…</div>';
+  try { prod.tpl = await productApi({ action: 'check_template', templateId: id }); try { localStorage.setItem(TPL_KEY, id); } catch (e) {} }
+  catch (e) { prod.tplErr = 'Gelato could not read that template: ' + e.message; try { localStorage.removeItem(TPL_KEY); } catch (x) {} }
+  renderProducts();
+}
+
+function runCard(r, cls) {
+  const d = prod.designs.find(x => x.key === r.design_key) || {};
+  const rule = prodRule(r.product_type);
+  const step = RUN_STEPS[r.status] || r.status;
+  const wait = r.waiting_on === 'andy_design' ? 'Check the print and approve it' : r.waiting_on === 'andy_live' ? 'Check the Shopify draft and press Go live' : r.waiting_on === 'andy_rules' ? 'Waiting for the ' + (rule ? rule.label : r.product_type) + ' rules' : '';
+  let h = '<div class="card run ' + cls + '" data-rid="' + r.id + '"><div class="body">'
+    + '<div class="title">' + esc(r.title || ((d.character || r.design_key) + ' · ' + (rule ? rule.label : r.product_type))) + '</div>'
+    + '<div class="step"><b>' + esc(step) + '</b>' + (wait ? ' · ' + esc(wait) : '') + '</div>'
+    + '<div class="step" style="color:var(--grey)">' + esc(r.message || '') + '</div>'
+    + '<div class="step" style="color:var(--grey);font-size:12px">' + esc(r.template_name || r.template_id) + (r.updated_on ? ' · ' + esc(String(r.updated_on).slice(0, 16).replace('T', ' ')) : '') + '</div>';
+  if (r.preview_url && ['design_ready', 'gelato_created', 'shopify_arrived', 'ready_check'].indexOf(r.status) !== -1) h += '<a href="' + esc(safeUrl(r.preview_url)) + '" target="_blank" rel="noopener"><img class="pv" src="' + esc(safeUrl(r.preview_url)) + '" alt="Print file"></a>';
+  if (r.shopify_product_id) h += '<div class="step"><a href="' + SHOP_ADMIN + esc(r.shopify_product_id) + '" target="_blank" rel="noopener">Open in Shopify</a></div>';
+  h += '<div class="acts2">';
+  if (r.waiting_on === 'andy_design') h += '<button class="btn done small" data-pact="approve_design">Approve design</button><button class="btn ghost small" data-pact="reject">Reject</button>';
+  if (r.waiting_on === 'andy_live') h += '<button class="btn done small" data-pact="approve_live">Go live</button>';
+  if (r.status === 'failed' || r.status === 'stopped') h += '<button class="btn ghost small" data-pact="retry">Retry</button>';
+  if (['live', 'failed', 'stopped'].indexOf(r.status) === -1) h += '<button class="btn ghost small" data-pact="stop">Stop</button>';
+  h += '</div>';
+  if (r.log) h += '<details class="more"' + (prod.open[r.id] ? ' open' : '') + '><summary>Log</summary><pre>' + esc(r.log) + '</pre></details>';
+  return h + '</div></div>';
+}
+
+function wireProducts() {
+  const lib = $('p_lib'); if (lib) lib.ontoggle = () => { prod.libOpen = lib.open; };
+  wireDesigns();
+  const ck = $('p_check'); if (ck) ck.onclick = () => checkTemplate($('p_tid').value.trim());
+  const chg = $('p_change'); if (chg) chg.onclick = (e) => { e.preventDefault(); prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); try { localStorage.removeItem(TPL_KEY); } catch (x) {} renderProducts(); };
+  $('list').querySelectorAll('.dpick input').forEach(cb => cb.onchange = () => { cb.checked ? prod.picked.add(cb.dataset.dk) : prod.picked.delete(cb.dataset.dk); renderProducts(); });
+  const all = $('p_all'); if (all) all.onclick = () => { $('list').querySelectorAll('.dpick input:not(:disabled)').forEach(cb => prod.picked.add(cb.dataset.dk)); renderProducts(); };
+  const st = $('p_start'); if (st) st.onclick = async () => {
+    const t = prod.tpl; const keys = Array.from(prod.picked);
+    if (!t || !keys.length) return;
+    if (!confirm('Start ' + keys.length + ' ' + (prodRule(t.product_type) ? prodRule(t.product_type).label.toLowerCase() : t.product_type) + ' run(s) from "' + t.templateName + '"? Nothing goes to Gelato or Shopify until you approve each design.')) return;
+    st.disabled = true; st.textContent = 'Starting…';
+    try { const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys }); toast(d.started + ' run(s) queued'); prod.picked.clear(); await loadProducts(); }
+    catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
+  };
+  $('list').querySelectorAll('.prule').forEach(box => {
+    const pt = box.dataset.pt;
+    const vals = () => {
+      const o = {}; box.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.value);
+      [1, 2].forEach(n => { const ticks = box.querySelectorAll('[data-side="' + n + '"]'); if (ticks.length) o['side_' + n] = Array.from(ticks).filter(c => c.checked).map(c => c.value).join(','); });
+      return o;
+    };
+    box.querySelectorAll('[data-ract]').forEach(b => b.onclick = async () => {
+      const approve = b.dataset.ract === 'approve';
+      const v = vals();
+      if (box.querySelector('[data-side]') && (!v.side_1 || !v.side_2)) { toast('Pick at least one part for each side'); return; }
+      if (approve && !confirm('Approve these rules? Every new product of this type will use them.')) return;
+      b.disabled = true;
+      try { await productApi(Object.assign({ action: 'save_rule', product_type: pt, approve: approve }, v)); toast(approve ? 'Rules approved' : 'Rules saved'); await loadProducts(); }
+      catch (e) { toast('Could not save: ' + e.message); b.disabled = false; }
+    });
+  });
+  $('list').querySelectorAll('.run').forEach(c => {
+    const rid = c.dataset.rid;
+    const det = c.querySelector('details'); if (det) det.ontoggle = () => { prod.open[rid] = det.open; };
+    c.querySelectorAll('[data-pact]').forEach(b => b.onclick = async () => {
+      const stepName = b.dataset.pact;
+      let note = '';
+      if (stepName === 'approve_live' && !confirm('Put this product live on the shop now?')) return;
+      if (stepName === 'stop' && !confirm('Stop this run?')) return;
+      if (stepName === 'reject') { note = prompt('What is wrong with the design? The run stops and your note is kept in its log.', ''); if (note === null) return; }
+      b.disabled = true;
+      try { await productApi({ action: 'run_update', runId: Number(rid), step: stepName === 'reject' ? 'stop' : stepName, note: stepName === 'reject' ? 'design rejected: ' + note : note }); toast('Done'); await loadProducts(); }
+      catch (e) { toast(e.message); b.disabled = false; }
+    });
+  });
+}
+
+// Design library (18 Oct 2026, Andy): each design's picture on its own (no text), and the logos kept separate.
+function libraryHtml() {
+  const ds = prod.designs.filter(d => d.kind !== 'logo' && d.status === 'approved');
+  const logos = prod.designs.filter(d => d.kind === 'logo');
+  let h = '<details class="pbox lib"' + (prod.libOpen ? ' open' : '') + ' id="p_lib"><summary><b>Design library</b> · ' + ds.length + ' design' + (ds.length === 1 ? '' : 's') + ', ' + logos.length + ' logo' + (logos.length === 1 ? '' : 's') + '</summary>';
+  h += '<div class="libgrid">' + ds.map(d => '<div class="libcard">'
+    + (d.art_url ? '<a href="' + esc(safeUrl(d.art_url)) + '" target="_blank" rel="noopener"><img class="chk" src="' + esc(safeUrl(d.art_url)) + '" alt="' + esc(d.character) + ' picture"></a>' : '<div class="noart">No picture yet</div>')
+    + '<div class="libname">' + esc(d.character) + '</div><div class="libph">' + esc(d.phrase_1 || '') + ' / ' + esc(d.phrase_2 || '') + '</div>'
+    + '<div class="liblinks">' + (d.art_url ? '<a href="' + esc(safeUrl(d.art_url)) + '" target="_blank" rel="noopener">Picture</a>' : '')
+    + (d.print_dark_ink ? ' · <a href="' + esc(safeUrl(d.print_dark_ink)) + '" target="_blank" rel="noopener">Print, dark ink</a>' : '')
+    + (d.print_light_ink ? ' · <a href="' + esc(safeUrl(d.print_light_ink)) + '" target="_blank" rel="noopener">Print, light ink</a>' : '') + '</div></div>').join('') + '</div>';
+  if (logos.length) {
+    h += '<div class="group-title">Logos</div><div class="libgrid">' + logos.map(l => '<div class="libcard logo">'
+      + '<div class="lgw"><img src="' + esc(safeUrl(l.print_dark_ink)) + '" alt="' + esc(l.character) + ' dark ink"></div>'
+      + '<div class="lgd"><img src="' + esc(safeUrl(l.print_light_ink)) + '" alt="' + esc(l.character) + ' light ink"></div>'
+      + '<div class="libname">' + esc(l.character) + '</div>'
+      + '<div class="liblinks"><a href="' + esc(safeUrl(l.print_dark_ink)) + '" target="_blank" rel="noopener">Dark ink</a> · <a href="' + esc(safeUrl(l.print_light_ink)) + '" target="_blank" rel="noopener">Light ink</a></div></div>').join('') + '</div>';
+  }
+  return h + '</details>';
+}
+
+// ===== Mug sides (Andy, 18 Oct 2026): a different layout on each side, chosen once in the rules =====
+const PARTS = [['picture', 'Picture'], ['name', 'Name'], ['phrase', 'Phrase lines'], ['logo', 'Logo']];
+function sidesHtml(r) {
+  const has = (n, p) => String(r['side_' + n] || '').split(',').map(x => x.trim()).indexOf(p) !== -1;
+  const row = n => '<div class="sides"><b>Side ' + n + (n === 1 ? ' (faces out when held in the right hand)' : ' (faces the drinker)') + '</b>'
+    + PARTS.map(([p, l]) => '<label class="tick"><input type="checkbox" data-side="' + n + '" value="' + p + '"' + (has(n, p) ? ' checked' : '') + '> ' + l + '</label>').join('') + '</div>';
+  return '<div class="pex"><b>What goes on each side</b>' + row(1) + row(2)
+    + '<label>Side 1 sits on the <select data-f="side_1_half"><option value="left"' + (r.side_1_half !== 'right' ? ' selected' : '') + '>left half</option><option value="right"' + (r.side_1_half === 'right' ? ' selected' : '') + '>right half</option></select> of the print file</label></div>';
+}
+
+// ===== New design from reference images (Andy, 18 Oct 2026) =====
+const CLOUD_UPLOAD = 'https://api.cloudinary.com/v1_1/dkapdtxek/image/upload';
+const DESIGN_STEPS = { requested: 'Queued', phrase_check: 'Checking the phrase', generate: 'Making the picture', picture_ready: 'Picture made', building: 'Building and checking', review: 'Ready for your approval', failed: 'Failed', stopped: 'Stopped' };
+function newDesignHtml() {
+  return '<details class="pbox lib" id="p_new"' + (prod.newOpen ? ' open' : '') + '><summary>A character is missing? <b>New design</b></summary>'
+    + '<div class="prule">'
+    + '<label>Character name<input id="nd_char" placeholder="For example: Hammerin\' Hanky"></label>'
+    + '<label>Name line on the print (leave empty to use the character name)<input id="nd_name"></label>'
+    + '<label>Phrase line 1<input id="nd_p1" placeholder="For example: TOOLS OUT"></label>'
+    + '<label>Phrase line 2<input id="nd_p2" placeholder="For example: HARD HAT ON"></label>'
+    + '<label>Character line for product descriptions<input id="nd_line" placeholder="For example: Hammerin\' Hanky is fully extended and ready to work."></label>'
+    + '<label>Reference pictures (the smiling face first, then front, back and any master art)<input type="file" id="nd_refs" accept="image/png,image/jpeg,image/webp" multiple></label>'
+    + '<div id="nd_thumbs" class="libgrid"></div>'
+    + '<div class="pex">The phrase is checked first, free. Then one picture is made from your references and built to the Hammerin\' Hanky standard with every check. '
+    + '<b>About $0.13 per attempt, at most 3 attempts ($0.40).</b> Pressing Build is your yes for that cost. You approve the result before it joins the library.</div>'
+    + '<div class="prow" style="margin-top:8px"><button class="btn" id="nd_go">Build design</button></div></div></details>';
+}
+function designCard(d) {
+    const need = d.waiting_on === 'andy_design', bad = d.status === 'failed' || d.status === 'stopped';
+    let h = '<div class="card run ' + (need ? 'need' : bad ? 'bad' : 'prog') + '" data-did="' + d.id + '"><div class="body">'
+      + '<div class="title">' + esc(d.character) + ' · ' + esc(d.phrase_1 || '') + ' / ' + esc(d.phrase_2 || '') + '</div>'
+      + '<div class="step"><b>' + esc(DESIGN_STEPS[d.status] || d.status) + '</b>' + (Number(d.attempts || 0) ? ' · attempt ' + esc(d.attempts) + ' of 3' : '') + ' · spent $' + esc(Number(d.spent_usd || 0).toFixed(2)) + '</div>'
+      + '<div class="step" style="color:var(--grey)">' + esc(d.message || '') + '</div>';
+    if (d.sheet_url) h += '<div class="sheets"><a href="' + esc(safeUrl(d.sheet_url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(d.sheet_url)) + '" alt="Comparison with Hammerin\' Hanky"></a>'
+      + '<a href="' + esc(safeUrl(d.likeness_url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(d.likeness_url)) + '" alt="Likeness against the smiling reference"></a></div>';
+    else if (d.picture_url) h += '<a href="' + esc(safeUrl(d.picture_url)) + '" target="_blank" rel="noopener"><img class="pv" src="' + esc(safeUrl(d.picture_url)) + '" alt="Latest picture"></a>';
+    h += '<div class="acts2">';
+    if (need) h += '<button class="btn done small" data-dact="approve">Approve design</button><button class="btn ghost small" data-dact="reject">Reject</button>';
+    if (bad) h += '<button class="btn ghost small" data-dact="retry">Retry (new quote, $0.40 at most)</button>';
+    if (!bad && !need) h += '<button class="btn ghost small" data-dact="stop">Stop</button>';
+    h += '</div>';
+    if (d.log) h += '<details class="more"><summary>Log</summary><pre>' + esc(d.log) + '</pre></details>';
+  return h + '</div></div>';
+}
+async function uploadRef(file, i) {
+  const fd = new FormData(); fd.append('file', file); fd.append('upload_preset', 'SCSMAuto');
+  fd.append('public_id', 'design_refs/' + Date.now() + '_' + i);
+  const r = await fetch(CLOUD_UPLOAD, { method: 'POST', body: fd }); const d = await r.json();
+  if (!d.secure_url) throw new Error('Upload failed for ' + file.name);
+  return d.secure_url;
+}
+function wireDesigns() {
+  const nd = $('p_new'); if (nd) nd.ontoggle = () => { prod.newOpen = nd.open; };
+  const inp = $('nd_refs');
+  if (inp) inp.onchange = () => { $('nd_thumbs').innerHTML = Array.from(inp.files).map((f, i) => '<div class="libcard"><img class="chk" src="' + URL.createObjectURL(f) + '" alt=""><div class="libph">' + (i === 0 ? 'Smiling face' : 'Reference ' + (i + 1)) + '</div></div>').join(''); };
+  const go = $('nd_go');
+  if (go) go.onclick = async () => {
+    const v = id => $(id).value.trim();
+    const files = Array.from($('nd_refs').files || []);
+    if (!v('nd_char') || !v('nd_p1') || !v('nd_p2') || !v('nd_line')) { toast('Fill in the name, both phrase lines and the character line'); return; }
+    if (!files.length) { toast('Add the reference pictures, the smiling face first'); return; }
+    if (!confirm('Build the ' + v('nd_char') + ' design? About $0.13 per attempt, $0.40 at most.')) return;
+    go.disabled = true; go.textContent = 'Uploading pictures…';
+    try {
+      const refs = []; for (let i = 0; i < files.length; i++) refs.push(await uploadRef(files[i], i));
+      go.textContent = 'Starting…';
+      const d = await productApi({ action: 'new_design', character: v('nd_char'), name_line: v('nd_name'), phrase_1: v('nd_p1'), phrase_2: v('nd_p2'), char_line: v('nd_line'), refs: refs });
+      toast('Design ' + d.key + ' queued'); prod.newOpen = false; await loadProducts();
+    } catch (e) { toast('Could not start: ' + e.message); go.disabled = false; go.textContent = 'Build design'; }
+  };
+  $('list').querySelectorAll('[data-did]').forEach(c => {
+    c.querySelectorAll('[data-dact]').forEach(b => b.onclick = async () => {
+      let step = b.dataset.dact, note = '';
+      if (step === 'approve' && !confirm('Approve this design? It joins the library and the product list.')) return;
+      if (step === 'reject') { note = prompt('What is wrong with the design? It stops and your note is kept in its log.', ''); if (note === null) return; step = 'stop'; note = 'design rejected: ' + note; }
+      if (step === 'stop' && !note && !confirm('Stop building this design?')) return;
+      if (step === 'retry' && !confirm('Start again with up to 3 new attempts? About $0.13 each, $0.40 at most.')) return;
+      b.disabled = true;
+      try { await productApi({ action: 'design_update', designId: Number(c.dataset.did), step: step, note: note }); toast('Done'); await loadProducts(); }
+      catch (e) { toast(e.message); b.disabled = false; }
+    });
+  });
+}
+
+load();
+loadTrack();
+
+// ===== Pricing tab (18 Oct 2026, Andy): cost, price and profit for every product in every market =====
+// Data: n8n data table SC Pricing Matrix (inputs only: price, Gelato cost, Gelato shipping, FX, PayPal, code).
+// Profit is worked out here: price in GBP - Gelato cost - Gelato shipping (only where we pay it) - PayPal fee.
+// "After code" repeats it with the biggest promotion taken off. LOSS = zero or less. LOW = under the market's floor.
+const PRICING_URL = BASE + 'sc-pricing-list', PRICING_FLOOR_URL = BASE + 'sc-pricing-floor';
+const pr = { loaded: false, loading: false, rows: [], fx: {}, floors: {}, pp: { pct: 2.9, fixed: 0.3 }, promo: 10, mkt: 'All', prob: false, err: '' };
+const PR_SYM = { GBP: '£', USD: '$', CAD: 'C$', EUR: '€', AUD: 'A$', NZD: 'NZ$' };
+async function loadPricing(quiet) {
+  if (pr.loading) return; pr.loading = true;
+  try {
+    const r = await fetch(PRICING_URL); if (!r.ok) throw new Error('answered ' + r.status);
+    let all = await r.json(); if (all && !Array.isArray(all)) all = [all]; if (!Array.isArray(all)) throw new Error('unexpected answer');
+    pr.err = '';
+    pr.rows = all.filter(x => x.kind === 'row'); pr.fx = {}; pr.floors = {};
+    all.forEach(x => {
+      if (x.kind === 'fx') pr.fx[x.currency] = Number(x.price_gbp);
+      if (x.kind === 'floor') pr.floors[x.market] = Number(x.margin_pct);
+      if (x.kind === 'setting' && x.group === 'paypal') pr.pp = { pct: Number(x.margin_pct), fixed: Number(x.gelato_cost_gbp) };
+      if (x.kind === 'setting' && x.group === 'promo') pr.promo = Number(x.margin_pct);
+    });
+    pr.loaded = true;
+  } catch (e) { pr.err = e.message; if (!quiet) toast('Could not load pricing: ' + e.message); }
+  pr.loading = false;
+  if (view === 'Pricing') renderPricing(); else renderTabs();
+}
+function prCalc(x) {
+  const fx = pr.fx[x.currency] || 1, pg = Number(x.price_local) / fx, paid = x.shopper_ship !== 'Charged';
+  const cost = Number(x.gelato_cost_gbp) + (paid ? Number(x.gelato_ship_gbp) : 0);
+  const fee = pg * pr.pp.pct / 100 + pr.pp.fixed, profit = pg - cost - fee;
+  const pd = pg * (1 - pr.promo / 100), profitD = pd - cost - (pd * pr.pp.pct / 100 + pr.pp.fixed);
+  const floorKey = /^Europe/.test(x.market) ? 'Europe' : x.market, floor = pr.floors[floorKey] || 0;
+  const margin = profit / pg * 100;
+  const flag = profit <= 0 || profitD <= 0 ? 'LOSS' : margin < floor ? 'LOW' : '';
+  return { pg, paid, cost, fee, profit, profitD, margin, flag, loc: Number(x.price_local), sym: PR_SYM[x.currency] || '' };
+}
+function prTone(profit, margin, floor) {
+  if (profit <= 0) return ['#f8d0d0', '#7f1414'];
+  if (floor !== null && margin < floor) return ['#ffe9a8', '#6b4a00'];
+  return ['#d4f0dc', '#11502a'];
+}
+const PR_COLS = [['product', 'Product'], ['market', 'Market'], ['price', 'Price'], ['cost', 'Gelato cost + shipping'], ['profit', 'Profit'], ['after', 'Profit after code']];
+function prKey(x, c, k) {
+  if (k === 'product') return (x.product + ' ' + x.size).toLowerCase();
+  if (k === 'market') return x.market.toLowerCase();
+  if (k === 'price') return c.pg; if (k === 'cost') return c.cost; if (k === 'profit') return c.profit; if (k === 'after') return c.profitD;
+  return 0;
+}
+function renderPricing() {
+  renderTabs();
+  if (!pr.loaded) {
+    if (pr.err) { $('list').innerHTML = '<div class="error-state">Could not load pricing (' + esc(pr.err) + '). Check the workflow SC - Pricing API is active. <button class="btn" id="pr_retry">Try again</button></div>'; $('pr_retry').onclick = () => { pr.err = ''; renderPricing(); }; return; }
+    $('list').innerHTML = '<div class="empty">Loading pricing…</div>'; loadPricing(); return;
+  }
+  if (!pr.sort) { pr.sort = 'after'; pr.dir = 1; }
+  const markets = ['All'].concat(Array.from(new Set(pr.rows.map(x => x.market))));
+  const f = n => (n < 0 ? '-' : '') + '£' + Math.abs(n).toFixed(2);
+  const calc = pr.rows.map(x => { const c = prCalc(x), fl = c.floorV; return [x, c]; });
+  const floorOf = x => pr.floors[/^Europe/.test(x.market) ? 'Europe' : x.market] || 0;
+  const worst = ([x, c]) => { const pd = c.pg * (1 - pr.promo / 100); const t1 = prTone(c.profit, c.margin, floorOf(x)), t2 = prTone(c.profitD, 0, null); return (t1[0] === '#f8d0d0' || t2[0] === '#f8d0d0') ? 'red' : (t1[0] === '#ffe9a8' || t2[0] === '#ffe9a8') ? 'amber' : 'green'; };
+  const nRed = calc.filter(r => worst(r) === 'red').length, nAmb = calc.filter(r => worst(r) === 'amber').length, nGrn = calc.length - nRed - nAmb;
+  const shown = calc.filter(([x, c]) => (pr.mkt === 'All' || x.market === pr.mkt) && (!pr.prob || worst([x, c]) !== 'green'))
+    .sort((p, q) => { const a = prKey(p[0], p[1], pr.sort), b = prKey(q[0], q[1], pr.sort); return (a < b ? -1 : a > b ? 1 : 0) * pr.dir; });
+  const tile = (n, label, bg, fg) => '<div style="flex:1;min-width:120px;padding:10px 12px;border-radius:8px;background:' + bg + ';color:' + fg + '"><div style="font-size:24px;font-weight:700;line-height:1">' + n + '</div><div style="font-size:12px">' + label + '</div></div>';
+  let h = '<style>.prtab{width:100%;border-collapse:collapse;font-size:13px}.prtab th{text-align:left;padding:6px;border-bottom:2px solid #bbb;cursor:pointer;user-select:none;vertical-align:bottom}.prtab td{padding:5px 6px;border-bottom:1px solid #e6e6e6;vertical-align:top}.prtab .sub{display:block;font-size:11px;opacity:.7}@media(max-width:700px){.prtab{font-size:12px}.prtab th,.prtab td{padding:4px 3px}}</style>'
+    + '<div class="pbox"><h3>Pricing, shipping and profit</h3>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">' + tile(nRed, 'losing money (before or after the code)', '#f8d0d0', '#7f1414') + tile(nAmb, 'under the floor (price rule not met)', '#ffe9a8', '#6b4a00') + tile(nGrn, 'healthy', '#d4f0dc', '#11502a') + '</div>'
+    + '<div class="prow" style="flex-wrap:wrap;gap:10px;align-items:center"><label>Sort by <select id="pr_s">' + PR_COLS.map(c => '<option value="' + c[0] + '"' + (c[0] === pr.sort ? ' selected' : '') + '>' + c[1] + '</option>').join('') + '</select></label>'
+    + '<button class="btn" id="pr_d">' + (pr.dir === 1 ? 'Lowest first ↑' : 'Highest first ↓') + '</button>'
+    + '<label>Market <select id="pr_m">' + markets.map(m => '<option' + (m === pr.mkt ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></label>'
+    + '<label><input type="checkbox" id="pr_p"' + (pr.prob ? ' checked' : '') + '> Problems only</label></div>'
+    + '<details style="margin-top:8px"><summary>Floor per market (profit as % of price; 25.9% = the standard rule of 35% on top of cost) and how profit is worked out</summary>'
+    + '<div class="tplinfo">Profit = price in pounds - Gelato cost - Gelato shipping (where we pay it) - PayPal fee (' + pr.pp.pct + '% + £' + pr.pp.fixed.toFixed(2) + '). After code = the same with ' + pr.promo + '% off (STANDTALL10, ends 30 Nov 2026). Standard price rule: total cost (Gelato cost, Gelato shipping where we pay it, PayPal fee) plus 35%, rounded up to a whole number; Canada is 25% as long as it makes a profit. Rates and Gelato costs checked 18 Oct 2026. NFTs are not on this tab yet.</div>'
+    + '<div class="prow" style="flex-wrap:wrap;gap:8px">' + ['United States', 'Canada', 'United Kingdom', 'Germany (EU)', 'Australia', 'New Zealand', 'Europe'].map(m =>
+      '<label>' + esc(m) + ' <input type="number" class="pr_fl" data-m="' + esc(m) + '" value="' + (pr.floors[m] || 0) + '" style="width:56px"></label>').join('') + '</div></details></div>'
+    + '<table class="prtab"><thead><tr>' + PR_COLS.map(c => '<th data-k="' + c[0] + '">' + c[1] + (pr.sort === c[0] ? (pr.dir === 1 ? ' ↑' : ' ↓') : '') + '</th>').join('') + '</tr></thead><tbody>';
+  shown.forEach(([x, c]) => {
+    const pd = c.pg * (1 - pr.promo / 100), fl = floorOf(x);
+    const t1 = prTone(c.profit, c.margin, fl), t2 = prTone(c.profitD, 0, null);
+    const cell = (t, main, sub) => '<td style="background:' + t[0] + ';color:' + t[1] + '"><b>' + main + '</b><span class="sub">' + sub + '</span></td>';
+    h += '<tr><td><b>' + esc(x.product.replace(/^\d+ /, '')) + '</b><span class="sub">' + esc(x.size === '-' ? '' : x.size) + '</span></td>'
+      + '<td>' + esc(x.market.replace('Europe: ', '')) + '<span class="sub">' + (/^Europe/.test(x.market) ? 'Europe · ' : '') + 'made in ' + esc(x.made_in) + '</span></td>'
+      + '<td>' + c.sym + (Number.isInteger(c.loc) ? c.loc.toFixed(0) : c.loc.toFixed(2)) + '<span class="sub">' + f(c.pg) + '</span></td>'
+      + '<td>' + f(Number(x.gelato_cost_gbp)) + ' + ' + f(Number(x.gelato_ship_gbp)) + '<span class="sub">' + (c.paid ? 'we pay the shipping' : 'shopper pays the shipping') + '</span></td>'
+      + cell(t1, f(c.profit), '+' + (c.profit / (c.cost + c.fee) * 100).toFixed(1) + '% on cost · ' + c.margin.toFixed(1) + '% of price')
+      + cell(t2, f(c.profitD), (c.profitD / pd * 100).toFixed(1) + '% of price')
+      + '</tr>';
+  });
+  h += '</tbody></table>';
+  $('list').innerHTML = h;
+  $('pr_s').onchange = e => { pr.sort = e.target.value; renderPricing(); };
+  $('pr_d').onclick = () => { pr.dir = -pr.dir; renderPricing(); };
+  $('list').querySelectorAll('.prtab th').forEach(th => th.onclick = () => { if (pr.sort === th.dataset.k) pr.dir = -pr.dir; else { pr.sort = th.dataset.k; pr.dir = 1; } renderPricing(); });
+  $('pr_m').onchange = e => { pr.mkt = e.target.value; renderPricing(); };
+  $('pr_p').onchange = e => { pr.prob = e.target.checked; renderPricing(); };
+  $('list').querySelectorAll('.pr_fl').forEach(i => i.onchange = async () => {
+    try {
+      const r = await fetch(PRICING_FLOOR_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ market: i.dataset.m, floor: Number(i.value) }) });
+      if (!r.ok) throw new Error('answered ' + r.status);
+      pr.floors[i.dataset.m] = Number(i.value); toast('Floor saved'); renderPricing();
+    } catch (e) { toast('Not saved: ' + e.message); }
+  });
+}
+</script>
+</body>
+</html>
