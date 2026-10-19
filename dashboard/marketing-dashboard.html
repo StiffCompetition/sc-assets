@@ -172,6 +172,18 @@
     background-color: #fff; background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%);
     background-size: 16px 16px; background-position: 0 0,0 8px,8px -8px,-8px 0; }
   .run .acts2 { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .lib summary { cursor: pointer; font-size: 15px; }
+  .libgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+  .libcard { border: 1px solid var(--line); padding: 8px; background: #fff; font-size: 13px; min-width: 0; }
+  .libcard img.chk { width: 100%; aspect-ratio: 1; object-fit: contain; display: block;
+    background-color: #fff; background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%);
+    background-size: 14px 14px; background-position: 0 0,0 7px,7px -7px,-7px 0; }
+  .libcard .noart { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; color: var(--grey); background: #f3f3f3; }
+  .libname { font-weight: 600; margin-top: 6px; } .libph { color: var(--grey); font-size: 12px; }
+  .liblinks { font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+  .libcard.logo { grid-column: span 2; } .libcard.logo .lgw, .libcard.logo .lgd { padding: 10px; } .libcard.logo .lgd { background: #1e1e1e; }
+  .libcard.logo img { width: 100%; display: block; }
+  @media (max-width: 640px) { .libcard.logo { grid-column: span 1; } }
   .run pre { white-space: pre-wrap; font-size: 12px; background: #fafafa; padding: 6px; margin: 4px 0 0; }
 </style>
 </head>
@@ -935,7 +947,7 @@ function renderProducts() {
   if (!prod.loaded) { $('list').innerHTML = '<div class="empty">Loading products…</div>'; loadProducts(); return; }
   clearInterval(prod.timer); prod.timer = setInterval(() => { if (view === 'Products' && !document.hidden && !document.querySelector('.prule :focus, #p_tid:focus')) loadProducts(true); else if (view !== 'Products') clearInterval(prod.timer); }, 30000);
   const t = prod.tpl;
-  const designs = prod.designs.filter(d => d.status === 'approved');
+  const designs = prod.designs.filter(d => d.status === 'approved' && d.kind !== 'logo');
   let h = '<div class="pbox"><h3>New product</h3>'
     + '<div class="prow"><input type="text" id="p_tid" placeholder="Gelato template ID (made in the Gelato dashboard)" value="' + esc(t ? t.templateId : ($('p_tid') ? $('p_tid').value : '')) + '">'
     + '<button class="btn" id="p_check">Check</button></div>';
@@ -956,8 +968,10 @@ function renderProducts() {
   }
   h += '</div>';
 
+  h += libraryHtml();
+
   prod.rules.filter(r => r.approved !== 'yes').forEach(r => {
-    const ex = prod.designs[0];
+    const ex = prod.designs.find(d => d.kind !== 'logo');
     h += '<div class="pbox prule" data-pt="' + esc(r.product_type) + '"><h3>' + esc(r.label) + ' rules: draft for your yes</h3>'
       + '<div class="tplinfo"><div><b>Layout</b>' + esc(r.layout_mode) + '</div><div><b>Ink</b>' + esc(r.ink_rule) + '</div><div><b>Pictures</b>' + esc(r.picture_set) + '</div></div>'
       + '<label>Title pattern ({NAME}, {P1}, {P2})<input data-f="title_pattern" value="' + esc(r.title_pattern) + '"></label>'
@@ -1007,6 +1021,7 @@ function runCard(r, cls) {
 }
 
 function wireProducts() {
+  const lib = $('p_lib'); if (lib) lib.ontoggle = () => { prod.libOpen = lib.open; };
   $('p_check').onclick = async () => {
     const id = $('p_tid').value.trim();
     prod.tpl = null; prod.tplErr = ''; prod.picked.clear();
@@ -1051,6 +1066,27 @@ function wireProducts() {
       catch (e) { toast(e.message); b.disabled = false; }
     });
   });
+}
+
+// Design library (18 Oct 2026, Andy): each design's picture on its own (no text), and the logos kept separate.
+function libraryHtml() {
+  const ds = prod.designs.filter(d => d.kind !== 'logo' && d.status === 'approved');
+  const logos = prod.designs.filter(d => d.kind === 'logo');
+  let h = '<details class="pbox lib"' + (prod.libOpen ? ' open' : '') + ' id="p_lib"><summary><b>Design library</b> · ' + ds.length + ' design' + (ds.length === 1 ? '' : 's') + ', ' + logos.length + ' logo' + (logos.length === 1 ? '' : 's') + '</summary>';
+  h += '<div class="libgrid">' + ds.map(d => '<div class="libcard">'
+    + (d.art_url ? '<a href="' + esc(safeUrl(d.art_url)) + '" target="_blank" rel="noopener"><img class="chk" src="' + esc(safeUrl(d.art_url)) + '" alt="' + esc(d.character) + ' picture"></a>' : '<div class="noart">No picture yet</div>')
+    + '<div class="libname">' + esc(d.character) + '</div><div class="libph">' + esc(d.phrase_1 || '') + ' / ' + esc(d.phrase_2 || '') + '</div>'
+    + '<div class="liblinks">' + (d.art_url ? '<a href="' + esc(safeUrl(d.art_url)) + '" target="_blank" rel="noopener">Picture</a>' : '')
+    + (d.print_dark_ink ? ' · <a href="' + esc(safeUrl(d.print_dark_ink)) + '" target="_blank" rel="noopener">Print, dark ink</a>' : '')
+    + (d.print_light_ink ? ' · <a href="' + esc(safeUrl(d.print_light_ink)) + '" target="_blank" rel="noopener">Print, light ink</a>' : '') + '</div></div>').join('') + '</div>';
+  if (logos.length) {
+    h += '<div class="group-title">Logos</div><div class="libgrid">' + logos.map(l => '<div class="libcard logo">'
+      + '<div class="lgw"><img src="' + esc(safeUrl(l.print_dark_ink)) + '" alt="' + esc(l.character) + ' dark ink"></div>'
+      + '<div class="lgd"><img src="' + esc(safeUrl(l.print_light_ink)) + '" alt="' + esc(l.character) + ' light ink"></div>'
+      + '<div class="libname">' + esc(l.character) + '</div>'
+      + '<div class="liblinks"><a href="' + esc(safeUrl(l.print_dark_ink)) + '" target="_blank" rel="noopener">Dark ink</a> · <a href="' + esc(safeUrl(l.print_light_ink)) + '" target="_blank" rel="noopener">Light ink</a></div></div>').join('') + '</div>';
+  }
+  return h + '</details>';
 }
 
 load();
