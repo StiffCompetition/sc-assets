@@ -960,7 +960,6 @@ const PRODUCT_URL = BASE + 'sc-product-api';
 const prod = { loaded: false, loading: false, designs: [], rules: [], runs: [], photos: [], tpl: null, tplErr: '', picked: new Set(), timer: null, open: {}, colour: '', cols: {}, pv: '' };
 const SHOP_ADMIN = 'https://admin.shopify.com/store/stiifcompnft/products/';
 const TPL_KEY = 'sc_prod_tpl';
-const PHOTO_USD = 0.06;   // one 2K model photo (Gemini image, Google price page 19 Oct 2026: $0.0504 a picture plus the reference images)
 const LIGHT = ['white', 'light-blue', 'daisy', 'natural', 'ash', 'sand', 'light-pink', 'sport-grey', 'heather-grey', 'cream', 'ivory', 'gold'];
 const COLOUR_HEX = { white: '#f7f7f5', black: '#1e1e1e', navy: '#1f2a44', royal: '#2d4fa1', red: '#c0272d', orange: '#f26b21', gold: '#f2b233', purple: '#4b2e83',
   'irish-green': '#1d8a4a', 'military-green': '#5b5f45', daisy: '#f6d34a', 'light-blue': '#a7c8e6', 'sport-grey': '#b9bcbe', 'heather-grey': '#b5b5b8', ash: '#d9d9d6',
@@ -1075,36 +1074,25 @@ function designHtml(t, rule) {
 }
 
 // ----- model photos the pictures are built on (garments with our pictures) -----
+// 19 Oct 2026 (Andy): the model process makes the plain base pictures (SC Models Playbook) and puts them in the SC Model
+// Photos store; this step only shows which approved bases the product flow will pick. One base per pose serves every colour.
+const MODELS_PLAYBOOK = 'https://docs.google.com/document/d/18BQTc83D3Em7k-5CPqXuWk_F9lncS1N9HGHVhrEKReg/edit';
 function photosPlan(t, rule) {
-  const cols = makeColours(), pt = t.product_type, back = partsOf(rule, 2).length > 0, front = partsOf(rule, 1).length > 0;
-  const mine = prod.photos.filter(p => p.product_type === pt && p.status !== 'removed');
-  const MODELS = ['blond', 'female', 'brunette'];
-  const need = [];
-  const mainSlot = front ? 'main' : 'back';
-  cols.forEach((c, i) => need.push({ slot: mainSlot, colour: c, model: MODELS[i % 3], have: mine.filter(p => p.slot === mainSlot && p.colour === c) }));
-  if (front) { const c = cols[1] || cols[0]; need.push({ slot: 'second', colour: c, model: MODELS[(cols.indexOf(c) + 1) % 3], have: mine.filter(p => p.slot === 'second' && cols.indexOf(p.colour) !== -1) }); }
-  if (front && back) need.push({ slot: 'back', colour: cols[0], model: 'brunette', have: mine.filter(p => p.slot === 'back' && cols.indexOf(p.colour) !== -1) });
-  need.forEach(n => { n.best = n.have.find(p => p.status === 'approved') || n.have.find(p => p.status === 'review') || n.have[0] || null; });
-  return need;
+  const back = partsOf(rule, 2).length > 0, front = partsOf(rule, 1).length > 0;
+  const bases = prod.photos.filter(p => p.product_type === t.product_type && p.kind && p.status === 'approved' && /^https:/.test(p.url || ''));
+  const slots = front ? ['main', 'second'].concat(back ? ['back'] : []) : ['back'];
+  return slots.map(s => ({ slot: s, bases: bases.filter(p => p.slot === s) }));
 }
 function photosHtml(t, rule) {
   if (!oursPictures(rule)) return '<div class="tplinfo">' + esc(rule.label) + ' products use Gelato\'s own pictures.</div>';
-  const need = photosPlan(t, rule), missing = need.filter(n => !n.best);
-  const label = { main: 'Front', second: 'Second pose', back: 'Back' };
-  let h = '<div class="photos">' + need.map(n => {
-    const p = n.best, st = p ? p.status : 'missing';
-    const tag = { approved: '✓ Approved', review: 'Check this photo', requested: 'Waiting to be made', making: 'Being made…', failed: 'Failed' }[st] || 'Not made yet';
-    return '<figure class="ph ' + st + '"' + (p ? ' data-phid="' + p.id + '"' : '') + '>' + (p && p.url ? '<a href="' + esc(safeUrl(p.url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(p.url)) + '" alt=""></a>' : '<div class="ph-none" style="background:' + (COLOUR_HEX[n.colour] || '#ccc') + '"></div>')
-      + '<figcaption><b>' + label[n.slot] + '</b> · ' + esc(n.colour.replace(/-/g, ' ')) + '<br><span class="ph-st">' + tag + '</span>'
-      + (st === 'review' ? '<span class="ph-acts"><button class="btn done small" data-phact="approve">Approve</button><button class="btn ghost small" data-phact="redo">Redo $' + PHOTO_USD.toFixed(2) + '</button></span>' : '')
-      + (st === 'failed' ? '<span class="ph-acts"><button class="btn ghost small" data-phact="redo">Try again $' + PHOTO_USD.toFixed(2) + '</button></span>' : '')
-      + (st === 'approved' ? '<span class="ph-acts"><button class="btn ghost small" data-phact="redo">Replace $' + PHOTO_USD.toFixed(2) + '</button></span>' : '')
-      + '</figcaption></figure>';
-  }).join('') + '</div>';
-  if (missing.length) h += '<div class="prow" style="margin-top:8px"><button class="btn" id="p_mkphotos" data-n="' + missing.length + '">Make ' + missing.length + ' model photo' + (missing.length === 1 ? '' : 's') + ' · $' + (missing.length * PHOTO_USD).toFixed(2) + '</button></div>';
-  return h;
+  const plan = photosPlan(t, rule), label = { main: 'Front', second: 'Second pose', back: 'Back' };
+  if (!photosReady(t, rule)) return '<div class="tplinfo">Waiting for the model pictures for ' + esc(rule.label.toLowerCase()) + 's from the model process (<a href="' + MODELS_PLAYBOOK + '" target="_blank" rel="noopener">SC Models Playbook</a>). You can still press Make: the pictures go on as soon as they arrive.</div>';
+  return '<div class="photos">' + plan.map(n => n.bases.length
+    ? n.bases.map(p => '<figure class="ph approved"><a href="' + esc(safeUrl(p.url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(p.url)) + '" alt=""></a><figcaption><b>' + label[n.slot] + '</b> · ' + esc(p.model || '') + '</figcaption></figure>').join('')
+    : '<figure class="ph missing"><div class="ph-none"></div><figcaption><b>' + label[n.slot] + '</b><br><span class="ph-st">None yet</span></figcaption></figure>').join('') + '</div>'
+    + '<div class="tplinfo" style="margin-top:6px">Each picture is recoloured to every colour you chose, with your print and a contrasting backdrop.</div>';
 }
-function photosReady(t, rule) { return !oursPictures(rule) || photosPlan(t, rule).every(n => n.best && n.best.status === 'approved'); }
+function photosReady(t, rule) { return !oursPictures(rule) || photosPlan(t, rule)[0].bases.length > 0; }
 
 // ----- steps -----
 function ruleBoxHtml(r) {
@@ -1134,7 +1122,7 @@ function renderProducts() {
   // Needs you
   const needRuns = prod.runs.filter(r => /^andy_/.test(r.waiting_on || '') && r.waiting_on !== 'andy_rules');
   const needDesigns = prod.designs.filter(d => d.kind !== 'logo' && d.waiting_on === 'andy_design');
-  const needPhotos = prod.photos.filter(p => p.status === 'review');
+  const needPhotos = [];
   if (needRuns.length || needDesigns.length || needPhotos.length) {
     h += '<div class="group-title need-title">Needs you (' + (needRuns.length + needDesigns.length + needPhotos.length) + ')</div>';
     if (needPhotos.length) h += '<div class="card run need"><div class="body"><div class="title">' + needPhotos.length + ' model photo' + (needPhotos.length === 1 ? '' : 's') + ' to check</div><div class="step"><a href="#fstep5" id="p_gophotos">Go to Model photos</a></div></div></div>';
@@ -1169,10 +1157,10 @@ function renderProducts() {
   h += fstep(4, 'Characters and colours', open ? 'now' : 'lock', open && n ? n + ' picked' : '', s4);
   const phOk = open && photosReady(t, rule);
   h += fstep(5, 'Model photos', open ? (phOk && oursPictures(rule) && !prod.showPhotos ? 'done' : 'now') : 'lock',
-    open && phOk && oursPictures(rule) ? 'All approved <a href="#" id="p_showphotos">Show</a>' : '', open ? photosHtml(t, rule) : '');
+    open && phOk && oursPictures(rule) ? 'Ready <a href="#" id="p_showphotos">Show</a>' : '', open ? photosHtml(t, rule) : '');
   const what = rule ? rule.label.toLowerCase() : 'product';
   const noCol = open && !(rule.layout_mode === 'sides') && all.some(d => prod.picked.has(d.key) && !colsOf(d.key).size);
-  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures wait until every model photo is approved.</span>' : '') + '</div>'
+  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
     + (noCol ? '<span style="color:#c62828">Every character needs at least one colour.</span><br>' : '') + '<div class="prow"><button class="btn" id="p_start"' + (n && !noCol ? '' : ' disabled') + '>' + (n ? 'Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') : 'Pick characters to make') + '</button></div>' : '';
   h += fstep(6, 'Make', open ? 'now' : 'lock', '', s6);
   h += '</div>';
@@ -1276,20 +1264,6 @@ function wireProducts() {
     const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys, colours: colours }); toast(d.started + ' started'); prod.picked.clear(); await loadProducts(); }
     catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
   };
-  const mk = $('p_mkphotos'); if (mk) mk.onclick = async () => {
-    const t = prod.tpl, r = prodRule(t.product_type), items = photosPlan(t, r).filter(n => !n.best).map(n => ({ slot: n.slot, colour: n.colour, model: n.model }));
-    if (!confirm('Make ' + items.length + ' model photo' + (items.length === 1 ? '' : 's') + ' for ' + r.label.toLowerCase() + 's?\n\nCost: $' + (items.length * PHOTO_USD).toFixed(2) + ' (about $' + PHOTO_USD.toFixed(2) + ' each). Pressing OK is your yes to that cost. Made once and reused for every design.')) return;
-    mk.disabled = true; mk.textContent = 'Requesting…';
-    try { await productApi({ action: 'photos_request', product_type: t.product_type, template_id: t.templateId, items: items }); toast('Model photos requested'); prod.showPhotos = true; await loadProducts(); }
-    catch (e) { toast('Could not request: ' + e.message); mk.disabled = false; }
-  };
-  $('list').querySelectorAll('[data-phid] [data-phact]').forEach(b => b.onclick = async () => {
-    const id = Number(b.closest('[data-phid]').dataset.phid), step = b.dataset.phact;
-    if (step === 'redo' && !confirm('Make this model photo again? Cost: $' + PHOTO_USD.toFixed(2) + '. Pressing OK is your yes to that cost.')) return;
-    b.disabled = true;
-    try { await productApi({ action: 'photo_update', photoId: id, step: step }); toast(step === 'approve' ? 'Photo approved' : 'Being made again'); await loadProducts(); }
-    catch (e) { toast(e.message); b.disabled = false; }
-  });
   $('list').querySelectorAll('.prule').forEach(box => {
     const pt = box.dataset.pt;
     const vals = () => { const o = {}; box.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.value); return o; };
