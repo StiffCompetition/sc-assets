@@ -1657,13 +1657,13 @@ let PROMOS = [];
 let LEFT = {};
 let DRAFTS = 0;
 function ymd(d) { return d.toISOString().slice(0, 10); }
-// Reschedule (1 Oct 2026; 7 Oct 2026): moves a post to another date and/or London time. Only the Day Greeting belongs to its
-// weekday (Brand Lore stays on Sundays); every other post can move to any day whose own character is not the post's character.
+// Reschedule (1 Oct 2026; 7 Oct 2026; 19 Oct 2026): moves a post to another date and/or London time. Every post, the Day Greeting and Brand Lore
+// included, can move to any day (Andy: the calendar guides, it never restricts). Only a non-Day-Greeting post cannot go to a day whose own character is the post's character.
 // A slot that already holds a post is refused. Status and approval are kept.
 function openReschedule(r) {
   const box = document.getElementById('saveStatus');
   const curDate = londonYmd(r.post_date);
-  const anyDay = r.format !== 'Day Greeting' && r.format !== 'Brand Lore';
+  const anyDay = true;   // 19 Oct 2026 (Andy): the calendar guides what to make, it never restricts when he posts; any post can move to any day
   const dowName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(curDate + 'T12:00:00Z').getUTCDay()];
   box.innerHTML = '<div class="panel-box" style="margin-top:10px">' +
     '<div style="font-weight:700;margin-bottom:6px">Reschedule</div>' +
@@ -1677,7 +1677,7 @@ function openReschedule(r) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = 'Pick a date.'; return; }
     const dow = new Date(date + 'T12:00:00Z').getUTCDay();
     if (!anyDay && dow !== new Date(curDate + 'T12:00:00Z').getUTCDay()) { msg.textContent = 'This post belongs to ' + dowName + '; pick another ' + dowName + '.'; return; }
-    if (anyDay && r.character === DAY_CHAR[dow]) { msg.textContent = r.character + ' is that day\'s character; only the Day Greeting uses him. Pick another day.'; return; }
+    if (anyDay && r.format !== 'Day Greeting' && r.character === DAY_CHAR[dow]) { msg.textContent = r.character + ' is that day\'s character; only the Day Greeting uses him. Pick another day.'; return; }
     const slot = time ? 'custom' : (r.format === 'Product' ? '12pm' : (r.format === 'Day Greeting' ? '6am' : '7am'));
     const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : ((dow === 0 || dow === 6) ? '09:00' : '07:00')))) + ':00Z');
     if (due.getTime() < Date.now() - 60 * 60000) { msg.textContent = 'That time has already passed.'; return; }
