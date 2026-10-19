@@ -1225,23 +1225,21 @@ function prCalc(x) {
   const cost = Number(x.gelato_cost_gbp) + (paid ? Number(x.gelato_ship_gbp) : 0);
   const fee = pg * pr.pp.pct / 100 + pr.pp.fixed, profit = pg - cost - fee;
   const pd = pg * (1 - pr.promo / 100), profitD = pd - cost - (pd * pr.pp.pct / 100 + pr.pp.fixed);
-  const freeD = pg * (1 - pr.promo / 100) - Number(x.gelato_cost_gbp) - Number(x.gelato_ship_gbp) - (pd * pr.pp.pct / 100 + pr.pp.fixed);
   const floorKey = /^Europe/.test(x.market) ? 'Europe' : x.market, floor = pr.floors[floorKey] || 0;
   const margin = profit / pg * 100;
   const flag = profit <= 0 || profitD <= 0 ? 'LOSS' : margin < floor ? 'LOW' : '';
-  return { pg, paid, cost, fee, profit, profitD, freeD, margin, flag, loc: Number(x.price_local), sym: PR_SYM[x.currency] || '' };
+  return { pg, paid, cost, fee, profit, profitD, margin, flag, loc: Number(x.price_local), sym: PR_SYM[x.currency] || '' };
 }
 function prTone(profit, margin, floor) {
   if (profit <= 0) return ['#f8d0d0', '#7f1414'];
   if (floor !== null && margin < floor) return ['#ffe9a8', '#6b4a00'];
   return ['#d4f0dc', '#11502a'];
 }
-const PR_COLS = [['product', 'Product'], ['market', 'Market'], ['price', 'Price'], ['cost', 'Gelato cost + shipping'], ['profit', 'Profit'], ['after', 'Profit after code'], ['free', 'If shipping were free, after code']];
+const PR_COLS = [['product', 'Product'], ['market', 'Market'], ['price', 'Price'], ['cost', 'Gelato cost + shipping'], ['profit', 'Profit'], ['after', 'Profit after code']];
 function prKey(x, c, k) {
   if (k === 'product') return (x.product + ' ' + x.size).toLowerCase();
   if (k === 'market') return x.market.toLowerCase();
   if (k === 'price') return c.pg; if (k === 'cost') return c.cost; if (k === 'profit') return c.profit; if (k === 'after') return c.profitD;
-  if (k === 'free') return c.paid ? 9999 : c.freeD;
   return 0;
 }
 function renderPricing() {
@@ -1262,27 +1260,27 @@ function renderPricing() {
   const tile = (n, label, bg, fg) => '<div style="flex:1;min-width:120px;padding:10px 12px;border-radius:8px;background:' + bg + ';color:' + fg + '"><div style="font-size:24px;font-weight:700;line-height:1">' + n + '</div><div style="font-size:12px">' + label + '</div></div>';
   let h = '<style>.prtab{width:100%;border-collapse:collapse;font-size:13px}.prtab th{text-align:left;padding:6px;border-bottom:2px solid #bbb;cursor:pointer;user-select:none;vertical-align:bottom}.prtab td{padding:5px 6px;border-bottom:1px solid #e6e6e6;vertical-align:top}.prtab .sub{display:block;font-size:11px;opacity:.7}@media(max-width:700px){.prtab{font-size:12px}.prtab th,.prtab td{padding:4px 3px}}</style>'
     + '<div class="pbox"><h3>Pricing, shipping and profit</h3>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">' + tile(nRed, 'losing money (before or after the code)', '#f8d0d0', '#7f1414') + tile(nAmb, 'under the margin floor', '#ffe9a8', '#6b4a00') + tile(nGrn, 'healthy', '#d4f0dc', '#11502a') + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">' + tile(nRed, 'losing money (before or after the code)', '#f8d0d0', '#7f1414') + tile(nAmb, 'under the floor (price rule not met)', '#ffe9a8', '#6b4a00') + tile(nGrn, 'healthy', '#d4f0dc', '#11502a') + '</div>'
     + '<div class="prow" style="flex-wrap:wrap;gap:10px;align-items:center"><label>Sort by <select id="pr_s">' + PR_COLS.map(c => '<option value="' + c[0] + '"' + (c[0] === pr.sort ? ' selected' : '') + '>' + c[1] + '</option>').join('') + '</select></label>'
     + '<button class="btn" id="pr_d">' + (pr.dir === 1 ? 'Lowest first ↑' : 'Highest first ↓') + '</button>'
     + '<label>Market <select id="pr_m">' + markets.map(m => '<option' + (m === pr.mkt ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></label>'
     + '<label><input type="checkbox" id="pr_p"' + (pr.prob ? ' checked' : '') + '> Problems only</label></div>'
-    + '<details style="margin-top:8px"><summary>Margin floor % per market, and how profit is worked out</summary>'
-    + '<div class="tplinfo">Profit = price in pounds - Gelato cost - Gelato shipping (where we pay it) - PayPal fee (' + pr.pp.pct + '% + £' + pr.pp.fixed.toFixed(2) + '). After code = the same with ' + pr.promo + '% off (STANDTALL10, ends 30 Nov 2026). Rates and Gelato costs checked 18 Oct 2026. NFTs are not on this tab yet.</div>'
+    + '<details style="margin-top:8px"><summary>Floor per market (profit as % of price; 25.9% = the standard rule of 35% on top of cost) and how profit is worked out</summary>'
+    + '<div class="tplinfo">Profit = price in pounds - Gelato cost - Gelato shipping (where we pay it) - PayPal fee (' + pr.pp.pct + '% + £' + pr.pp.fixed.toFixed(2) + '). After code = the same with ' + pr.promo + '% off (STANDTALL10, ends 30 Nov 2026). Standard price rule: total cost (Gelato cost, Gelato shipping where we pay it, PayPal fee) plus 35%, rounded up to a whole number; Canada is 25% as long as it makes a profit. Rates and Gelato costs checked 18 Oct 2026. NFTs are not on this tab yet.</div>'
     + '<div class="prow" style="flex-wrap:wrap;gap:8px">' + ['United States', 'Canada', 'United Kingdom', 'Germany (EU)', 'Australia', 'New Zealand', 'Europe'].map(m =>
       '<label>' + esc(m) + ' <input type="number" class="pr_fl" data-m="' + esc(m) + '" value="' + (pr.floors[m] || 0) + '" style="width:56px"></label>').join('') + '</div></details></div>'
     + '<table class="prtab"><thead><tr>' + PR_COLS.map(c => '<th data-k="' + c[0] + '">' + c[1] + (pr.sort === c[0] ? (pr.dir === 1 ? ' ↑' : ' ↓') : '') + '</th>').join('') + '</tr></thead><tbody>';
   shown.forEach(([x, c]) => {
     const pd = c.pg * (1 - pr.promo / 100), fl = floorOf(x);
-    const t1 = prTone(c.profit, c.margin, fl), t2 = prTone(c.profitD, 0, null), t3 = prTone(c.freeD, 0, null);
+    const t1 = prTone(c.profit, c.margin, fl), t2 = prTone(c.profitD, 0, null);
     const cell = (t, main, sub) => '<td style="background:' + t[0] + ';color:' + t[1] + '"><b>' + main + '</b><span class="sub">' + sub + '</span></td>';
     h += '<tr><td><b>' + esc(x.product.replace(/^\d+ /, '')) + '</b><span class="sub">' + esc(x.size === '-' ? '' : x.size) + '</span></td>'
       + '<td>' + esc(x.market.replace('Europe: ', '')) + '<span class="sub">' + (/^Europe/.test(x.market) ? 'Europe · ' : '') + 'made in ' + esc(x.made_in) + '</span></td>'
-      + '<td>' + c.sym + c.loc.toFixed(2) + '<span class="sub">' + f(c.pg) + '</span></td>'
+      + '<td>' + c.sym + (Number.isInteger(c.loc) ? c.loc.toFixed(0) : c.loc.toFixed(2)) + '<span class="sub">' + f(c.pg) + '</span></td>'
       + '<td>' + f(Number(x.gelato_cost_gbp)) + ' + ' + f(Number(x.gelato_ship_gbp)) + '<span class="sub">' + (c.paid ? 'we pay the shipping' : 'shopper pays the shipping') + '</span></td>'
-      + cell(t1, f(c.profit), c.margin.toFixed(1) + '% margin')
-      + cell(t2, f(c.profitD), (c.profitD / pd * 100).toFixed(1) + '% margin')
-      + (c.paid ? '<td style="color:#888">—</td>' : cell(t3, f(c.freeD), 'if we paid it')) + '</tr>';
+      + cell(t1, f(c.profit), '+' + (c.profit / (c.cost + c.fee) * 100).toFixed(1) + '% on cost · ' + c.margin.toFixed(1) + '% of price')
+      + cell(t2, f(c.profitD), (c.profitD / pd * 100).toFixed(1) + '% of price')
+      + '</tr>';
   });
   h += '</tbody></table>';
   $('list').innerHTML = h;
