@@ -336,6 +336,18 @@
 .lib-card video{width:100%;aspect-ratio:9/16;max-height:380px;object-fit:cover;background:#000;display:block}
 .lib-body{padding:9px 10px 11px;display:flex;flex-direction:column;gap:6px;flex:1}
 .camp-h{font-size:18px;margin:18px 0 10px;border-bottom:3px solid #F5B800;padding-bottom:4px}
+.hype-sec{margin:0 0 26px}
+.hype-wk{font-size:15px;margin:16px 0 8px;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.hype-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.hype-card img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eee;display:block}
+.hype-card label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#555}
+.hype-card textarea,.hype-card input[type=date]{font-family:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);width:100%;box-sizing:border-box}
+.hype-card textarea{min-height:110px;resize:vertical}
+.hype-btns{display:flex;flex-wrap:wrap;gap:6px}
+.hype-btns .btn{min-height:44px}
+.hype-err{color:#b00020;font-size:13px}
+.hype-count.over{color:#b00020;font-weight:700}
+
 .camp-tt{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px;font-size:12.5px}
 .camp-cap summary{cursor:pointer;font-size:13px;padding:6px 0;min-height:32px}
 .camp-cap pre{white-space:pre-wrap;font-family:inherit;font-size:12.5px;background:#f6f4ef;padding:8px;margin:4px 0 6px}
@@ -1599,6 +1611,93 @@ function campCard(it) {
       '</div>' + caps +
     '</div></div>';
 }
+
+// ---------- OpenSea launch posts in Campaigns (19 Oct 2026, Andy) ----------
+// Replaces the weekly Telegram card. Every Saturday a workflow writes the coming Monday-to-Sunday posts as drafts (SC Drop Hype Calendar).
+// Here you edit, approve or skip each post. Approved posts go to X and Discord with their image at 4pm London on their day. Posted days are locked.
+const HYPE_LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-hype-list';
+const HYPE_SAVE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-hype-save';
+const HYPE_INVITE = 'HQ → discord.gg/NM3PMU8PWf';
+let HYPE = null;
+function hypeMonday(iso) { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); }
+function hypeStatus(r) {
+  if (r.status === 'posted') return ['Posted' + (r.posted_at ? ' ' + shortDate(String(r.posted_at).slice(0, 10)) : ''), 'done'];
+  if (r.status === 'ready') return ['Approved: posts 4pm London', 'recent'];
+  if (r.status === 'skipped') return ['Skipped', ''];
+  return ['Draft: needs your approval', ''];
+}
+async function loadHype() {
+  try { const r = await fetch(HYPE_LIST_URL); if (!r.ok) throw new Error('HTTP ' + r.status); HYPE = await r.json(); }
+  catch (e) { HYPE = { error: e.message, rows: [], art_left: 0 }; }
+}
+function hypeCard(r) {
+  const st = hypeStatus(r);
+  const locked = r.status === 'posted';
+  const dis = locked ? ' disabled' : '';
+  const img = r.image ? '<a href="https://drive.google.com/file/d/' + encodeURIComponent(r.image) + '/view" target="_blank" rel="noopener"><img loading="lazy" onerror="this.replaceWith(document.createTextNode(\'Open the image in Drive (no preview here)\'))" alt="' + escapeHtml(r.theme) + '" src="https://drive.google.com/thumbnail?id=' + encodeURIComponent(r.image) + '&sz=w600"></a>' : '<div class="loading">No image</div>';
+  const btns = locked ? '' :
+    '<div class="hype-btns">' +
+      '<button class="btn secondary hype-save">Save</button>' +
+      (r.status === 'ready' ? '<button class="btn secondary hype-draft">Take back to draft</button>' : (r.status === 'skipped' ? '<button class="btn secondary hype-draft">Restore as draft</button>' : '<button class="btn hype-approve">Approve</button>')) +
+      (r.status === 'skipped' ? '' : '<button class="btn secondary hype-skip">Skip</button>') +
+    '</div>' +
+    '<button class="btn secondary hype-invite">Add Discord invite to X caption</button>';
+  return '<div class="lib-card hype-card" style="border-top-color:#F5B800" data-id="' + r.id + '">' + img +
+    '<div class="lib-body">' +
+      '<div class="lib-title">' + escapeHtml(r.theme) + '</div>' +
+      '<div class="lib-chips"><span class="lib-chip' + (st[1] ? ' ' + st[1] : '') + '">' + escapeHtml(st[0]) + '</span></div>' +
+      '<label>Day<input type="date" class="hype-date" value="' + escapeHtml(r.date) + '"' + dis + '></label>' +
+      '<label><span>X caption <span class="hype-count"></span></span><textarea class="hype-x"' + dis + '>' + escapeHtml(r.caption_x) + '</textarea></label>' +
+      '<label>Discord caption<textarea class="hype-d"' + dis + '>' + escapeHtml(r.caption_discord) + '</textarea></label>' +
+      btns + '<div class="hype-err"></div>' +
+    '</div></div>';
+}
+async function hypeSend(card, status, btn) {
+  const err = card.querySelector('.hype-err'); err.textContent = '';
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
+  const body = { id: Number(card.dataset.id), caption_x: card.querySelector('.hype-x').value, caption_discord: card.querySelector('.hype-d').value, post_date: card.querySelector('.hype-date').value };
+  if (status) body.status = status;
+  try {
+    const res = await fetch(HYPE_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await res.json();
+    if (!res.ok || !j || j.ok === false) throw new Error((j && j.error) || ('HTTP ' + res.status));
+    await loadHype(); if (VIEW === 'campaigns') renderHype();
+  } catch (e) { err.textContent = 'Not saved: ' + e.message; btn.disabled = false; btn.textContent = old; }
+}
+async function renderHype() {
+  const box = document.getElementById('hypeBox'); if (!box) return;
+  if (HYPE === null) { box.innerHTML = '<div class="loading">Loading OpenSea launch posts…</div>'; await loadHype(); if (VIEW !== 'campaigns' || !document.getElementById('hypeBox')) return; }
+  const rows = HYPE.rows || [];
+  const thisMonday = hypeMonday(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date()));
+  const lastMonday = new Date(thisMonday + 'T12:00:00Z'); lastMonday.setUTCDate(lastMonday.getUTCDate() - 7);
+  const weeks = {};
+  rows.forEach(r => { const m = hypeMonday(r.date); if (m >= lastMonday.toISOString().slice(0, 10)) (weeks[m] = weeks[m] || []).push(r); });
+  const keys = Object.keys(weeks).sort();
+  let html = '<div class="hype-sec"><h3 class="camp-h">OpenSea launch: X and Discord</h3>' +
+    '<div class="lib-help">Posts to X and Discord with the image at 4pm London on the day shown. Nothing posts until you press Approve. The next week is written every Saturday morning.</div>';
+  if (HYPE.error) html += '<div class="hype-err">Could not load the launch posts: ' + escapeHtml(HYPE.error) + '</div>';
+  else if (!keys.length) html += '<div class="loading">No launch posts yet. The next week is written on Saturday.</div>';
+  keys.forEach(m => {
+    const w = weeks[m];
+    const live = w.filter(r => r.status !== 'skipped');
+    html += '<div class="hype-wk"><strong>Week of ' + shortDate(m) + '</strong><span class="lib-help">' + live.length + ' of 7 days planned, ' + w.filter(r => r.status === 'ready').length + ' approved, ' + w.filter(r => r.status === 'posted').length + ' posted</span></div>' +
+      '<div class="hype-grid">' + w.map(hypeCard).join('') + '</div>';
+  });
+  if (!HYPE.error && HYPE.art_left === 0) html += '<div class="lib-help" style="margin-top:10px">No unused launch images are left, so no further days can be written until more art is added.</div>';
+  html += '</div>';
+  box.innerHTML = html;
+  box.querySelectorAll('.hype-card').forEach(card => {
+    const x = card.querySelector('.hype-x'), cnt = card.querySelector('.hype-count');
+    const upd = () => { const n = x.value.length; cnt.textContent = n + '/280'; cnt.classList.toggle('over', n > 280); };
+    x.addEventListener('input', upd); upd();
+    const b = sel => card.querySelector(sel);
+    if (b('.hype-save')) b('.hype-save').onclick = e => hypeSend(card, '', e.target);
+    if (b('.hype-approve')) b('.hype-approve').onclick = e => hypeSend(card, 'ready', e.target);
+    if (b('.hype-draft')) b('.hype-draft').onclick = e => hypeSend(card, 'draft', e.target);
+    if (b('.hype-skip')) b('.hype-skip').onclick = e => hypeSend(card, 'skipped', e.target);
+    if (b('.hype-invite')) b('.hype-invite').onclick = () => { if (x.value.indexOf('discord.gg/') === -1) { x.value = x.value.replace(/\s+$/, '') + '\n\n' + HYPE_INVITE; upd(); } };
+  });
+}
 async function renderCampaigns() {
   const main = document.getElementById('main');
   if (LIB === null) { main.innerHTML = '<div class="loading">Loading campaigns…</div>'; await loadLibrary(); if (VIEW !== 'campaigns') return; }
@@ -1608,11 +1707,12 @@ async function renderCampaigns() {
   const shown = all.filter(i => !CAMPF.name || i.camp === CAMPF.name);
   document.getElementById('counts').textContent = shown.length + ' / ' + all.length + ' campaign posts';
   const groups = names.filter(n => !CAMPF.name || n === CAMPF.name);
-  main.innerHTML =
+  main.innerHTML = '<div id="hypeBox"></div>' +
     '<div class="lib-bar"><select id="campName"><option value="">All campaigns</option>' + names.map(n => '<option' + (n === CAMPF.name ? ' selected' : '') + '>' + escapeHtml(n) + '</option>').join('') + '</select>' +
     '<span class="lib-help">Schedule makes a draft in the calendar. Nothing posts until you set it "approved". The first comment is added by hand after posting.</span></div>' +
     (groups.length ? groups.map(n => '<h3 class="camp-h">' + escapeHtml(n) + '</h3><div class="lib-grid">' + shown.filter(i => i.camp === n).map(campCard).join('') + '</div>').join('') : '<div class="loading">No campaign posts yet.</div>');
   document.getElementById('campName').onchange = e => { CAMPF.name = e.target.value; renderCampaigns(); };
+  renderHype();
   main.querySelectorAll('.camp-card').forEach(card => {
     const it = all.find(i => i.key === card.dataset.key); if (!it) return;
     card.querySelector('.camp-sched').onclick = () => openRepost(it);
