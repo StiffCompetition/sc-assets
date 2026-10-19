@@ -164,6 +164,22 @@
   .printon { display: block; font-size: 14px !important; color: var(--ink) !important; } .printon select { width: auto !important; margin-left: 6px; font-size: 14px; }
   .pfiles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; } .pfiles figure { margin: 0; width: 170px; border: 1px solid var(--line); background: #fff; }
   .pfiles figure.onDark { background: #1e1e1e; } .pfiles img { width: 100%; display: block; } .pfiles figcaption { font-size: 12px; padding: 3px 6px; background: #fff; }
+  .design { display: flex; gap: 16px; flex-wrap: wrap; } .design-l { flex: 1 1 260px; min-width: 0; } .design-r { flex: 1 1 320px; min-width: 0; }
+  .saved { font-size: 12px; color: var(--grey); margin-top: 6px; min-height: 14px; }
+  .pv-row { display: flex; gap: 10px; } .pv-panel { margin: 0; flex: 1 1 0; min-width: 0; } .pv-panel figcaption { font-size: 12px; color: var(--grey); text-align: center; margin-top: 3px; }
+  .pv-garment { border-radius: 16px 16px 6px 6px; padding: 14% 16% 18%; border: 1px solid var(--line); aspect-ratio: 3 / 3.6; box-sizing: border-box; }
+  .pv-area { display: flex; flex-direction: column; align-items: center; gap: 4%; } .pv-area img { max-width: 100%; max-height: 120px; object-fit: contain; display: block; }
+  .pv-area img:only-child { max-height: none; } .pv-empty, .pv-miss { font-size: 12px; color: #888; text-align: center; padding-top: 30%; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; color: var(--grey); }
+  .chip { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #999; cursor: pointer; padding: 0; } .chip.on { outline: 2px solid var(--c-next); outline-offset: 2px; }
+  .dpick label img.full { width: 54px; height: 66px; object-fit: contain; border-radius: 4px; } .dpick label img.full.light { background: #1e1e1e; } .dpick label img.full.dark { background: #f4f4f4; }
+  .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; } .ph { margin: 0; border: 1px solid var(--line); background: #fff; font-size: 12px; }
+  .ph img, .ph-none { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; } .ph-none { opacity: .35; } .ph figcaption { padding: 4px 6px; }
+  .ph.review { border-color: var(--c-today); } .ph.approved .ph-st { color: var(--c-done); } .ph.failed .ph-st { color: #c62828; } .ph-acts { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .makesum { font-size: 14px; margin-bottom: 8px; }
+  .stages { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; } .stages span { font-size: 11.5px; padding: 2px 7px; border-radius: 10px; background: #eef0f2; color: #8a8f98; }
+  .stages span.ok { background: #e3f4e8; color: var(--c-done); } .stages span.now { background: var(--c-next); color: #fff; }
+  .pfiles.pics figure { width: 120px; }
   #p_new { margin-top: 10px; border-style: dashed; } #p_new summary { cursor: pointer; font-size: 14px; }
   .pbox { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 12px; }
   .pbox h3 { margin: 0 0 8px; font-size: 15px; }
@@ -930,26 +946,38 @@ async function addFollow(e) {
   } catch (err) { toast('Not added: ' + err.message); }
 }
 
-// ===== Products tab (18 Oct 2026, Andy): make products from a design and a Gelato template ID =====
-// Andy makes the template in Gelato, pastes its ID here and presses Check. The template decides the product
-// (t-shirt, mug, ...). The rules for that product type (title, description, tags, pictures) need Andy's yes once.
-// Each run then goes: print fitted to the template -> Andy approves the design -> Gelato product -> Shopify draft
-// -> Andy presses Go live. SC - Product Runner moves runs on every minute; SC - Product API serves this tab.
+// ===== Products tab (Andy, 18-19 Oct 2026): from a Gelato template to a live product with our pictures =====
+// One flow, top to bottom, no instructions: Needs you, then Product, Listing, Design (front/back with a live preview),
+// Characters, Model photos, Make; then everything under way with a stage tracker. SC - Product API serves this tab;
+// SC - Product Runner moves runs on (print files, Gelato, Shopify draft, our pictures, go live); SC - Model Photo Runner
+// makes the plain SC model photos the pictures are built on.
 const PRODUCT_URL = BASE + 'sc-product-api';
-const prod = { loaded: false, loading: false, designs: [], rules: [], runs: [], tpl: null, tplErr: '', picked: new Set(), timer: null, open: {} };
-const RUN_STEPS = { queued: 'Queued', layout_running: 'Fitting the design', design_ready: 'Design ready', gelato_created: 'Making in Gelato', shopify_arrived: 'Reached Shopify', ready_check: 'Shopify draft', live: 'Live', failed: 'Failed', stopped: 'Stopped' };
+const prod = { loaded: false, loading: false, designs: [], rules: [], runs: [], photos: [], tpl: null, tplErr: '', picked: new Set(), timer: null, open: {}, colour: '' };
 const SHOP_ADMIN = 'https://admin.shopify.com/store/stiifcompnft/products/';
+const TPL_KEY = 'sc_prod_tpl';
+const PHOTO_USD = 0.06;   // one 2K model photo (Gemini image, Google price page 19 Oct 2026: $0.0504 a picture plus the reference images)
+const LIGHT = ['white', 'light-blue', 'daisy', 'natural', 'ash', 'sand', 'light-pink', 'sport-grey', 'heather-grey', 'cream', 'ivory', 'gold'];
+const COLOUR_HEX = { white: '#f7f7f5', black: '#1e1e1e', navy: '#1f2a44', royal: '#2d4fa1', red: '#c0272d', orange: '#f26b21', gold: '#f2b233', purple: '#4b2e83',
+  'irish-green': '#1d8a4a', 'military-green': '#5b5f45', daisy: '#f6d34a', 'light-blue': '#a7c8e6', 'sport-grey': '#b9bcbe', 'heather-grey': '#b5b5b8', ash: '#d9d9d6',
+  sand: '#d7c7a3', natural: '#efe6d2', maroon: '#5b1f2b', charcoal: '#3b3d40', 'forest-green': '#1f3b2b', 'light-pink': '#f4c6d0', cardinal: '#8a1c2b', 'dark-heather': '#4a4a4f' };
+const inkFor = c => LIGHT.indexOf(c) !== -1 ? 'dark' : 'light';
+const PARTS = [['picture', 'Picture'], ['name', 'Name'], ['phrase', 'Phrase lines'], ['logo', 'Logo']];
+const DEFAULT_PARTS = { 1: 'picture,name,phrase,logo', 2: 'logo' };
+const STAGES = ['Print files', 'Your check', 'Gelato', 'Shopify draft', 'Our pictures', 'Your go-live', 'Live'];
+function stageOf(r) {
+  return ({ queued: 0, layout_running: 0, design_ready: 1, gelato_created: 2, shopify_arrived: 3, pics_layout: 4, pics_running: 4, pics_read: 4, pics_swap: 4, pics_link: 4, pics_attach: 4, ready_check: 5, live: 6 })[r.status];
+}
 
 async function productApi(body) {
   const r = await fetch(PRODUCT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   let d = null; try { d = await r.json(); } catch (e) { d = null; }
   if (!r.ok || !d) throw new Error(d && (d.error || d.message) ? (d.error || d.message) : 'The product service answered ' + r.status);
-  if (d.ok === false) throw new Error(d.error || 'Refused');
+  if (d.ok === false || d.kind === 'error') throw new Error(d.error || 'Refused');
   return d;
 }
 async function loadProducts(quiet) {
   if (prod.loading) return; prod.loading = true;
-  try { const d = await productApi({ action: 'list' }); prod.designs = d.designs || []; prod.rules = d.rules || []; prod.runs = d.runs || []; prod.loaded = true; }
+  try { const d = await productApi({ action: 'list' }); prod.designs = d.designs || []; prod.rules = d.rules || []; prod.runs = d.runs || []; prod.photos = d.photos || []; prod.loaded = true; }
   catch (e) { if (!quiet) toast('Could not load products: ' + e.message); }
   prod.loading = false;
   if (view === 'Products') renderProducts(); else renderTabs();
@@ -960,95 +988,154 @@ function fillPattern(s, d, tplTitle) {
   return String(s || '').split('{NAME}').join(d.name_line).split('{P1}').join(d.phrase_1).split('{P2}').join(d.phrase_2)
     .split('{CHAR_LINE}').join(d.char_line).split('{CHARACTER}').join(d.character).split('{TEMPLATE_TITLE}').join(tplTitle || '');
 }
+const partsOf = (r, n) => String((r || {})['side_' + n] || '').split(',').map(x => x.trim()).filter(x => PARTS.some(p => p[0] === x));
+const partWords = ps => ps.map(x => (PARTS.find(p => p[0] === x) || [x, x])[1].toLowerCase()).join(', ');
+function areaNames(r) { return r && r.layout_mode === 'sides' ? ['Side 1', 'Side 2'] : ['Front', 'Back']; }
+function tplAreas(t) { const s = (t.imageSlots || []).join(' ').toLowerCase(); return { front: /front/.test(s) || !/back/.test(s), back: /back/.test(s) }; }
+function oursPictures(r) { return !!(r && /SC models|ours/i.test(r.picture_set || '')); }
+const libDesigns = () => prod.designs.filter(d => d.status === 'approved' && d.kind !== 'logo');
+const libLogo = () => prod.designs.find(d => d.kind === 'logo' && d.status === 'approved') || null;
 
-// Flow (19 Oct 2026, Andy): no instructions; the tab leads on by itself. "Needs you" first, then the four steps
-// (product, rules, characters, make), each opening when the one before is done, then everything already under way.
-const TPL_KEY = 'sc_prod_tpl';
+// ----- live preview: the parts stacked on each print area, on the chosen colour -----
+function partImg(d, p, ink) {
+  const lg = libLogo();
+  return { picture: d.art_url, name: d['name_' + ink + '_ink'], phrase: d['phrase_' + ink + '_ink'], logo: lg ? lg['print_' + ink + '_ink'] : '' }[p] || '';
+}
+function panelHtml(title, d, ps, ink, hex) {
+  let inner = '';
+  if (!ps.length) inner = '<div class="pv-empty">Nothing printed</div>';
+  else if (ps.length === 4 && d['print_' + ink + '_ink']) inner = '<img src="' + esc(safeUrl(d['print_' + ink + '_ink'])) + '" alt="">';
+  else inner = ps.map(p => partImg(d, p, ink) ? '<img src="' + esc(safeUrl(partImg(d, p, ink))) + '" alt="">' : '<div class="pv-miss">no ' + p + ' part</div>').join('');
+  return '<figure class="pv-panel"><div class="pv-garment" style="background:' + hex + '"><div class="pv-area">' + inner + '</div></div><figcaption>' + title + '</figcaption></figure>';
+}
+function designHtml(t, rule) {
+  const nm = areaNames(rule), mug = rule.layout_mode === 'sides', areas = mug ? { front: true, back: true } : tplAreas(t);
+  const s1 = partsOf(rule, 1), s2 = partsOf(rule, 2);
+  const mode = s1.length && s2.length ? 'both' : s2.length ? '2' : '1';
+  const opts = [['1', nm[0] + ' only', areas.front], ['2', nm[1] + ' only', areas.back], ['both', nm[0] + ' and ' + nm[1].toLowerCase(), areas.front && areas.back]].filter(o => o[2]);
+  const row = (n, ps) => '<div class="sides" data-area="' + n + '"' + ((mode === 'both' || mode === String(n)) ? '' : ' style="display:none"') + '><b>' + nm[n - 1] + '</b>'
+    + PARTS.map(([p, l]) => '<label class="tick"><input type="checkbox" data-side="' + n + '" value="' + p + '"' + (ps.indexOf(p) !== -1 ? ' checked' : '') + '> ' + l + '</label>').join('') + '</div>';
+  const cols = t.colours || [];
+  if (cols.indexOf(prod.colour) === -1) prod.colour = cols[0] || 'white';
+  const d = libDesigns().find(x => prod.picked.has(x.key)) || libDesigns()[0];
+  const ink = mug ? 'dark' : inkFor(prod.colour), hex = mug ? '#ffffff' : (COLOUR_HEX[prod.colour] || '#999');
+  return '<div class="design" data-pt="' + esc(rule.product_type) + '"><div class="design-l">'
+    + '<label class="printon">Print on <select data-printon>' + opts.map(([v, l]) => '<option value="' + v + '"' + (v === mode ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></label>'
+    + row(1, s1) + row(2, s2)
+    + (mug ? '<label class="printon">Side 1 sits on the <select data-half><option value="left"' + (rule.side_1_half !== 'right' ? ' selected' : '') + '>left half</option><option value="right"' + (rule.side_1_half === 'right' ? ' selected' : '') + '>right half</option></select> of the print</label>' : '')
+    + '<div class="saved" id="p_saved"></div></div>'
+    + '<div class="design-r">' + (d ? '<div class="pv-row">' + (s1.length || mode !== '2' ? panelHtml(nm[0], d, s1, ink, hex) : '') + (s2.length || mode !== '1' ? panelHtml(nm[1], d, s2, ink, hex) : '') + '</div>'
+      + (mug ? '' : '<div class="chips">' + cols.map(c => '<button type="button" class="chip' + (c === prod.colour ? ' on' : '') + '" data-col="' + esc(c) + '" title="' + esc(c) + '" style="background:' + (COLOUR_HEX[c] || '#999') + '"></button>').join('') + '<span>' + esc(prod.colour.replace(/-/g, ' ')) + ', ' + ink + ' ink · ' + esc(d.character) + '</span></div>') : '<div class="empty">No approved designs yet.</div>')
+    + '</div></div>';
+}
+
+// ----- model photos the pictures are built on (garments with our pictures) -----
+function photosPlan(t, rule) {
+  const cols = t.colours || [], pt = t.product_type, back = partsOf(rule, 2).length > 0, front = partsOf(rule, 1).length > 0;
+  const mine = prod.photos.filter(p => p.product_type === pt && p.status !== 'removed');
+  const MODELS = ['blond', 'female', 'brunette'];
+  const need = [];
+  const mainSlot = front ? 'main' : 'back';
+  cols.forEach((c, i) => need.push({ slot: mainSlot, colour: c, model: MODELS[i % 3], have: mine.filter(p => p.slot === mainSlot && p.colour === c) }));
+  if (front) { const c = cols[1] || cols[0]; need.push({ slot: 'second', colour: c, model: MODELS[(cols.indexOf(c) + 1) % 3], have: mine.filter(p => p.slot === 'second' && cols.indexOf(p.colour) !== -1) }); }
+  if (front && back) need.push({ slot: 'back', colour: cols[0], model: 'brunette', have: mine.filter(p => p.slot === 'back' && cols.indexOf(p.colour) !== -1) });
+  need.forEach(n => { n.best = n.have.find(p => p.status === 'approved') || n.have.find(p => p.status === 'review') || n.have[0] || null; });
+  return need;
+}
+function photosHtml(t, rule) {
+  if (!oursPictures(rule)) return '<div class="tplinfo">' + esc(rule.label) + ' products use Gelato\'s own pictures.</div>';
+  const need = photosPlan(t, rule), missing = need.filter(n => !n.best);
+  const label = { main: 'Front', second: 'Second pose', back: 'Back' };
+  let h = '<div class="photos">' + need.map(n => {
+    const p = n.best, st = p ? p.status : 'missing';
+    const tag = { approved: '✓ Approved', review: 'Check this photo', requested: 'Waiting to be made', making: 'Being made…', failed: 'Failed' }[st] || 'Not made yet';
+    return '<figure class="ph ' + st + '"' + (p ? ' data-phid="' + p.id + '"' : '') + '>' + (p && p.url ? '<a href="' + esc(safeUrl(p.url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(p.url)) + '" alt=""></a>' : '<div class="ph-none" style="background:' + (COLOUR_HEX[n.colour] || '#ccc') + '"></div>')
+      + '<figcaption><b>' + label[n.slot] + '</b> · ' + esc(n.colour.replace(/-/g, ' ')) + '<br><span class="ph-st">' + tag + '</span>'
+      + (st === 'review' ? '<span class="ph-acts"><button class="btn done small" data-phact="approve">Approve</button><button class="btn ghost small" data-phact="redo">Redo $' + PHOTO_USD.toFixed(2) + '</button></span>' : '')
+      + (st === 'failed' ? '<span class="ph-acts"><button class="btn ghost small" data-phact="redo">Try again $' + PHOTO_USD.toFixed(2) + '</button></span>' : '')
+      + (st === 'approved' ? '<span class="ph-acts"><button class="btn ghost small" data-phact="redo">Replace $' + PHOTO_USD.toFixed(2) + '</button></span>' : '')
+      + '</figcaption></figure>';
+  }).join('') + '</div>';
+  if (missing.length) h += '<div class="prow" style="margin-top:8px"><button class="btn" id="p_mkphotos" data-n="' + missing.length + '">Make ' + missing.length + ' model photo' + (missing.length === 1 ? '' : 's') + ' · $' + (missing.length * PHOTO_USD).toFixed(2) + '</button></div>';
+  return h;
+}
+function photosReady(t, rule) { return !oursPictures(rule) || photosPlan(t, rule).every(n => n.best && n.best.status === 'approved'); }
+
+// ----- steps -----
 function ruleBoxHtml(r) {
-  const t = prod.tpl, ex = prod.designs.find(d => d.kind !== 'logo' && d.status === 'approved');
+  const t = prod.tpl, ex = libDesigns()[0];
   const tt = t && t.product_type === r.product_type ? t.title : '[template title]';
   return '<div class="prule" data-pt="' + esc(r.product_type) + '">'
     + '<label>Title ({NAME}, {P1}, {P2})<input data-f="title_pattern" value="' + esc(r.title_pattern) + '"></label>'
     + '<label>Description ({P1}, {P2}, {CHAR_LINE}, {TEMPLATE_TITLE})<textarea data-f="description_html">' + esc(r.description_html) + '</textarea></label>'
     + '<label>Tags<input data-f="tags_extra" value="' + esc(r.tags_extra) + '"></label>'
-    + sidesHtml(r)
     + (ex ? '<div class="pex"><b>How it reads for ' + esc(ex.character) + '</b><div style="font-weight:600;margin-top:4px">' + esc(fillPattern(r.title_pattern, ex, tt)) + '</div>'
       + '<div>' + fillPattern(r.description_html, ex, esc(tt)) + '</div></div>' : '')
-    + '<div class="prow" style="margin-top:8px">' + (r.approved === 'yes' ? '<button class="btn done" data-ract="save">Save rules</button><button class="btn ghost" data-ract="cancel">Cancel</button>' : '<button class="btn ghost" data-ract="save">Save</button><button class="btn done" data-ract="approve">Approve rules</button>') + '</div></div>';
+    + '<div class="prow" style="margin-top:8px">' + (r.approved === 'yes' ? '<button class="btn done" data-ract="save">Save listing</button><button class="btn ghost" data-ract="cancel">Cancel</button>' : '<button class="btn ghost" data-ract="save">Save</button><button class="btn done" data-ract="approve">Approve listing</button>') + '</div></div>';
 }
 function fstep(n, title, state, summary, body) {
-  // state: 'now' (open), 'done' (closed, ticked), 'lock' (waits for the step before)
-  return '<div class="fstep ' + state + '"><div class="fhead"><span class="fnum">' + (state === 'done' ? '✓' : n) + '</span><b>' + title + '</b>'
-    + (state === 'done' && summary ? '<span class="fsum">' + summary + '</span>' : '') + '</div>'
+  return '<div class="fstep ' + state + '" id="fstep' + n + '"><div class="fhead"><span class="fnum">' + (state === 'done' ? '✓' : n) + '</span><b>' + title + '</b>'
+    + (summary ? '<span class="fsum">' + summary + '</span>' : '') + '</div>'
     + (state === 'now' ? '<div class="fbody">' + body + '</div>' : '') + '</div>';
 }
 function renderProducts() {
   renderTabs();
   if (!prod.loaded) { $('list').innerHTML = '<div class="empty">Loading products…</div>'; loadProducts(); return; }
   clearInterval(prod.timer); prod.timer = setInterval(() => { if (view === 'Products' && !document.hidden && !document.querySelector('.prule :focus, #p_tid:focus, #p_new :focus')) loadProducts(true); else if (view !== 'Products') clearInterval(prod.timer); }, 30000);
-  // the last template checked comes back by itself, so the flow carries on where it was left
   if (!prod.tpl && !prod.tplErr && !prod.autoTried) { prod.autoTried = true; let k = ''; try { k = localStorage.getItem(TPL_KEY) || ''; } catch (e) {} if (k) { checkTemplate(k); return; } }
-  const t = prod.tpl;
-  const designs = prod.designs.filter(d => d.status === 'approved' && d.kind !== 'logo');
-  const rule = t ? prodRule(t.product_type) : null;
-  const ruleOk = !!(rule && rule.approved === 'yes');
+  const t = prod.tpl, rule = t ? prodRule(t.product_type) : null, ruleOk = !!(rule && rule.approved === 'yes');
   let h = '';
 
-  // ---- Needs you: everything waiting on Andy, at the top ----
-  const needRuns = prod.runs.filter(r => r.waiting_on === 'andy_design' || r.waiting_on === 'andy_live');
+  // Needs you
+  const needRuns = prod.runs.filter(r => /^andy_/.test(r.waiting_on || '') && r.waiting_on !== 'andy_rules');
   const needDesigns = prod.designs.filter(d => d.kind !== 'logo' && d.waiting_on === 'andy_design');
-  const waitingRules = prod.rules.filter(r => r.approved !== 'yes' && prod.runs.some(x => x.waiting_on === 'andy_rules' && x.product_type === r.product_type) && !(t && t.product_type === r.product_type));
-  if (needRuns.length || needDesigns.length || waitingRules.length) {
-    h += '<div class="group-title need-title">Needs you (' + (needRuns.length + needDesigns.length + waitingRules.length) + ')</div>';
+  const needPhotos = prod.photos.filter(p => p.status === 'review');
+  if (needRuns.length || needDesigns.length || needPhotos.length) {
+    h += '<div class="group-title need-title">Needs you (' + (needRuns.length + needDesigns.length + needPhotos.length) + ')</div>';
+    if (needPhotos.length) h += '<div class="card run need"><div class="body"><div class="title">' + needPhotos.length + ' model photo' + (needPhotos.length === 1 ? '' : 's') + ' to check</div><div class="step"><a href="#fstep5" id="p_gophotos">Go to Model photos</a></div></div></div>';
     h += needDesigns.map(designCard).join('') + needRuns.map(r => runCard(r, 'need')).join('');
-    h += waitingRules.map(r => '<div class="pbox"><h3>' + esc(r.label) + ' rules</h3>' + ruleBoxHtml(r) + '</div>').join('');
   }
 
-  // ---- The four steps ----
+  // The steps
+  const all = libDesigns(), n = prod.picked.size;
   h += '<div class="pbox flow"><h3>Make products</h3>';
-  const s1 = '<div class="prow"><input type="text" id="p_tid" placeholder="Gelato template ID" value="' + esc($('p_tid') ? $('p_tid').value : '') + '">'
-    + '<button class="btn" id="p_check">Check</button>'
-    + '<a class="btn ghost" href="https://dashboard.gelato.com/" target="_blank" rel="noopener">Open Gelato</a></div>'
-    + (prod.tplErr ? '<div class="tplinfo" style="color:#c62828">' + esc(prod.tplErr) + '</div>' : '');
-  const sum1 = t ? esc(rule ? rule.label : t.product_type) + ' · ' + esc(t.templateName) + (t.colours && t.colours.length ? ' · ' + esc(t.colours.join(', ')) : '') + ' <a href="#" id="p_change">Change</a>' : '';
-  h += fstep(1, 'Product', t ? 'done' : 'now', sum1, s1);
-
+  h += fstep(1, 'Product', t ? 'done' : 'now',
+    t ? esc(rule ? rule.label : t.product_type) + ' · ' + esc(t.templateName) + ' · ' + (t.colours || []).length + ' colours <a href="#" id="p_change">Change</a>' : '',
+    '<div class="prow"><input type="text" id="p_tid" placeholder="Gelato template ID" value="' + esc($('p_tid') ? $('p_tid').value : '') + '"><button class="btn" id="p_check">Check</button>'
+      + '<a class="btn ghost" href="https://dashboard.gelato.com/" target="_blank" rel="noopener">Open Gelato</a></div>'
+      + (prod.tplErr ? '<div class="tplinfo" style="color:#c62828">' + esc(prod.tplErr) + '</div>' : ''));
   let s2 = '';
-  if (t && !rule) s2 = '<div class="tplinfo" style="color:#b06a00">Claude is drafting the ' + esc(t.product_type) + ' rules. They appear here for your yes.</div>';
-  else if (t && (!ruleOk || prod.editRule)) s2 = ruleBoxHtml(rule);
-  const sum2 = ruleOk ? esc(rule.label) + ' rules approved · ' + esc(areasSummary(rule)) + ' <a href="#" id="p_editrule">Change</a>' : '';
-  h += fstep(2, 'Rules', !t ? 'lock' : (ruleOk && !prod.editRule) ? 'done' : 'now', sum2, s2);
-
-  let s3 = '';
-  if (t && ruleOk && !prod.editRule) {
-    s3 = '<div class="dpick">' + designs.map(d => {
-      const busy = openRuns(d.key, t.templateId).length > 0;
+  if (t && !rule) s2 = '<div class="tplinfo" style="color:#b06a00">Claude is drafting the ' + esc(t.product_type) + ' listing. It appears here for your yes.</div>';
+  else if (t) s2 = ruleBoxHtml(rule);
+  h += fstep(2, 'Listing', !t ? 'lock' : (ruleOk && !prod.editRule) ? 'done' : 'now', ruleOk ? 'Title, description and tags approved <a href="#" id="p_editrule">Change</a>' : '', s2);
+  const open = t && ruleOk && !prod.editRule;
+  const s1p = partsOf(rule, 1), s2p = partsOf(rule, 2), nm = areaNames(rule);
+  const designSum = open ? [s1p.length ? nm[0] + ': ' + partWords(s1p) : '', s2p.length ? nm[1] + ': ' + partWords(s2p) : ''].filter(Boolean).join(' · ') : '';
+  h += fstep(3, 'Design', open ? 'now' : 'lock', '', open ? designHtml(t, rule) : '');
+  const s4 = open ? '<div class="dpick">' + all.map(d => {
+      const busy = openRuns(d.key, t.templateId).length > 0, ink = inkFor((t.colours || [])[0] || 'white');
+      const img = d['print_' + ink + '_ink'] || d.art_url;
       return '<label class="' + (busy ? 'busy' : '') + (prod.picked.has(d.key) ? ' on' : '') + '"><input type="checkbox" data-dk="' + esc(d.key) + '"' + (busy ? ' disabled' : (prod.picked.has(d.key) ? ' checked' : '')) + '>'
-        + (d.art_url ? '<img src="' + esc(safeUrl(d.art_url)) + '" alt="">' : '') + '<span>' + esc(d.character) + (busy ? '<br><small>already made</small>' : '') + '</span></label>';
-    }).join('') + '</div>'
-      + '<div class="prow"><button class="btn ghost small" id="p_all">Pick all</button></div>'
-      + newDesignHtml();
-  }
-  const sum3 = prod.picked.size ? prod.picked.size + ' picked' : '';
-  h += fstep(3, 'Characters', !(t && ruleOk) || prod.editRule ? 'lock' : 'now', sum3, s3);
-
-  const n = prod.picked.size, what = rule ? rule.label.toLowerCase() : 'product';
-  const s4 = '<div class="prow"><button class="btn" id="p_start">Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') + '</button></div>';
-  h += fstep(4, 'Make', (t && ruleOk && n && !prod.editRule) ? 'now' : 'lock', '', s4);
+        + (img ? '<img class="full ' + ink + '" src="' + esc(safeUrl(img)) + '" alt="">' : '') + '<span>' + esc(d.character) + (busy ? '<br><small>already made</small>' : '') + '</span></label>';
+    }).join('') + '</div><div class="prow"><button class="btn ghost small" id="p_all">Pick all</button></div>' + newDesignHtml() : '';
+  h += fstep(4, 'Characters', open ? 'now' : 'lock', open && n ? n + ' picked' : '', s4);
+  const phOk = open && photosReady(t, rule);
+  h += fstep(5, 'Model photos', open ? (phOk && oursPictures(rule) && !prod.showPhotos ? 'done' : 'now') : 'lock',
+    open && phOk && oursPictures(rule) ? 'All approved <a href="#" id="p_showphotos">Show</a>' : '', open ? photosHtml(t, rule) : '');
+  const what = rule ? rule.label.toLowerCase() : 'product';
+  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (t.colours || []).length + ' colours · ' + (oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures wait until every model photo is approved.</span>' : '') + '</div>'
+    + '<div class="prow"><button class="btn" id="p_start"' + (n ? '' : ' disabled') + '>' + (n ? 'Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') : 'Pick characters to make') + '</button></div>' : '';
+  h += fstep(6, 'Make', open ? 'now' : 'lock', '', s6);
   h += '</div>';
 
-  // ---- Everything already under way ----
+  // Under way
   const building = prod.designs.filter(d => d.kind !== 'logo' && d.status !== 'approved' && d.waiting_on !== 'andy_design');
-  const groups = [
-    ['In progress', r => r.waiting_on === 'runner' || r.waiting_on === 'andy_rules', 'prog'],
-    ['Live', r => r.status === 'live', 'live'],
-    ['Failed or stopped', r => r.status === 'failed' || r.status === 'stopped', 'bad']
-  ];
   if (building.length) h += '<div class="group-title">Designs being built (' + building.length + ')</div>' + building.map(designCard).join('');
-  groups.forEach(g => {
+  [['In progress', r => r.waiting_on === 'runner' || r.waiting_on === 'andy_rules', 'prog'], ['Live', r => r.status === 'live', 'live'], ['Failed or stopped', r => r.status === 'failed' || r.status === 'stopped', 'bad']].forEach(g => {
     const list = prod.runs.filter(g[1]);
     if (!list.length) return;
-    h += '<div class="group-title">' + g[0] + ' (' + list.length + ')</div>' + list.map(r => runCard(r, g[2])).join('');
+    if (g[2] === 'bad') h += '<details class="pbox lib"' + (prod.badOpen ? ' open' : '') + ' id="p_bad"><summary><b>' + g[0] + '</b> · ' + list.length + '</summary>' + list.map(r => runCard(r, g[2])).join('') + '</details>';
+    else h += '<div class="group-title">' + g[0] + ' (' + list.length + ')</div>' + list.map(r => runCard(r, g[2])).join('');
   });
   h += libraryHtml();
   $('list').innerHTML = h;
@@ -1066,24 +1153,26 @@ async function checkTemplate(id) {
 function runCard(r, cls) {
   const d = prod.designs.find(x => x.key === r.design_key) || {};
   const rule = prodRule(r.product_type);
-  const step = RUN_STEPS[r.status] || r.status;
-  const wait = r.waiting_on === 'andy_design' ? 'Check the print and approve it' : r.waiting_on === 'andy_live' ? 'Check the Shopify draft and press Go live' : r.waiting_on === 'andy_rules' ? 'Waiting for the ' + (rule ? rule.label : r.product_type) + ' rules' : '';
+  const wait = { andy_design: 'Check the print files and approve them', andy_live: 'Check the Shopify draft and press Go live', andy_rules: 'Waiting for the listing to be approved', andy_photos: 'Waiting for the model photos to be approved' }[r.waiting_on] || '';
+  const si = stageOf(r), bad = r.status === 'failed' || r.status === 'stopped';
   let h = '<div class="card run ' + cls + '" data-rid="' + r.id + '"><div class="body">'
     + '<div class="title">' + esc(r.title || ((d.character || r.design_key) + ' · ' + (rule ? rule.label : r.product_type))) + '</div>'
-    + '<div class="step"><b>' + esc(step) + '</b>' + (wait ? ' · ' + esc(wait) : '') + '</div>'
-    + '<div class="step" style="color:var(--grey)">' + esc(r.message || '') + '</div>'
-    + '<div class="step" style="color:var(--grey);font-size:12px">' + esc(r.template_name || r.template_id) + (r.updated_on ? ' · ' + esc(String(r.updated_on).slice(0, 16).replace('T', ' ')) : '') + '</div>';
+    + (bad ? '' : '<div class="stages">' + STAGES.map((s, i) => '<span class="' + (i < si ? 'ok' : i === si ? 'now' : '') + '">' + s + '</span>').join('') + '</div>')
+    + (wait ? '<div class="step"><b>' + esc(wait) + '</b></div>' : '')
+    + '<div class="step" style="color:var(--grey)">' + esc(r.message || '') + '</div>';
   let pf = null; try { pf = r.print_files ? JSON.parse(r.print_files) : null; } catch (e) { pf = null; }
-  if (['design_ready', 'gelato_created', 'shopify_arrived', 'ready_check'].indexOf(r.status) !== -1) {
+  let pics = []; try { pics = r.pics ? JSON.parse(r.pics).filter(p => p.url) : []; } catch (e) { pics = []; }
+  if (pics.length) h += '<div class="pfiles pics">' + pics.map(p => '<figure><a href="' + esc(safeUrl(p.url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(p.url)) + '" alt=""></a><figcaption>' + esc(p.colour.replace(/-/g, ' ')) + ', ' + esc({ main: 'main', second: 'second', close: 'close-up', back: 'back', colour: 'colour' }[p.slot] || p.slot) + '</figcaption></figure>').join('') + '</div>';
+  else if (['design_ready', 'gelato_created', 'shopify_arrived'].indexOf(r.status) !== -1 || r.waiting_on === 'andy_design') {
     if (pf && Object.keys(pf).length) h += '<div class="pfiles">' + Object.keys(pf).map(k => { const m = k.match(/^print_([a-z]+)_\d+x\d+_(dark|light)\.png$/); const lab = m ? m[1].charAt(0).toUpperCase() + m[1].slice(1) + ', ' + m[2] + ' ink' : k;
       return '<figure class="' + (m && m[2] === 'light' ? 'onDark' : '') + '"><a href="' + esc(safeUrl(pf[k])) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(pf[k])) + '" alt="' + esc(lab) + '"></a><figcaption>' + esc(lab) + '</figcaption></figure>'; }).join('') + '</div>';
     else if (r.preview_url) h += '<a href="' + esc(safeUrl(r.preview_url)) + '" target="_blank" rel="noopener"><img class="pv" src="' + esc(safeUrl(r.preview_url)) + '" alt="Print file"></a>';
   }
   if (r.shopify_product_id) h += '<div class="step"><a href="' + SHOP_ADMIN + esc(r.shopify_product_id) + '" target="_blank" rel="noopener">Open in Shopify</a></div>';
   h += '<div class="acts2">';
-  if (r.waiting_on === 'andy_design') h += '<button class="btn done small" data-pact="approve_design">Approve design</button><button class="btn ghost small" data-pact="reject">Reject</button>';
+  if (r.waiting_on === 'andy_design') h += '<button class="btn done small" data-pact="approve_design">Approve print files</button><button class="btn ghost small" data-pact="reject">Reject</button>';
   if (r.waiting_on === 'andy_live') h += '<button class="btn done small" data-pact="approve_live">Go live</button>';
-  if (r.status === 'failed' || r.status === 'stopped') h += '<button class="btn ghost small" data-pact="retry">Retry</button>';
+  if (bad) h += '<button class="btn ghost small" data-pact="retry">Retry</button>';
   if (['live', 'failed', 'stopped'].indexOf(r.status) === -1) h += '<button class="btn ghost small" data-pact="stop">Stop</button>';
   h += '</div>';
   if (r.log) h += '<details class="more"' + (prod.open[r.id] ? ' open' : '') + '><summary>Log</summary><pre>' + esc(r.log) + '</pre></details>';
@@ -1092,44 +1181,68 @@ function runCard(r, cls) {
 
 function wireProducts() {
   const lib = $('p_lib'); if (lib) lib.ontoggle = () => { prod.libOpen = lib.open; };
+  const bd = $('p_bad'); if (bd) bd.ontoggle = () => { prod.badOpen = bd.open; };
   wireDesigns();
   const ck = $('p_check'); if (ck) ck.onclick = () => checkTemplate($('p_tid').value.trim());
   const er = $('p_editrule'); if (er) er.onclick = (e) => { e.preventDefault(); prod.editRule = true; renderProducts(); };
+  const sp = $('p_showphotos'); if (sp) sp.onclick = (e) => { e.preventDefault(); prod.showPhotos = true; renderProducts(); };
+  const gp = $('p_gophotos'); if (gp) gp.onclick = (e) => { e.preventDefault(); prod.showPhotos = true; renderProducts(); const s = $('fstep5'); if (s) s.scrollIntoView({ behavior: 'smooth' }); };
   const chg = $('p_change'); if (chg) chg.onclick = (e) => { e.preventDefault(); prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); try { localStorage.removeItem(TPL_KEY); } catch (x) {} renderProducts(); };
   $('list').querySelectorAll('.dpick input').forEach(cb => cb.onchange = () => { cb.checked ? prod.picked.add(cb.dataset.dk) : prod.picked.delete(cb.dataset.dk); renderProducts(); });
   const all = $('p_all'); if (all) all.onclick = () => { $('list').querySelectorAll('.dpick input:not(:disabled)').forEach(cb => prod.picked.add(cb.dataset.dk)); renderProducts(); };
-  const st = $('p_start'); if (st) st.onclick = async () => {
-    const t = prod.tpl; const keys = Array.from(prod.picked);
-    if (!t || !keys.length) return;
-    if (!confirm('Start ' + keys.length + ' ' + (prodRule(t.product_type) ? prodRule(t.product_type).label.toLowerCase() : t.product_type) + ' run(s) from "' + t.templateName + '"? Nothing goes to Gelato or Shopify until you approve each design.')) return;
-    st.disabled = true; st.textContent = 'Starting…';
-    try { const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys }); toast(d.started + ' run(s) queued'); prod.picked.clear(); await loadProducts(); }
-    catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
-  };
-  $('list').querySelectorAll('.prule').forEach(box => {
-    const pt = box.dataset.pt;
-    const vals = () => {
-      const o = {}; box.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.value);
-      [1, 2].forEach(n => { const ticks = box.querySelectorAll('[data-side="' + n + '"]'); if (ticks.length) o['side_' + n] = Array.from(ticks).filter(c => c.checked).map(c => c.value).join(','); });
-      return o;
+  $('list').querySelectorAll('.chip').forEach(c => c.onclick = () => { prod.colour = c.dataset.col; renderProducts(); });
+  // design: saved to the product type's rules as soon as it changes, so the next Make uses it
+  const ds = $('list').querySelector('.design');
+  if (ds) {
+    const pt = ds.dataset.pt, po = ds.querySelector('[data-printon]'), half = ds.querySelector('[data-half]');
+    const save = async () => {
+      const v = {}; [1, 2].forEach(n => { v['side_' + n] = Array.from(ds.querySelectorAll('[data-side="' + n + '"]')).filter(c => c.checked).map(c => c.value).join(','); });
+      if (half) v.side_1_half = half.value;
+      if (!v.side_1 && !v.side_2) { toast('Tick at least one part to print'); return; }
+      $('p_saved').textContent = 'Saving…';
+      try { await productApi(Object.assign({ action: 'save_rule', product_type: pt }, v)); const r = prodRule(pt); Object.assign(r, v); renderProducts(); }
+      catch (e) { toast('Could not save: ' + e.message); $('p_saved').textContent = ''; }
     };
-    const po = box.querySelector('[data-printon]');
-    if (po) po.onchange = () => [1, 2].forEach(n => {
-      const row = box.querySelector('[data-area="' + n + '"]'), show = po.value === 'both' || po.value === String(n);
-      row.style.display = show ? '' : 'none';
-      const ticks = row.querySelectorAll('[data-side]');
+    if (po) po.onchange = () => { [1, 2].forEach(n => {
+      const show = po.value === 'both' || po.value === String(n);
+      const ticks = ds.querySelectorAll('[data-side="' + n + '"]');
       if (!show) ticks.forEach(c => { c.checked = false; });
       else if (!Array.from(ticks).some(c => c.checked)) ticks.forEach(c => { c.checked = DEFAULT_PARTS[n].split(',').indexOf(c.value) !== -1; });
-    });
+    }); save(); };
+    ds.querySelectorAll('[data-side]').forEach(c => c.onchange = save);
+    if (half) half.onchange = save;
+  }
+  const st = $('p_start'); if (st) st.onclick = async () => {
+    const t = prod.tpl; const keys = Array.from(prod.picked), r = prodRule(t.product_type);
+    if (!t || !keys.length) return;
+    if (!confirm('Make ' + keys.length + ' ' + (r ? r.label.toLowerCase() : t.product_type) + (keys.length === 1 ? '' : 's') + ' from "' + t.templateName + '"?\n\n' + ($('list').querySelector('.makesum') || {}).textContent + '\n\nNothing goes to Gelato or Shopify until you approve each set of print files.')) return;
+    st.disabled = true; st.textContent = 'Starting…';
+    try { const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys }); toast(d.started + ' started'); prod.picked.clear(); await loadProducts(); }
+    catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
+  };
+  const mk = $('p_mkphotos'); if (mk) mk.onclick = async () => {
+    const t = prod.tpl, r = prodRule(t.product_type), items = photosPlan(t, r).filter(n => !n.best).map(n => ({ slot: n.slot, colour: n.colour, model: n.model }));
+    if (!confirm('Make ' + items.length + ' model photo' + (items.length === 1 ? '' : 's') + ' for ' + r.label.toLowerCase() + 's?\n\nCost: $' + (items.length * PHOTO_USD).toFixed(2) + ' (about $' + PHOTO_USD.toFixed(2) + ' each). Pressing OK is your yes to that cost. Made once and reused for every design.')) return;
+    mk.disabled = true; mk.textContent = 'Requesting…';
+    try { await productApi({ action: 'photos_request', product_type: t.product_type, template_id: t.templateId, items: items }); toast('Model photos requested'); prod.showPhotos = true; await loadProducts(); }
+    catch (e) { toast('Could not request: ' + e.message); mk.disabled = false; }
+  };
+  $('list').querySelectorAll('[data-phid] [data-phact]').forEach(b => b.onclick = async () => {
+    const id = Number(b.closest('[data-phid]').dataset.phid), step = b.dataset.phact;
+    if (step === 'redo' && !confirm('Make this model photo again? Cost: $' + PHOTO_USD.toFixed(2) + '. Pressing OK is your yes to that cost.')) return;
+    b.disabled = true;
+    try { await productApi({ action: 'photo_update', photoId: id, step: step }); toast(step === 'approve' ? 'Photo approved' : 'Being made again'); await loadProducts(); }
+    catch (e) { toast(e.message); b.disabled = false; }
+  });
+  $('list').querySelectorAll('.prule').forEach(box => {
+    const pt = box.dataset.pt;
+    const vals = () => { const o = {}; box.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.value); return o; };
     box.querySelectorAll('[data-ract]').forEach(b => b.onclick = async () => {
       if (b.dataset.ract === 'cancel') { prod.editRule = false; renderProducts(); return; }
       const approve = b.dataset.ract === 'approve';
-      const v = vals();
-      if (box.querySelector('[data-side]') && !v.side_1 && !v.side_2) { toast('Pick at least one part to print'); return; }
-      if (po && po.value !== '2' && !v.side_1 || po && po.value !== '1' && !v.side_2) { toast('Tick at least one part for each area you print on'); return; }
-      if (approve && !confirm('Approve these rules? Every new product of this type will use them.')) return;
+      if (approve && !confirm('Approve this listing? Every new product of this type uses it.')) return;
       b.disabled = true;
-      try { await productApi(Object.assign({ action: 'save_rule', product_type: pt, approve: approve }, v)); toast(approve ? 'Rules approved' : 'Rules saved'); prod.editRule = false; await loadProducts(); }
+      try { await productApi(Object.assign({ action: 'save_rule', product_type: pt, approve: approve }, vals())); toast(approve ? 'Listing approved' : 'Listing saved'); prod.editRule = false; await loadProducts(); }
       catch (e) { toast('Could not save: ' + e.message); b.disabled = false; }
     });
   });
@@ -1141,7 +1254,7 @@ function wireProducts() {
       let note = '';
       if (stepName === 'approve_live' && !confirm('Put this product live on the shop now?')) return;
       if (stepName === 'stop' && !confirm('Stop this run?')) return;
-      if (stepName === 'reject') { note = prompt('What is wrong with the design? The run stops and your note is kept in its log.', ''); if (note === null) return; }
+      if (stepName === 'reject') { note = prompt('What is wrong with the print files? The run stops and your note is kept in its log.', ''); if (note === null) return; }
       b.disabled = true;
       try { await productApi({ action: 'run_update', runId: Number(rid), step: stepName === 'reject' ? 'stop' : stepName, note: stepName === 'reject' ? 'design rejected: ' + note : note }); toast('Done'); await loadProducts(); }
       catch (e) { toast(e.message); b.disabled = false; }
@@ -1170,27 +1283,6 @@ function libraryHtml() {
   return h + '</details>';
 }
 
-// ===== Print areas (Andy, 18-19 Oct 2026): what goes where, chosen once in each product type's rules =====
-// Garments: front and back. Mugs: side 1 and side 2 of the wrap. Either may be left out (front only, back only, or both).
-const PARTS = [['picture', 'Picture'], ['name', 'Name'], ['phrase', 'Phrase lines'], ['logo', 'Logo']];
-const DEFAULT_PARTS = { 1: 'picture,name,phrase,logo', 2: 'logo' };
-function areaNames(r) { return r.layout_mode === 'sides' ? ['Side 1', 'Side 2'] : ['Front', 'Back']; }
-function sidesHtml(r) {
-  const nm = areaNames(r), mug = r.layout_mode === 'sides';
-  const has = (n, p) => String(r['side_' + n] || '').split(',').map(x => x.trim()).indexOf(p) !== -1;
-  const on = n => PARTS.some(([p]) => has(n, p));
-  const mode = on(1) && on(2) ? 'both' : on(2) ? '2' : '1';
-  const row = n => '<div class="sides" data-area="' + n + '"' + ((mode === 'both' || mode === String(n)) ? '' : ' style="display:none"') + '><b>' + nm[n - 1] + (mug ? (n === 1 ? ' (faces out when held in the right hand)' : ' (faces the drinker)') : '') + '</b>'
-    + PARTS.map(([p, l]) => '<label class="tick"><input type="checkbox" data-side="' + n + '" value="' + p + '"' + (has(n, p) ? ' checked' : '') + '> ' + l + '</label>').join('') + '</div>';
-  return '<div class="pex"><label class="printon">Print on <select data-printon>'
-    + [['1', nm[0] + ' only'], ['2', nm[1] + ' only'], ['both', nm[0] + ' and ' + nm[1].toLowerCase()]].map(([v, l]) => '<option value="' + v + '"' + (v === mode ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></label>'
-    + row(1) + row(2)
-    + (mug ? '<label>Side 1 sits on the <select data-f="side_1_half"><option value="left"' + (r.side_1_half !== 'right' ? ' selected' : '') + '>left half</option><option value="right"' + (r.side_1_half === 'right' ? ' selected' : '') + '>right half</option></select> of the print file</label>' : '') + '</div>';
-}
-function areasSummary(r) {
-  const nm = areaNames(r), l = n => String(r['side_' + n] || '').split(',').map(x => x.trim()).filter(Boolean).map(x => (PARTS.find(p => p[0] === x) || [x, x])[1].toLowerCase()).join(', ');
-  return [1, 2].filter(n => l(n)).map(n => nm[n - 1].toLowerCase() + ': ' + l(n)).join(' · ');
-}
 
 // ===== New design from reference images (Andy, 18 Oct 2026) =====
 const CLOUD_UPLOAD = 'https://api.cloudinary.com/v1_1/dkapdtxek/image/upload';
