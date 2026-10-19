@@ -341,6 +341,7 @@ function flatShown(r) {
 }
 function tabCount(v) {
   if (v === 'Pages') return '';
+  if (v === 'Pricing') return pr.loaded ? pr.rows.filter(x => prCalc(x).flag).length || '' : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Follow list') return frows.filter(FVIEWS['To follow']).length;
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
@@ -355,7 +356,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Products', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Products', 'Pricing', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -454,6 +455,7 @@ function render() {
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); return; }
   if (view === 'Products') { renderProducts(); return; }
+  if (view === 'Pricing') { renderPricing(); return; }
   if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
   if (view === 'Done') {
@@ -1192,6 +1194,78 @@ function wireDesigns() {
 
 load();
 loadTrack();
+
+// ===== Pricing tab (18 Oct 2026, Andy): cost, price and profit for every product in every market =====
+// Data: n8n data table SC Pricing Matrix (inputs only: price, Gelato cost, Gelato shipping, FX, PayPal, code).
+// Profit is worked out here: price in GBP - Gelato cost - Gelato shipping (only where we pay it) - PayPal fee.
+// "After code" repeats it with the biggest promotion taken off. LOSS = zero or less. LOW = under the market's floor.
+const PRICING_URL = BASE + 'sc-pricing-list', PRICING_FLOOR_URL = BASE + 'sc-pricing-floor';
+const pr = { loaded: false, loading: false, rows: [], fx: {}, floors: {}, pp: { pct: 2.9, fixed: 0.3 }, promo: 10, mkt: 'All', prob: false };
+const PR_SYM = { GBP: '£', USD: '$', CAD: 'C$', EUR: '€', AUD: 'A$', NZD: 'NZ$' };
+async function loadPricing(quiet) {
+  if (pr.loading) return; pr.loading = true;
+  try {
+    const r = await fetch(PRICING_URL); if (!r.ok) throw new Error('answered ' + r.status);
+    const all = await r.json();
+    pr.rows = all.filter(x => x.kind === 'row'); pr.fx = {}; pr.floors = {};
+    all.forEach(x => {
+      if (x.kind === 'fx') pr.fx[x.currency] = Number(x.price_gbp);
+      if (x.kind === 'floor') pr.floors[x.market] = Number(x.margin_pct);
+      if (x.kind === 'setting' && x.group === 'paypal') pr.pp = { pct: Number(x.margin_pct), fixed: Number(x.gelato_cost_gbp) };
+      if (x.kind === 'setting' && x.group === 'promo') pr.promo = Number(x.margin_pct);
+    });
+    pr.loaded = true;
+  } catch (e) { if (!quiet) toast('Could not load pricing: ' + e.message); }
+  pr.loading = false;
+  if (view === 'Pricing') renderPricing(); else renderTabs();
+}
+function prCalc(x) {
+  const fx = pr.fx[x.currency] || 1, pg = Number(x.price_local) / fx, paid = x.shopper_ship !== 'Charged';
+  const cost = Number(x.gelato_cost_gbp) + (paid ? Number(x.gelato_ship_gbp) : 0);
+  const fee = pg * pr.pp.pct / 100 + pr.pp.fixed, profit = pg - cost - fee;
+  const pd = pg * (1 - pr.promo / 100), profitD = pd - cost - (pd * pr.pp.pct / 100 + pr.pp.fixed);
+  const freeD = pg * (1 - pr.promo / 100) - Number(x.gelato_cost_gbp) - Number(x.gelato_ship_gbp) - (pd * pr.pp.pct / 100 + pr.pp.fixed);
+  const floorKey = /^Europe/.test(x.market) ? 'Europe' : x.market, floor = pr.floors[floorKey] || 0;
+  const margin = profit / pg * 100;
+  const flag = profit <= 0 || profitD <= 0 ? 'LOSS' : margin < floor ? 'LOW' : '';
+  return { pg, paid, cost, fee, profit, profitD, freeD, margin, flag, loc: Number(x.price_local), sym: PR_SYM[x.currency] || '' };
+}
+function renderPricing() {
+  renderTabs();
+  if (!pr.loaded) { $('list').innerHTML = '<div class="empty">Loading pricing…</div>'; loadPricing(); return; }
+  const markets = ['All'].concat(Array.from(new Set(pr.rows.map(x => x.market))));
+  const f = n => (n < 0 ? '-' : '') + '£' + Math.abs(n).toFixed(2);
+  const calc = pr.rows.map(x => [x, prCalc(x)]);
+  const shown = calc.filter(([x, c]) => (pr.mkt === 'All' || x.market === pr.mkt) && (!pr.prob || c.flag));
+  const losses = calc.filter(([, c]) => c.flag === 'LOSS').length, lows = calc.filter(([, c]) => c.flag === 'LOW').length;
+  let h = '<div class="pbox"><h3>Pricing, shipping and profit</h3>'
+    + '<div class="tplinfo">Profit = price in pounds - Gelato cost - Gelato shipping (where we pay it) - PayPal fee (' + pr.pp.pct + '% + £' + pr.pp.fixed.toFixed(2) + '). After code = the same with ' + pr.promo + '% off (STANDTALL10, ends 30 Nov 2026). '
+    + 'Exchange rates and Gelato costs were checked on 18 Oct 2026; the weekly check keeps them current. Prices are what Shopify shows in each market. NFTs are not on this tab yet.</div>'
+    + '<div class="prow" style="flex-wrap:wrap;gap:8px"><span><b>' + losses + '</b> losing money, <b>' + lows + '</b> under the floor</span>'
+    + '<select id="pr_m">' + markets.map(m => '<option' + (m === pr.mkt ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select>'
+    + '<label><input type="checkbox" id="pr_p"' + (pr.prob ? ' checked' : '') + '> Problems only</label></div>'
+    + '<div class="prow" style="flex-wrap:wrap;gap:8px"><span>Margin floor %:</span>' + ['United States', 'Canada', 'United Kingdom', 'Germany (EU)', 'Australia', 'New Zealand', 'Europe'].map(m =>
+      '<label>' + esc(m) + ' <input type="number" class="pr_fl" data-m="' + esc(m) + '" value="' + (pr.floors[m] || 0) + '" style="width:56px"></label>').join('') + '</div></div>'
+    + '<div style="overflow-x:auto"><table class="prtab" style="border-collapse:collapse;font-size:13px;width:100%"><thead><tr>'
+    + ['Product', 'Size', 'Market', 'Made in', 'Price', 'Price £', 'Gelato cost', 'Gelato ship', 'Ship paid by', 'PayPal', 'Profit', 'Margin', 'After code', 'If shipping free, after code', ''].map(t => '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ccc;white-space:nowrap">' + t + '</th>').join('') + '</tr></thead><tbody>';
+  shown.forEach(([x, c]) => {
+    const bg = c.flag === 'LOSS' ? '#fde0e0' : c.flag === 'LOW' ? '#fff3cd' : '';
+    h += '<tr style="' + (bg ? 'background:' + bg : '') + '">'
+      + [esc(x.product), esc(x.size), esc(x.market), esc(x.made_in), c.sym + c.loc.toFixed(2), f(c.pg), f(Number(x.gelato_cost_gbp)), f(Number(x.gelato_ship_gbp)), c.paid ? 'Us' : 'Shopper', f(c.fee), '<b>' + f(c.profit) + '</b>', c.margin.toFixed(1) + '%', f(c.profitD), c.paid ? '' : f(c.freeD), c.flag ? '<b>' + c.flag + '</b>' : 'OK']
+        .map(v => '<td style="padding:3px 6px;border-bottom:1px solid #eee;white-space:nowrap">' + v + '</td>').join('') + '</tr>';
+  });
+  h += '</tbody></table></div>';
+  $('list').innerHTML = h;
+  $('pr_m').onchange = e => { pr.mkt = e.target.value; renderPricing(); };
+  $('pr_p').onchange = e => { pr.prob = e.target.checked; renderPricing(); };
+  $('list').querySelectorAll('.pr_fl').forEach(i => i.onchange = async () => {
+    try {
+      const r = await fetch(PRICING_FLOOR_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ market: i.dataset.m, floor: Number(i.value) }) });
+      if (!r.ok) throw new Error('answered ' + r.status);
+      pr.floors[i.dataset.m] = Number(i.value); toast('Floor saved'); renderPricing();
+    } catch (e) { toast('Not saved: ' + e.message); }
+  });
+}
 </script>
 </body>
 </html>
