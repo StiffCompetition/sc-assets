@@ -1005,7 +1005,29 @@ function colsOf(k) {
   if (!prod.cols[k]) { let saved = null; try { saved = JSON.parse(localStorage.getItem(COLS_KEY(k)) || 'null'); } catch (e) {} prod.cols[k] = new Set((saved || all).filter(c => all.indexOf(c) !== -1)); }
   return prod.cols[k];
 }
-function setCol(k, c, on) { const s = colsOf(k); on ? s.add(c) : s.delete(c); try { localStorage.setItem(COLS_KEY(k), JSON.stringify(Array.from(s))); } catch (e) {} }
+function setCol(k, c, on) { const s = colsOf(k); on ? s.add(c) : s.delete(c); try { localStorage.setItem(COLS_KEY(k), JSON.stringify(Array.from(s))); } catch (e) {} savePicks(); }
+// 19 Oct 2026 (Andy): the characters and colours picked are saved online with the product type's rules as they change,
+// so a refresh or another device picks up where he left off.
+function restorePicks() {
+  const t = prod.tpl, r = t ? prodRule(t.product_type) : null;
+  if (!t || !r || prod.picksFor === t.product_type) return;
+  prod.picksFor = t.product_type;
+  let pk = null; try { pk = r.picks ? JSON.parse(r.picks) : null; } catch (e) { pk = null; }
+  if (!pk) return;
+  const keys = libDesigns().map(d => d.key), all = t.colours || [];
+  prod.picked = new Set((pk.picked || []).filter(k => keys.indexOf(k) !== -1));
+  Object.keys(pk.cols || {}).forEach(k => { prod.cols[k] = new Set((pk.cols[k] || []).filter(c => all.indexOf(c) !== -1)); });
+}
+function savePicks() {
+  const t = prod.tpl, r = t ? prodRule(t.product_type) : null; if (!r) return;
+  clearTimeout(prod.picksTimer);
+  prod.picksTimer = setTimeout(async () => {
+    const cols = {}; Object.keys(prod.cols).forEach(k => { cols[k] = Array.from(prod.cols[k]); });
+    const picks = JSON.stringify({ picked: Array.from(prod.picked), cols: cols });
+    try { await productApi({ action: 'save_rule', product_type: r.product_type, picks: picks }); r.picks = picks; }
+    catch (e) { toast('Could not save your picks: ' + e.message); }
+  }, 700);
+}
 function makeColours() { const all = (prod.tpl && prod.tpl.colours) || []; if (!prod.picked.size) return all; const u = new Set(); prod.picked.forEach(k => colsOf(k).forEach(c => u.add(c))); return all.filter(c => u.has(c)); }
 // Shop listing preview (Andy, 19 Oct 2026): title, description, tags, the collections those tags put the product in,
 // sales channels and price, shown before anything goes to Gelato. Collections are read live from Shopify (SC - Shopify Read).
@@ -1131,6 +1153,7 @@ function renderProducts() {
   }
 
   // The steps
+  restorePicks();
   const all = libDesigns(), n = prod.picked.size;
   h += '<div class="pbox flow"><h3>Make products</h3>';
   h += fstep(1, 'Product', t ? 'done' : 'now',
@@ -1180,7 +1203,7 @@ function renderProducts() {
   wireProducts();
 }
 async function checkTemplate(id) {
-  prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.editRule = false; prod.cols = {};
+  prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.editRule = false; prod.cols = {}; prod.picksFor = '';
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { prod.tplErr = 'That is not a Gelato template ID.'; renderProducts(); return; }
   if ($('p_check')) { $('p_check').disabled = true; $('p_check').textContent = 'Checking…'; } else $('list').innerHTML = '<div class="empty">Loading products…</div>';
   try { prod.tpl = await productApi({ action: 'check_template', templateId: id }); try { localStorage.setItem(TPL_KEY, id); } catch (e) {} }
@@ -1227,9 +1250,9 @@ function wireProducts() {
   const er = $('p_editrule'); if (er) er.onclick = (e) => { e.preventDefault(); prod.editRule = true; renderProducts(); };
   const sp = $('p_showphotos'); if (sp) sp.onclick = (e) => { e.preventDefault(); prod.showPhotos = true; renderProducts(); };
   const gp = $('p_gophotos'); if (gp) gp.onclick = (e) => { e.preventDefault(); prod.showPhotos = true; renderProducts(); const s = $('fstep5'); if (s) s.scrollIntoView({ behavior: 'smooth' }); };
-  const chg = $('p_change'); if (chg) chg.onclick = (e) => { e.preventDefault(); prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); try { localStorage.removeItem(TPL_KEY); } catch (x) {} renderProducts(); };
-  $('list').querySelectorAll('.dpick input').forEach(cb => cb.onchange = () => { if (cb.checked) { prod.picked.add(cb.dataset.dk); prod.pv = cb.dataset.dk; } else prod.picked.delete(cb.dataset.dk); renderProducts(); });
-  const all = $('p_all'); if (all) all.onclick = () => { $('list').querySelectorAll('.dpick input:not(:disabled)').forEach(cb => prod.picked.add(cb.dataset.dk)); renderProducts(); };
+  const chg = $('p_change'); if (chg) chg.onclick = (e) => { e.preventDefault(); prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.cols = {}; prod.picksFor = ''; try { localStorage.removeItem(TPL_KEY); } catch (x) {} renderProducts(); };
+  $('list').querySelectorAll('.dpick input').forEach(cb => cb.onchange = () => { if (cb.checked) { prod.picked.add(cb.dataset.dk); prod.pv = cb.dataset.dk; } else prod.picked.delete(cb.dataset.dk); savePicks(); renderProducts(); });
+  const all = $('p_all'); if (all) all.onclick = () => { $('list').querySelectorAll('.dpick input:not(:disabled)').forEach(cb => prod.picked.add(cb.dataset.dk)); savePicks(); renderProducts(); };
   $('list').querySelectorAll('.chip').forEach(c => c.onclick = () => {
     if (c.dataset.ck) { const k = c.dataset.ck, col = c.dataset.col; setCol(k, col, !colsOf(k).has(col)); prod.pv = k; }   // one tap: in or out, and shown in the preview
     prod.colour = c.dataset.col; renderProducts();
@@ -1262,7 +1285,7 @@ function wireProducts() {
     if (!confirm('Make ' + keys.length + ' ' + (r ? r.label.toLowerCase() : t.product_type) + (keys.length === 1 ? '' : 's') + ' from "' + t.templateName + '"?\n\n' + ($('list').querySelector('.makesum') || {}).textContent + '\n\nNothing goes to Gelato or Shopify until you approve each set of print files.')) return;
     st.disabled = true; st.textContent = 'Starting…';
     try { const colours = {}; if (!(r && r.layout_mode === 'sides')) keys.forEach(k => { colours[k] = Array.from(colsOf(k)); });
-    const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys, colours: colours }); toast(d.started + ' started'); prod.picked.clear(); await loadProducts(); }
+    const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys, colours: colours }); toast(d.started + ' started'); prod.picked.clear(); savePicks(); await loadProducts(); }
     catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
   };
   $('list').querySelectorAll('.prule').forEach(box => {
