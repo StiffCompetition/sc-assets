@@ -1200,13 +1200,14 @@ loadTrack();
 // Profit is worked out here: price in GBP - Gelato cost - Gelato shipping (only where we pay it) - PayPal fee.
 // "After code" repeats it with the biggest promotion taken off. LOSS = zero or less. LOW = under the market's floor.
 const PRICING_URL = BASE + 'sc-pricing-list', PRICING_FLOOR_URL = BASE + 'sc-pricing-floor';
-const pr = { loaded: false, loading: false, rows: [], fx: {}, floors: {}, pp: { pct: 2.9, fixed: 0.3 }, promo: 10, mkt: 'All', prob: false };
+const pr = { loaded: false, loading: false, rows: [], fx: {}, floors: {}, pp: { pct: 2.9, fixed: 0.3 }, promo: 10, mkt: 'All', prob: false, err: '' };
 const PR_SYM = { GBP: '£', USD: '$', CAD: 'C$', EUR: '€', AUD: 'A$', NZD: 'NZ$' };
 async function loadPricing(quiet) {
   if (pr.loading) return; pr.loading = true;
   try {
     const r = await fetch(PRICING_URL); if (!r.ok) throw new Error('answered ' + r.status);
-    const all = await r.json();
+    let all = await r.json(); if (all && !Array.isArray(all)) all = [all]; if (!Array.isArray(all)) throw new Error('unexpected answer');
+    pr.err = '';
     pr.rows = all.filter(x => x.kind === 'row'); pr.fx = {}; pr.floors = {};
     all.forEach(x => {
       if (x.kind === 'fx') pr.fx[x.currency] = Number(x.price_gbp);
@@ -1215,7 +1216,7 @@ async function loadPricing(quiet) {
       if (x.kind === 'setting' && x.group === 'promo') pr.promo = Number(x.margin_pct);
     });
     pr.loaded = true;
-  } catch (e) { if (!quiet) toast('Could not load pricing: ' + e.message); }
+  } catch (e) { pr.err = e.message; if (!quiet) toast('Could not load pricing: ' + e.message); }
   pr.loading = false;
   if (view === 'Pricing') renderPricing(); else renderTabs();
 }
@@ -1232,7 +1233,10 @@ function prCalc(x) {
 }
 function renderPricing() {
   renderTabs();
-  if (!pr.loaded) { $('list').innerHTML = '<div class="empty">Loading pricing…</div>'; loadPricing(); return; }
+  if (!pr.loaded) {
+    if (pr.err) { $('list').innerHTML = '<div class="error-state">Could not load pricing (' + esc(pr.err) + '). Check the workflow SC - Pricing API is active. <button class="btn" id="pr_retry">Try again</button></div>'; $('pr_retry').onclick = () => { pr.err = ''; renderPricing(); }; return; }
+    $('list').innerHTML = '<div class="empty">Loading pricing\u2026</div>'; loadPricing(); return;
+  }
   const markets = ['All'].concat(Array.from(new Set(pr.rows.map(x => x.market))));
   const f = n => (n < 0 ? '-' : '') + '£' + Math.abs(n).toFixed(2);
   const calc = pr.rows.map(x => [x, prCalc(x)]);
