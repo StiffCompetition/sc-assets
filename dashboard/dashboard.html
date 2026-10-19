@@ -1698,9 +1698,11 @@ function openReschedule(r) {
   });
 }
 function londonYmd(v) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(v)); }
+let PRODUCTS_AT = 0;
 async function loadProducts() {
-  if (PRODUCTS) return PRODUCTS;
-  try { const res = await fetch(OPTIONS_URL); const j = await res.json(); PRODUCTS = j.products || []; PROMOS = j.promos || []; LEFT = j.left || {}; DRAFTS = j.drafts_awaiting_approval || 0; } catch (e) { PRODUCTS = []; }
+  // 19 Oct 2026 (Andy): new products must appear without reloading the page, so the list is refetched when older than 30 seconds.
+  if (PRODUCTS && Date.now() - PRODUCTS_AT < 30000) return PRODUCTS;
+  try { const res = await fetch(OPTIONS_URL, { cache: 'no-store' }); const j = await res.json(); PRODUCTS = j.products || []; PROMOS = j.promos || []; LEFT = j.left || {}; DRAFTS = j.drafts_awaiting_approval || 0; PRODUCTS_AT = Date.now(); } catch (e) { PRODUCTS = PRODUCTS || []; }
   return PRODUCTS;
 }
 // A day's standard slot (6am Day Greeting, 7am main post, 12pm Product) is filled by any post of that slot type on that day,
