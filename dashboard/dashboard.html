@@ -1793,16 +1793,16 @@ function productLabel(p) {
   let t = String(p.title || '');
   const ch = p.character || '';
   const slogan = p.type === 'T-Shirt' ? t.match(/'([^']+)'/) : null;   // older slogan shirts keep their whole slogan
-  if (slogan) return titleCase(slogan[1]) + (p.range ? ' · ' + p.range + ' shirts' : '');
+  if (slogan) return titleCase(slogan[1]) + (p.range ? ', ' + p.range : '');
   t = t.replace(/\(\s*\d+\s*oz[^)]*\)/ig, '').replace(/\(\s*\d+\s*x\s*\d+[^)]*\)/ig, '').replace(/\(print it yourself\)/ig, '')
        .replace(/\/\/\s*1994 series/ig, '').replace(/\bpremium tote bag( natural)?\b/ig, '').replace(/\bmuseum print\b/ig, '').replace(/\bposter download\b/ig, '')
        .replace(/\bmuseum art:?/ig, '').replace(/\bt-shirt:?/ig, '').replace(/\bSC-94\b/ig, '');
   if (ch) { t = t.replace(new RegExp(ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/^The /i, '(The )?'), 'ig'), ''); t = t.replace(/\bvelvet python\b/ig, ''); }
   t = t.replace(/["']{2,}/g, '').replace(/^["'\s:\-]+|["'\s:\-]+$/g, '').replace(/\s{2,}/g, ' ').trim();
-  if (p.type === 'T-Shirt' && /^\(.*\)$/.test(t)) t = '';                         // new character shirts: the phrase is in the design
+  if (p.type === 'T-Shirt' && /^\(.*\)$/.test(t)) { const ph = t.slice(1, -1).split(',').map(x => x.trim()).filter(Boolean); t = ph[ph.length - 1] || ''; }   // 19 Oct 2026 (Andy): the shirt's own phrase, e.g. Hard Hat On
   t = t.replace(/^\((.*)\)$/, '$1').replace(/^["']|["']$/g, '').trim();
   let label = (ch ? ch : '') + (t ? (ch ? ' · ' : '') + titleCase(t) : '');
-  if (p.range) label += ' · ' + p.range + ' shirts';
+  if (p.range) label += ', ' + p.range;
   label = label || p.title;
   return label.length > 56 ? label.slice(0, 54).trim() + '…' : label;
 }
@@ -1936,7 +1936,7 @@ function addExtraLine(box) {
     '<button type="button" class="btn secondary ex-remove" style="padding:0 8px;font-size:12px">x</button>';
   box.appendChild(line);
   const fmt = line.querySelector('.ex-format');
-  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value !== 'Day Greeting' && fmt.value.indexOf('Brand Lore') !== 0) ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = (fmt.value === 'Product' || fmt.value === 'Dare to Buy') ? 'inline' : 'none'; if (fmt.value === 'Dare to Buy') line.querySelector('.ex-time').value = '19:00'; });
+  fmt.addEventListener('change', () => { line.querySelector('.ex-prod').style.display = (fmt.value !== 'Day Greeting' && fmt.value.indexOf('Brand Lore') !== 0) ? 'inline' : 'none'; line.querySelector('.ex-product').style.display = (fmt.value === 'Product' || fmt.value === 'Dare to Buy') ? 'inline' : 'none'; if (fmt.value === 'Dare to Buy') line.querySelector('.ex-time').value = '19:00'; const prodPost = fmt.value === 'Product' || fmt.value === 'Dare to Buy'; const xc = line.querySelector('.ex-char'); const cv = xc.value; xc.innerHTML = charOptions(cv === ch && !prodPost ? '' : cv, prodPost ? '' : ch); });   // 19 Oct 2026 (Andy): product posts may use the day's character
   line.querySelector('.ex-product').addEventListener('change', (e) => { const p = (PRODUCTS || []).find(x => x.handle === e.target.value); line.querySelector('.ex-char').value = (p && p.character) ? p.character : ''; });
   line.querySelector('.ex-remove').addEventListener('click', () => line.remove());
 }
@@ -1971,7 +1971,7 @@ function drawPlanDays(useDefaults) {
       const pk = picks[date + '|12pm'] || '';
       const pp = (PRODUCTS || []).find(x => x.handle === pk);
       prod = st12.gap
-        ? stateTag(e12) + '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <label class="plan-reuse"><input type="checkbox" class="plan12r" data-date="' + date + '"> <span class="plan-reuse-t">use its approved clip (no new video)</span></label> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character !== DAY_CHAR[dow] && pp.character) || '', DAY_CHAR[dow]) + '</select>'
+        ? stateTag(e12) + '<select data-date="' + date + '" class="plan12">' + productOptions(pk) + '</select> <label class="plan-reuse"><input type="checkbox" class="plan12r" data-date="' + date + '"> <span class="plan-reuse-t">use its approved clip (no new video)</span></label> <select data-date="' + date + '" class="plan12c">' + charOptions((pp && pp.character) || '', '') + '</select>'
         : '';
     }
     let nft = '';
@@ -2069,11 +2069,12 @@ async function openAdhoc() {
     const dow = new Date(document.getElementById('adDate').value + 'T12:00:00Z').getUTCDay();
     document.getElementById('adProductBox').style.display = (f !== 'Day Greeting' && f.indexOf('Brand Lore') !== 0) ? 'block' : 'none';
     const cur = document.getElementById('adChar').value;
-    document.getElementById('adChar').innerHTML = charOptions(cur === DAY_CHAR[dow] ? '' : cur, DAY_CHAR[dow]);
+    const prodPost = f === 'Product' || f === 'Dare to Buy';   // 19 Oct 2026 (Andy): a product post may use the day's character
+    document.getElementById('adChar').innerHTML = charOptions(cur === DAY_CHAR[dow] && !prodPost ? '' : cur, prodPost ? '' : DAY_CHAR[dow]);
     document.getElementById('adProduct').style.display = (f === 'Product' || f === 'Dare to Buy') ? '' : 'none';
     if (f === 'Dare to Buy' && document.getElementById('adTime').value === '18:00') document.getElementById('adTime').value = '19:00';
     const n = (f === 'Day Greeting' || f.indexOf('Brand Lore') === 0 || dow === 0) ? leftFor(f === 'Day Greeting' && dow !== 0 ? DAY_CHAR[dow] : 'SC Logo', f) : leftOther(DAY_CHAR[dow], f);
-    const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (Rotate = any of the six except ' + DAY_CHAR[dow] + '). Up to one a day, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (any of the six, the day\'s character included). Up to one a day, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
