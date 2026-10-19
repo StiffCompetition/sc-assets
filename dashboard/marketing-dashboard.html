@@ -158,7 +158,7 @@
   .fnum { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; background: var(--c-next); color: #fff; flex: 0 0 auto; }
   .fstep.done .fnum { background: var(--c-done); } .fstep.lock { opacity: .45; } .fstep.lock .fnum { background: #8a8f98; }
   .fsum { color: var(--grey); font-size: 13px; } .fbody { margin: 10px 0 0 36px; } @media (max-width: 640px) { .fbody { margin-left: 0; } }
-  .dpick label img { width: 44px; height: 44px; object-fit: contain; flex: 0 0 auto; } .dpick label.on { border-color: var(--c-next); background: #eef4ff; }
+  .dpick label img { width: 44px; height: 44px; object-fit: contain; flex: 0 0 auto; } 
   .dpick label small { color: var(--grey); } .need-title { color: var(--c-today); }
   a.btn { text-decoration: none; display: inline-flex; align-items: center; }
   .printon { display: block; font-size: 14px !important; color: var(--ink) !important; } .printon select { width: auto !important; margin-left: 6px; font-size: 14px; }
@@ -182,6 +182,7 @@
   .tag { display: inline-block; background: #eef0f2; border-radius: 10px; padding: 1px 7px; margin: 2px 3px 0 0; font-size: 12px; } .listingbox summary { font-weight: 600; }
   .pcols { margin-top: 10px; display: grid; gap: 8px; } .pcol { border: 1px solid var(--line); padding: 6px 8px; background: #fff; } .pcol .chips { margin-top: 4px; }
   .chip.pick { opacity: .3; position: relative; } .chip.pick.sel { opacity: 1; } .chip.pick.sel::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; text-shadow: 0 0 2px #000; }
+  .chip.pick.mdl { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #e0a800; } .chip.pick.mdl::after { content: '★'; }
   .stages { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; } .stages span { font-size: 11.5px; padding: 2px 7px; border-radius: 10px; background: #eef0f2; color: #8a8f98; }
   .stages span.ok { background: #e3f4e8; color: var(--c-done); } .stages span.now { background: var(--c-next); color: #fff; }
   .pfiles.pics figure { width: 120px; }
@@ -191,9 +192,10 @@
   .prow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .prow input[type=text] { flex: 1 1 300px; min-width: 0; font-family: var(--mono); font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); }
   .tplinfo { margin-top: 8px; font-size: 14px; } .tplinfo b { color: var(--grey); font-size: 11px; letter-spacing: .8px; text-transform: uppercase; margin-right: 6px; }
-  .dpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
-  .dpick label { border: 1px solid var(--line); padding: 6px 8px; font-size: 14px; display: flex; gap: 6px; align-items: center; cursor: pointer; background: #fff; }
-  .dpick label.busy { color: var(--grey); }
+  .dpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; margin: 8px 0; }
+  .dpick .dcard { border: 1px solid var(--line); padding: 6px 8px; background: #fff; } .dpick .dcard.on { border-color: var(--c-next); background: #eef4ff; } .dpick .dcard .chips { margin-top: 6px; gap: 5px; }
+  .dpick label { font-size: 14px; display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .dpick .busy label { color: var(--grey); }
   .prule textarea, .prule input { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); }
   .prule textarea { min-height: 120px; font-family: var(--mono); font-size: 12.5px; }
   .prule label { display: block; font-size: 12px; color: var(--grey); margin-top: 8px; }
@@ -957,7 +959,7 @@ async function addFollow(e) {
 // SC - Product Runner moves runs on (print files, Gelato, Shopify draft, our pictures, go live); SC - Model Photo Runner
 // makes the plain SC model photos the pictures are built on.
 const PRODUCT_URL = BASE + 'sc-product-api';
-const prod = { loaded: false, loading: false, designs: [], rules: [], runs: [], photos: [], tpl: null, tplErr: '', picked: new Set(), timer: null, open: {}, colour: '', cols: {}, pv: '' };
+const prod = { loaded: false, loading: false, designs: [], rules: [], runs: [], photos: [], tpl: null, tplErr: '', picked: new Set(), timer: null, open: {}, colour: '', cols: {}, models: {}, pv: '' };
 const SHOP_ADMIN = 'https://admin.shopify.com/store/stiifcompnft/products/';
 const TPL_KEY = 'sc_prod_tpl';
 const LIGHT = ['white', 'light-blue', 'daisy', 'natural', 'ash', 'sand', 'light-pink', 'sport-grey', 'heather-grey', 'cream', 'ivory', 'gold'];
@@ -1017,17 +1019,22 @@ function restorePicks() {
   const keys = libDesigns().map(d => d.key), all = t.colours || [];
   prod.picked = new Set((pk.picked || []).filter(k => keys.indexOf(k) !== -1));
   Object.keys(pk.cols || {}).forEach(k => { prod.cols[k] = new Set((pk.cols[k] || []).filter(c => all.indexOf(c) !== -1)); });
+  Object.keys(pk.models || {}).forEach(k => { prod.models[k] = new Set((pk.models[k] || []).filter(c => all.indexOf(c) !== -1)); });
 }
 function savePicks() {
   const t = prod.tpl, r = t ? prodRule(t.product_type) : null; if (!r) return;
   clearTimeout(prod.picksTimer);
   prod.picksTimer = setTimeout(async () => {
     const cols = {}; Object.keys(prod.cols).forEach(k => { cols[k] = Array.from(prod.cols[k]); });
-    const picks = JSON.stringify({ picked: Array.from(prod.picked), cols: cols });
+    const models = {}; Object.keys(prod.models).forEach(k => { models[k] = Array.from(prod.models[k]); });
+    const picks = JSON.stringify({ picked: Array.from(prod.picked), cols: cols, models: models });
     try { await productApi({ action: 'save_rule', product_type: r.product_type, picks: picks }); r.picks = picks; }
     catch (e) { toast('Could not save your picks: ' + e.message); }
   }, 700);
 }
+// colours shown on a model (Andy, 19 Oct 2026): up to two per character; none chosen = the first ticked colour
+function modelsOf(k) { if (!prod.models[k]) prod.models[k] = new Set(); return prod.models[k]; }
+function modelCols(k) { const s = colsOf(k), m = Array.from(modelsOf(k)).filter(c => s.has(c)); if (m.length) return m.slice(0, 2); const all = (prod.tpl && prod.tpl.colours) || []; const f = all.find(c => s.has(c)); return f ? [f] : []; }
 function makeColours() { const all = (prod.tpl && prod.tpl.colours) || []; if (!prod.picked.size) return all; const u = new Set(); prod.picked.forEach(k => colsOf(k).forEach(c => u.add(c))); return all.filter(c => u.has(c)); }
 // Shop listing preview (Andy, 19 Oct 2026): title, description, tags, the collections those tags put the product in,
 // sales channels and price, shown before anything goes to Gelato. Collections are read live from Shopify (SC - Shopify Read).
@@ -1113,7 +1120,7 @@ function photosHtml(t, rule) {
   return '<div class="photos">' + plan.map(n => n.bases.length
     ? n.bases.map(p => '<figure class="ph approved"><a href="' + esc(safeUrl(p.url)) + '" target="_blank" rel="noopener"><img src="' + esc(safeUrl(p.url)) + '" alt=""></a><figcaption><b>' + label[n.slot] + '</b> · ' + esc(p.model || '') + '</figcaption></figure>').join('')
     : '<figure class="ph missing"><div class="ph-none"></div><figcaption><b>' + label[n.slot] + '</b><br><span class="ph-st">None yet</span></figcaption></figure>').join('') + '</div>'
-    + '<div class="tplinfo" style="margin-top:6px">Each picture is recoloured to every colour you chose, with your print and a contrasting backdrop.</div>';
+    + '<div class="tplinfo" style="margin-top:6px">The models wear each character\'s ★ colours. Every colour also gets a close-up of the print, and colours without a model picture show their close-up.</div>';
 }
 function photosReady(t, rule) { return !oursPictures(rule) || photosPlan(t, rule)[0].bases.length > 0; }
 
@@ -1169,14 +1176,17 @@ function renderProducts() {
   const s1p = partsOf(rule, 1), s2p = partsOf(rule, 2), nm = areaNames(rule);
   const designSum = open ? [s1p.length ? nm[0] + ': ' + partWords(s1p) : '', s2p.length ? nm[1] + ': ' + partWords(s2p) : ''].filter(Boolean).join(' · ') : '';
   h += fstep(3, 'Design', open ? 'now' : 'lock', '', open ? designHtml(t, rule) : '');
+  // 19 Oct 2026 (Andy): each character's colours sit right under its picture; tapping a colour also picks the character
+  const garment = !(rule && rule.layout_mode === 'sides'), tcols = t ? (t.colours || []) : [];
   const s4 = open ? '<div class="dpick">' + all.map(d => {
-      const busy = openRuns(d.key, t.templateId).length > 0, ink = inkFor((t.colours || [])[0] || 'white');
-      const img = d['print_' + ink + '_ink'] || d.art_url;
-      return '<label class="' + (busy ? 'busy' : '') + (prod.picked.has(d.key) ? ' on' : '') + '"><input type="checkbox" data-dk="' + esc(d.key) + '"' + (busy ? ' disabled' : (prod.picked.has(d.key) ? ' checked' : '')) + '>'
-        + (img ? '<img class="full ' + ink + '" src="' + esc(safeUrl(img)) + '" alt="">' : '') + '<span>' + esc(d.character) + (busy ? '<br><small>already made</small>' : '') + '</span></label>';
+      const busy = openRuns(d.key, t.templateId).length > 0, ink = inkFor(tcols[0] || 'white');
+      const img = d['print_' + ink + '_ink'] || d.art_url, on = prod.picked.has(d.key), cs = colsOf(d.key), mc = on ? modelCols(d.key) : [];
+      return '<div class="dcard' + (busy ? ' busy' : '') + (on ? ' on' : '') + '"><label><input type="checkbox" data-dk="' + esc(d.key) + '"' + (busy ? ' disabled' : (on ? ' checked' : '')) + '>'
+        + (img ? '<img class="full ' + ink + '" src="' + esc(safeUrl(img)) + '" alt="">' : '') + '<span>' + esc(d.character) + (busy ? '<br><small>already made</small>' : '') + '</span></label>'
+        + (garment && !busy ? '<div class="chips">' + tcols.map(c => '<button type="button" class="chip pick' + (on && cs.has(c) ? ' sel' : '') + (mc.indexOf(c) !== -1 ? ' mdl' : '') + (prod.pv === d.key && prod.colour === c ? ' on' : '') + '" data-ck="' + esc(d.key) + '" data-col="' + esc(c) + '" title="' + esc(c.replace(/-/g, ' ')) + (mc.indexOf(c) !== -1 ? ', on a model' : '') + '" style="background:' + (COLOUR_HEX[c] || '#999') + '"></button>').join('')
+          + (on ? '<span class="fsum">' + cs.size + ' of ' + tcols.length + (mc.length ? ' · ★ on a model: ' + esc(mc.join(', ').replace(/-/g, ' ')) : '') + '</span>' : '') + '</div>' : '')
+        + '</div>';
     }).join('') + '</div><div class="prow"><button class="btn ghost small" id="p_all">Pick all</button></div>'
-    + (n && !(rule && rule.layout_mode === 'sides') ? '<div class="pcols">' + all.filter(d => prod.picked.has(d.key)).map(d => { const s = colsOf(d.key);
-        return '<div class="pcol"><b>' + esc(d.character) + '</b> <span class="fsum">' + s.size + ' of ' + (t.colours || []).length + '</span><div class="chips">' + (t.colours || []).map(c => '<button type="button" class="chip pick' + (s.has(c) ? ' sel' : '') + (prod.pv === d.key && prod.colour === c ? ' on' : '') + '" data-ck="' + esc(d.key) + '" data-col="' + esc(c) + '" title="' + esc(c.replace(/-/g, ' ')) + '" style="background:' + (COLOUR_HEX[c] || '#999') + '"></button>').join('') + '</div></div>'; }).join('') + '</div>' : '')
     + newDesignHtml() : '';
   h += fstep(4, 'Characters and colours', open ? 'now' : 'lock', open && n ? n + ' picked' : '', s4);
   const phOk = open && photosReady(t, rule);
@@ -1203,7 +1213,7 @@ function renderProducts() {
   wireProducts();
 }
 async function checkTemplate(id) {
-  prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.editRule = false; prod.cols = {}; prod.picksFor = '';
+  prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.editRule = false; prod.cols = {}; prod.models = {}; prod.picksFor = '';
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { prod.tplErr = 'That is not a Gelato template ID.'; renderProducts(); return; }
   if ($('p_check')) { $('p_check').disabled = true; $('p_check').textContent = 'Checking…'; } else $('list').innerHTML = '<div class="empty">Loading products…</div>';
   try { prod.tpl = await productApi({ action: 'check_template', templateId: id }); try { localStorage.setItem(TPL_KEY, id); } catch (e) {} }
@@ -1235,7 +1245,7 @@ function runCard(r, cls) {
   h += '<div class="acts2">';
   if (r.waiting_on === 'andy_design') h += '<button class="btn done small" data-pact="approve_design">Approve print files and listing</button><button class="btn ghost small" data-pact="reject">Reject</button>';
   if (r.waiting_on === 'andy_live') h += '<button class="btn done small" data-pact="approve_live">Go live</button>';
-  if (bad) h += '<button class="btn ghost small" data-pact="retry">Retry</button>';
+  if (bad) h += '<button class="btn ghost small" data-pact="retry">Retry</button><button class="btn ghost small" data-pact="remove">Remove</button>';
   if (['live', 'failed', 'stopped'].indexOf(r.status) === -1) h += '<button class="btn ghost small" data-pact="stop">Stop</button>';
   h += '</div>';
   if (r.log) h += '<details class="more"' + (prod.open[r.id] ? ' open' : '') + '><summary>Log</summary><pre>' + esc(r.log) + '</pre></details>';
@@ -1250,11 +1260,18 @@ function wireProducts() {
   const er = $('p_editrule'); if (er) er.onclick = (e) => { e.preventDefault(); prod.editRule = true; renderProducts(); };
   const sp = $('p_showphotos'); if (sp) sp.onclick = (e) => { e.preventDefault(); prod.showPhotos = true; renderProducts(); };
   const gp = $('p_gophotos'); if (gp) gp.onclick = (e) => { e.preventDefault(); prod.showPhotos = true; renderProducts(); const s = $('fstep5'); if (s) s.scrollIntoView({ behavior: 'smooth' }); };
-  const chg = $('p_change'); if (chg) chg.onclick = (e) => { e.preventDefault(); prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.cols = {}; prod.picksFor = ''; try { localStorage.removeItem(TPL_KEY); } catch (x) {} renderProducts(); };
+  const chg = $('p_change'); if (chg) chg.onclick = (e) => { e.preventDefault(); prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.cols = {}; prod.models = {}; prod.picksFor = ''; try { localStorage.removeItem(TPL_KEY); } catch (x) {} renderProducts(); };
   $('list').querySelectorAll('.dpick input').forEach(cb => cb.onchange = () => { if (cb.checked) { prod.picked.add(cb.dataset.dk); prod.pv = cb.dataset.dk; } else prod.picked.delete(cb.dataset.dk); savePicks(); renderProducts(); });
   const all = $('p_all'); if (all) all.onclick = () => { $('list').querySelectorAll('.dpick input:not(:disabled)').forEach(cb => prod.picked.add(cb.dataset.dk)); savePicks(); renderProducts(); };
   $('list').querySelectorAll('.chip').forEach(c => c.onclick = () => {
-    if (c.dataset.ck) { const k = c.dataset.ck, col = c.dataset.col; setCol(k, col, !colsOf(k).has(col)); prod.pv = k; }   // one tap: in or out, and shown in the preview
+    if (c.dataset.ck) { const k = c.dataset.ck, col = c.dataset.col;   // one tap: in or out, and shown in the preview
+      // taps: off -> ticked -> ticked and on a model (up to two) -> off
+      const ms = modelsOf(k);
+      if (!prod.picked.has(k)) { prod.picked.add(k); if (colsOf(k).size === ((prod.tpl && prod.tpl.colours) || []).length) { colsOf(k).clear(); } setCol(k, col, true); }
+      else if (!colsOf(k).has(col)) setCol(k, col, true);
+      else if (!ms.has(col) && ms.size < 2) { ms.add(col); savePicks(); }
+      else { ms.delete(col); setCol(k, col, false); }
+      prod.pv = k; }
     prod.colour = c.dataset.col; renderProducts();
   });
   const pvc = $('p_pvchar'); if (pvc) pvc.onchange = () => { prod.pv = pvc.value; renderProducts(); };
@@ -1284,8 +1301,8 @@ function wireProducts() {
     if (!t || !keys.length) return;
     if (!confirm('Make ' + keys.length + ' ' + (r ? r.label.toLowerCase() : t.product_type) + (keys.length === 1 ? '' : 's') + ' from "' + t.templateName + '"?\n\n' + ($('list').querySelector('.makesum') || {}).textContent + '\n\nNothing goes to Gelato or Shopify until you approve each set of print files.')) return;
     st.disabled = true; st.textContent = 'Starting…';
-    try { const colours = {}; if (!(r && r.layout_mode === 'sides')) keys.forEach(k => { colours[k] = Array.from(colsOf(k)); });
-    const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys, colours: colours }); toast(d.started + ' started'); prod.picked.clear(); savePicks(); await loadProducts(); }
+    try { const colours = {}, models = {}; if (!(r && r.layout_mode === 'sides')) keys.forEach(k => { colours[k] = Array.from(colsOf(k)); models[k] = modelCols(k); });
+    const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys, colours: colours, models: models }); toast(d.started + ' started'); prod.picked.clear(); savePicks(); await loadProducts(); }
     catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
   };
   $('list').querySelectorAll('.prule').forEach(box => {
@@ -1308,6 +1325,7 @@ function wireProducts() {
       let note = '';
       if (stepName === 'approve_live' && !confirm('Put this product live on the shop now?')) return;
       if (stepName === 'stop' && !confirm('Stop this run?')) return;
+      if (stepName === 'remove' && !confirm('Remove this product from the list?')) return;
       if (stepName === 'reject') { note = prompt('What is wrong with the print files? The run stops and your note is kept in its log.', ''); if (note === null) return; }
       b.disabled = true;
       try { await productApi({ action: 'run_update', runId: Number(rid), step: stepName === 'reject' ? 'stop' : stepName, note: stepName === 'reject' ? 'design rejected: ' + note : note }); toast('Done'); await loadProducts(); }
