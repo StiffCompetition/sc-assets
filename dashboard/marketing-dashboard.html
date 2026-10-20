@@ -1260,7 +1260,6 @@ function photosPlan(t, rule) {
   return slots.map(s => ({ slot: s, bases: bases.filter(p => p.slot === s) }));
 }
 function photosHtml(t, rule) {
-  if (rule.product_type === 'mug') return '<div class="tplinfo">Mug pictures are made automatically: your design at its true printed size on the white 15oz mug (handle left, front, handle right) on an SC colour background. No model photos needed.</div>';   // Andy, 20 Oct 2026
   if (!oursPictures(rule)) return '<div class="tplinfo">' + esc(rule.label) + ' products use Gelato\'s own pictures.</div>';
   const plan = photosPlan(t, rule), label = { main: 'Front', second: 'Second pose', back: 'Back' };
   if (!photosReady(t, rule)) return '<div class="tplinfo">Waiting for the model pictures for ' + esc(rule.label.toLowerCase()) + 's from the model process (<a href="' + MODELS_PLAYBOOK + '" target="_blank" rel="noopener">SC Models Playbook</a>). You can still press Make: the pictures go on as soon as they arrive.</div>';
@@ -1350,7 +1349,7 @@ function renderProducts() {
     open && phOk && oursPictures(rule) ? 'Ready <a href="#" id="p_showphotos">Show</a>' : '', open ? photosHtml(t, rule) : '');
   const what = rule ? rule.label.toLowerCase() : 'product';
   const noCol = open && !(rule.layout_mode === 'sides') && all.some(d => prod.picked.has(d.key) && !colsOf(d.key).size);
-  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (rule.product_type === 'mug' ? 'our true-size mug pictures' : oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
+  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
     + (noCol ? '<span style="color:#c62828">Every character needs at least one colour.</span><br>' : '') + '<div class="prow"><button class="btn" id="p_start"' + (n && !noCol ? '' : ' disabled') + '>' + (n ? 'Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') : 'Pick characters to make') + '</button></div>' : '';
   h += fstep(6, 'Make', open ? 'now' : 'lock', '', s6);
   h += '</div>';
@@ -1601,8 +1600,8 @@ loadTrack();
 // Data: n8n data table SC Pricing Matrix (inputs only: price, Gelato cost, Gelato shipping, FX, PayPal, code).
 // Profit is worked out here: price in GBP - Gelato cost - Gelato shipping (only where we pay it) - PayPal fee.
 // "After code" repeats it with the biggest promotion taken off. LOSS = zero or less. LOW = under the market's floor.
-const PRICING_URL = BASE + 'sc-pricing-list', PRICING_FLOOR_URL = BASE + 'sc-pricing-floor', PRICING_APPLY_URL = BASE + 'sc-price-apply', PRICING_HIST_URL = BASE + 'sc-pricing-history', RECALL_LIST_URL = BASE + 'sc-recall-list', RECALL_RUN_URL = BASE + 'sc-order-recall';
-const pr = { recalls: [], rcBusy: false, rcInput: '', loaded: false, loading: false, rows: [], flags: [], stock: [], hist: [], histOpen: false, last: null, applying: null, fx: {}, floors: {}, pp: { pct: 2.9, fixed: 0.3 }, promo: 10, mkt: 'All', prob: false, err: '' };
+const PRICING_URL = BASE + 'sc-pricing-list', PRICING_FLOOR_URL = BASE + 'sc-pricing-floor', PRICING_APPLY_URL = BASE + 'sc-price-apply', PRICING_HIST_URL = BASE + 'sc-pricing-history', RECALL_LIST_URL = BASE + 'sc-recall-list', RECALL_RUN_URL = BASE + 'sc-order-recall', PRICE_CHECK_URL = BASE + 'sc-price-check';
+const pr = { chkBusy: false, recalls: [], rcBusy: false, rcInput: '', loaded: false, loading: false, rows: [], flags: [], stock: [], hist: [], histOpen: false, last: null, applying: null, fx: {}, floors: {}, pp: { pct: 2.9, fixed: 0.3 }, promo: 10, mkt: 'All', prob: false, open: {}, allOpen: false, err: '' };
 const PR_SYM = { GBP: '£', USD: '$', CAD: 'C$', EUR: '€', AUD: 'A$', NZD: 'NZ$' };
 async function loadPricing(quiet) {
   if (pr.loading) return; pr.loading = true;
@@ -1751,14 +1750,34 @@ function prChatUrl(groups) {
     + ' To acknowledge lines call the n8n workflow SC - Price Apply (webhook sc-price-apply) with {"keep":[flag row ids]}; to set a price of Andy\'s own for one line send {"custom":{"ids":[the line\'s flag row ids],"price":N}} (0 goes back to the rule price).';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
+function prCheckBar() {
+  return '<div class="prow" style="margin:6px 0;gap:8px;align-items:center"><button class="btn" id="pr_chk"' + (pr.chkBusy ? ' disabled' : '') + '>' + (pr.chkBusy ? 'Checking… about eight minutes' : 'Check prices and shipping now') + '</button>'
+    + '<span class="tplinfo" style="margin:0">Checks every product in every market against Gelato today. Prices that follow the rule are changed in the shop automatically.</span></div>';
+}
+async function prCheckGo() {
+  if (pr.chkBusy) return;
+  if (!confirm('Check every price and shipping cost against Gelato now? Prices that follow the price rule are changed in the shop automatically. It takes about eight minutes.')) return;
+  pr.chkBusy = true; renderPricing();
+  try {
+    const r = await fetch(PRICE_CHECK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: 'dashboard' }) });
+    if (!r.ok) throw new Error('answered ' + r.status);
+    toast('Check started. The results show here in about eight minutes.');
+    await new Promise(res => setTimeout(res, 480000));
+    pr.chkBusy = false;
+    await loadPricing(true);
+    toast('Check finished. Results are shown below.');
+    return;
+  } catch (e) { toast('Not started: ' + e.message); }
+  pr.chkBusy = false; renderPricing();
+}
 function prFlagPanel() {
   const head = '<div class="pbox"><h3>Pricing changes and notices</h3>';
   const last = pr.last && pr.last.updated ? 'Last Gelato check: ' + esc(pr.last.updated) + '. ' : 'The Gelato check has not run yet. ';
-  if (!pr.flags.length) return head + '<div class="tplinfo">' + last + 'Nothing waiting.</div></div>';
+  if (!pr.flags.length) return head + '<div class="tplinfo">' + last + 'Nothing waiting.</div>' + prCheckBar() + '</div>';
   const groups = prFlagGroups();
   const ackAll = []; groups.forEach(g => g.ackIds.forEach(i => ackAll.push(i)));
   const busy = !!pr.applying, dis = busy ? ' disabled' : '';
-  let h = head + '<div class="tplinfo">' + last + 'Prices that follow the rule are changed automatically. Press Acknowledge to clear a line, or Change price to set your own.</div>';
+  let h = head + '<div class="tplinfo">' + last + 'Prices that follow the rule are changed automatically. Press Acknowledge to clear a line, or Change price to set your own.</div>' + prCheckBar();
   h += '<div class="prow" style="margin:6px 0;gap:8px"><a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl(groups)) + '">New chat about all of these</a>'
     + (ackAll.length ? '<button class="btn pr_keep" data-ids="' + ackAll.join(',') + '"' + dis + '>' + (busy ? 'Working… about a minute' : 'Acknowledge all ' + ackAll.length) + '</button>' : '') + '</div>';
   groups.forEach(g => {
@@ -1826,25 +1845,46 @@ function renderPricing() {
     + '<div class="prow" style="flex-wrap:wrap;gap:10px;align-items:center"><label>Sort by <select id="pr_s">' + PR_COLS.map(c => '<option value="' + c[0] + '"' + (c[0] === pr.sort ? ' selected' : '') + '>' + c[1] + '</option>').join('') + '</select></label>'
     + '<button class="btn" id="pr_d">' + (pr.dir === 1 ? 'Lowest first ↑' : 'Highest first ↓') + '</button>'
     + '<label>Market <select id="pr_m">' + markets.map(m => '<option' + (m === pr.mkt ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></label>'
-    + '<label><input type="checkbox" id="pr_p"' + (pr.prob ? ' checked' : '') + '> Problems only</label></div>'
+    + '<label><input type="checkbox" id="pr_p"' + (pr.prob ? ' checked' : '') + '> Problems only</label>'
+    + (pr.prob ? '' : '<button class="btn small ghost" id="pr_ea">Open all products</button><button class="btn small ghost" id="pr_ca">Close all</button>') + '</div>'
     + '<details style="margin-top:8px"><summary>Price rule per market (% on top of cost) and how profit is worked out</summary>'
     + '<div class="tplinfo">Profit = price in pounds - Gelato cost - Gelato shipping (where we pay it) - PayPal fee (' + pr.pp.pct + '% + £' + pr.pp.fixed.toFixed(2) + '). After code = the same with ' + pr.promo + '% off (STANDTALL10, ends 30 Nov 2026). Price rule: total cost (Gelato cost, Gelato shipping where we pay it, PayPal fee) plus 35% on top, rounded up to a whole number. Canada: 25% on top. NFTs are not on this tab yet.</div>'
     + '<div class="prow" style="flex-wrap:wrap;gap:8px">' + ['United States', 'Canada', 'United Kingdom', 'Germany (EU)', 'Australia', 'New Zealand', 'Europe'].map(m =>
       '<label>' + esc(m) + ' <input type="number" class="pr_fl" data-m="' + esc(m) + '" value="' + (pr.floors[m] || 0) + '" style="width:56px"></label>').join('') + '</div></details></div>'
     + prFlagPanel() + prRecallPanel() + prStockPanel() + prHistPanel()
     + '<table class="prtab"><thead><tr>' + PR_COLS.map(c => '<th data-k="' + c[0] + '">' + c[1] + (pr.sort === c[0] ? (pr.dir === 1 ? ' ↑' : ' ↓') : '') + '</th>').join('') + '</tr></thead><tbody>';
-  shown.forEach(([x, c]) => {
+  const rowHtml = ([x, c]) => {
     const pd = c.pg * (1 - pr.promo / 100), fl = floorOf(x);
     const t1 = prTone(c.profit, c.margin, fl), t2 = prTone(c.profitD, 0, null);
     const cell = (t, main, sub) => '<td style="background:' + t[0] + ';color:' + t[1] + '"><b>' + main + '</b><span class="sub">' + sub + '</span></td>';
-    h += '<tr><td><b>' + esc(x.product.replace(/^\d+ /, '')) + '</b><span class="sub">' + esc(x.size === '-' ? '' : x.size) + '</span></td>'
+    return '<tr><td><b>' + esc(x.product.replace(/^\d+ /, '')) + '</b><span class="sub">' + esc(x.size === '-' ? '' : x.size) + '</span></td>'
       + '<td>' + esc(x.market.replace('Europe: ', '')) + '<span class="sub">' + (/^Europe/.test(x.market) ? 'Europe · ' : '') + 'made in ' + esc(x.made_in) + '</span></td>'
       + '<td>' + c.sym + (Number.isInteger(c.loc) ? c.loc.toFixed(0) : c.loc.toFixed(2)) + '<span class="sub">' + f(c.pg) + '</span></td>'
       + '<td>' + f(Number(x.gelato_cost_gbp)) + ' + ' + f(Number(x.gelato_ship_gbp)) + '<span class="sub">' + (c.paid ? 'we pay the shipping' : 'shopper pays the shipping') + '</span></td>'
       + cell(t1, f(c.profit), '')
       + cell(t2, f(c.profitD), '')
       + '</tr>';
-  });
+  };
+  if (pr.prob) {
+    shown.forEach(r => { h += rowHtml(r); });
+  } else {
+    // One line per product and colour. Click a line to open its rows. Lines with problems come first.
+    const groups = {};
+    shown.forEach(r => { const g = r[0].group || r[0].product; (groups[g] = groups[g] || []).push(r); });
+    const names = Object.keys(groups).map(g => {
+      const list = groups[g], cnt = { red: 0, amber: 0, green: 0 };
+      list.forEach(r => { cnt[worst(r)]++; });
+      const lo = list.reduce((m, r) => Math.min(m, r[1].profit), Infinity);
+      return { g: g, list: list, cnt: cnt, lo: lo };
+    }).sort((p, q) => (q.cnt.red - p.cnt.red) || (q.cnt.amber - p.cnt.amber) || (p.g < q.g ? -1 : 1));
+    names.forEach(o => {
+      const open = pr.allOpen || pr.open[o.g];
+      const bg = o.cnt.red ? '#f8d0d0' : o.cnt.amber ? '#ffe9a8' : '#d4f0dc', fg = o.cnt.red ? '#7f1414' : o.cnt.amber ? '#6b4a00' : '#11502a';
+      const what = o.cnt.red ? o.cnt.red + ' losing money' + (o.cnt.amber ? ', ' + o.cnt.amber + ' below the rule' : '') : o.cnt.amber ? o.cnt.amber + ' below the rule' : 'all healthy';
+      h += '<tr class="pr_grp" data-g="' + esc(o.g) + '" style="cursor:pointer;background:' + bg + ';color:' + fg + '"><td colspan="6"><b>' + (open ? '▾ ' : '▸ ') + esc(o.g) + '</b> <span class="sub" style="display:inline;margin-left:8px">' + o.list.length + (o.list.length === 1 ? ' line · ' : ' lines · ') + what + ' · lowest profit ' + f(o.lo) + '</span></td></tr>';
+      if (open) o.list.forEach(r => { h += rowHtml(r); });
+    });
+  }
   h += '</tbody></table>';
   $('list').innerHTML = h;
   $('pr_s').onchange = e => { pr.sort = e.target.value; renderPricing(); };
@@ -1864,6 +1904,9 @@ function renderPricing() {
     prApply({ custom: { ids: ids, price: n } }, ids, 'custom');
   });
   $('pr_p').onchange = e => { pr.prob = e.target.checked; renderPricing(); };
+  $('list').querySelectorAll('.pr_grp').forEach(tr => tr.onclick = () => { const g = tr.dataset.g; if (pr.allOpen) { pr.allOpen = false; pr.open = {}; pr.rows.forEach(x => { pr.open[x.group || x.product] = true; }); } pr.open[g] = !pr.open[g]; renderPricing(); });
+  if ($('pr_ea')) { $('pr_ea').onclick = () => { pr.allOpen = true; renderPricing(); }; $('pr_ca').onclick = () => { pr.allOpen = false; pr.open = {}; renderPricing(); }; }
+  if ($('pr_chk')) $('pr_chk').onclick = prCheckGo;
   if ($('rc_num')) { $('rc_num').oninput = e => { pr.rcInput = e.target.value; }; $('rc_go').onclick = prRecallGo; }
   if ($('pr_hist')) $('pr_hist').ontoggle = e => { pr.histOpen = e.target.open; };
   $('list').querySelectorAll('.pr_fl').forEach(i => i.onchange = async () => {
