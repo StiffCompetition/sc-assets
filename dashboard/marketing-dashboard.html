@@ -1260,6 +1260,7 @@ function photosPlan(t, rule) {
   return slots.map(s => ({ slot: s, bases: bases.filter(p => p.slot === s) }));
 }
 function photosHtml(t, rule) {
+  if (rule.product_type === 'mug') return '<div class="tplinfo">Mug pictures are made automatically: your design at its true printed size on the white 15oz mug (handle left, front, handle right) on an SC colour background. No model photos needed.</div>';   // Andy, 20 Oct 2026
   if (!oursPictures(rule)) return '<div class="tplinfo">' + esc(rule.label) + ' products use Gelato\'s own pictures.</div>';
   const plan = photosPlan(t, rule), label = { main: 'Front', second: 'Second pose', back: 'Back' };
   if (!photosReady(t, rule)) return '<div class="tplinfo">Waiting for the model pictures for ' + esc(rule.label.toLowerCase()) + 's from the model process (<a href="' + MODELS_PLAYBOOK + '" target="_blank" rel="noopener">SC Models Playbook</a>). You can still press Make: the pictures go on as soon as they arrive.</div>';
@@ -1349,7 +1350,7 @@ function renderProducts() {
     open && phOk && oursPictures(rule) ? 'Ready <a href="#" id="p_showphotos">Show</a>' : '', open ? photosHtml(t, rule) : '');
   const what = rule ? rule.label.toLowerCase() : 'product';
   const noCol = open && !(rule.layout_mode === 'sides') && all.some(d => prod.picked.has(d.key) && !colsOf(d.key).size);
-  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
+  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (rule.product_type === 'mug' ? 'our true-size mug pictures' : oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
     + (noCol ? '<span style="color:#c62828">Every character needs at least one colour.</span><br>' : '') + '<div class="prow"><button class="btn" id="p_start"' + (n && !noCol ? '' : ' disabled') + '>' + (n ? 'Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') : 'Pick characters to make') + '</button></div>' : '';
   h += fstep(6, 'Make', open ? 'now' : 'lock', '', s6);
   h += '</div>';
