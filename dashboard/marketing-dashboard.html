@@ -1543,7 +1543,7 @@ function prFlagGroups() {
     if (x.action !== 'apply' && x.action !== 'fx') l.action = 'review'; else if (x.action === 'fx' && l.action === 'apply') l.action = 'fx';
     if (!l.note || /^Moves together/.test(l.note)) l.note = x.note || '';
   });
-  return Object.keys(groups).sort().map(k => { const g = groups[k]; g.list = Object.keys(g.lines).map(z => g.lines[z]); g.applyIds = []; g.allIds = []; g.list.forEach(l => { if (l.action === 'apply' || l.action === 'fx') g.applyIds = g.applyIds.concat(l.ids); if (l.action === 'apply') g.allIds = g.allIds.concat(l.ids); }); return g; });
+  return Object.keys(groups).sort().map(k => { const g = groups[k]; g.list = Object.keys(g.lines).map(z => g.lines[z]); g.applyIds = []; g.allIds = []; g.keepIds = []; g.list.forEach(l => { if (l.action === 'review') g.keepIds = g.keepIds.concat(l.ids); if (l.action === 'apply' || l.action === 'fx') g.applyIds = g.applyIds.concat(l.ids); if (l.action === 'apply') g.allIds = g.allIds.concat(l.ids); }); return g; });
 }
 function prWhy(note) {
   const parts = String(note || '').split('; ').filter(t => !/^price \d/.test(t) && !/^Moves together/.test(t));
@@ -1555,7 +1555,7 @@ function prChatUrl(groups) {
   const more = lines.length > 30 ? '\n...and ' + (lines.length - 30) + ' more lines: read them from the flag rows.' : '';
   const q = 'Marketing dashboard, Pricing tab: Gelato price changes to work through with Andy.\n' + lines.slice(0, 30).join('\n') + more
     + '\nThe flagged lines are the rows with kind flag in the n8n data table SC Pricing Matrix; the price rule is in the playbook SC - Pricing, Shipping and Promotions Playbook. Explain each change in plain words and change nothing until Andy says yes.'
-    + ' To apply agreed prices, call the n8n workflow SC - Price Apply (webhook sc-price-apply) with {"ids":[the flag row ids Andy agreed]} (lines that need his decision cannot be applied); it updates the costs, runs the price sync and removes the flags.';
+    + ' To apply agreed prices, call the n8n workflow SC - Price Apply (webhook sc-price-apply) with {"ids":[the flag row ids Andy agreed]} (lines that need his decision cannot be applied; to leave one as it is, send {\"keep\":[flag row ids]}); it updates the costs, runs the price sync and removes the flags.';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
 function prFlagPanel() {
@@ -1572,21 +1572,22 @@ function prFlagPanel() {
     const n = g.applyIds.length;
     h += '<div style="border-top:1px solid #e6e6e6;margin-top:8px;padding-top:6px"><div class="prow" style="flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between"><b>' + esc(g.market) + ' · ' + esc(PR_GROUP[g.group] || g.group) + '</b>'
       + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl([g])) + '">New chat</a>'
-      + (n ? '<button class="btn pr_apply" data-ids="' + g.applyIds.join(',') + '"' + dis + '>' + (g.group === 'Exchange rate' ? 'Apply the new rate' : 'Apply ' + n + ' new price' + (n === 1 ? '' : 's')) + '</button>' : '<span style="color:#6b4a00">Needs your decision</span>') + '</div>'
+      + (n ? '<button class="btn pr_apply" data-ids="' + g.applyIds.join(',') + '"' + dis + '>' + (g.group === 'Exchange rate' ? 'Apply the new rate' : 'Apply ' + n + ' new price' + (n === 1 ? '' : 's')) + '</button>' : '<span style="color:#6b4a00">Needs your decision</span>')
+      + (g.keepIds.length ? '<button class="btn small ghost pr_keep" data-ids="' + g.keepIds.join(',') + '"' + dis + '>Keep as is</button>' : '') + '</div>'
       + '<table class="prtab"><thead><tr><th>Size</th><th>Now</th><th>New</th><th>Why</th></tr></thead><tbody>'
       + g.list.map(l => { const sy = PR_SYM[l.cur_] || ''; return '<tr><td>' + esc(l.size === '-' ? 'All' : l.size) + '</td><td>' + (Number(l.cur) ? sy + l.cur : '—') + '</td><td>' + (l.action === 'apply' || l.action === 'fx' ? '<b>' + sy + l.nw + '</b>' : '<span style="color:#6b4a00">your call</span>') + '</td><td>' + esc(prWhy(l.note)) + '</td></tr>'; }).join('')
       + '</tbody></table></div>';
   });
   return h + '</div>';
 }
-async function prApply(body, ids) {
+async function prApply(body, ids, keep) {
   if (pr.applying) return;
   pr.applying = { ids: ids, t: Date.now() }; renderPricing();
   try {
     const r = await fetch(PRICING_APPLY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.ok === false) throw new Error(d.error || 'answered ' + r.status);
-    toast('Applying ' + d.applying + ' price' + (d.applying === 1 ? '' : 's') + '. About a minute.');
+    toast(keep ? 'Keeping as is. About a minute.' : 'Applying ' + d.applying + ' price' + (d.applying === 1 ? '' : 's') + '. About a minute.');
     prPoll();
   } catch (e) { pr.applying = null; toast('Not applied: ' + e.message); renderPricing(); }
 }
@@ -1596,7 +1597,7 @@ function prPoll() {
     if (!pr.applying) return;
     await loadPricing(true);
     const left = pr.flags.filter(f => pr.applying.ids.indexOf(f.id) >= 0).length;
-    if (left === 0) { pr.applying = null; toast('Prices updated'); renderPricing(); return; }
+    if (left === 0) { pr.applying = null; toast('Done'); renderPricing(); return; }
     if (Date.now() - pr.applying.t > 480000) { pr.applying = null; toast('Not finished. Press Apply again.'); renderPricing(); return; }
     prPoll();
   }, 6000);
@@ -1652,6 +1653,7 @@ function renderPricing() {
     if (b.dataset.all) { const ids = []; prFlagGroups().forEach(g => g.allIds.forEach(i => ids.push(i))); prApply({ all: true }, ids); }
     else { const ids = b.dataset.ids.split(',').map(Number); prApply({ ids: ids }, ids); }
   });
+  $('list').querySelectorAll('.pr_keep').forEach(b => b.onclick = () => { const ids = b.dataset.ids.split(',').map(Number); prApply({ keep: ids }, ids, true); });
   $('pr_p').onchange = e => { pr.prob = e.target.checked; renderPricing(); };
   if ($('pr_hist')) $('pr_hist').ontoggle = e => { pr.histOpen = e.target.open; };
   $('list').querySelectorAll('.pr_fl').forEach(i => i.onchange = async () => {
