@@ -485,7 +485,7 @@ function missionCard(m) {
 
 // 15 Oct 2026 (Andy): shortcut tab with the quiz and character result page links
 const SHOP = 'https://stiffcompetition.shop/pages/';
-const PAGE_LINKS = [['The quiz: How Stiff Are You?', 'how-stiff'], ['Major Wood', 'you-are-major-wood'], ['The Rear Admiral', 'you-are-the-rear-admiral'], ['Hammerin\u2019 Hanky', 'you-are-hammerin-hanky'], ['Slick Willy', 'you-are-slick-willy'], ['The Velvet Python', 'you-are-the-velvet-python'], ['The Grip', 'you-are-the-grip']];
+const PAGE_LINKS = [['The quiz: How Stiff Are You?', 'how-stiff'], ['Major Wood', 'major-wood'], ['The Rear Admiral', 'the-rear-admiral'], ['Hammerin\u2019 Hanky', 'hammerin-hanky'], ['Slick Willy', 'slick-willy'], ['The Velvet Python', 'the-velvet-python'], ['The Grip', 'the-grip']];
 function pagesHtml() {
   return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px">' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>';
 }
