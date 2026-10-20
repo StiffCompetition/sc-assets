@@ -1773,16 +1773,16 @@ function openReschedule(r) {
   document.getElementById('rsGo').addEventListener('click', async () => {
     const msg = document.getElementById('rsMsg');
     const date = document.getElementById('rsDate').value;
-    const time = (document.getElementById('rsTime').value || '').trim();
+    const time = (document.getElementById('rsTime').value || '').trim() || (r.format === 'Dare to Buy' ? (r.post_time || '19:00') : '');   // 19 Oct 2026 (Andy): a Dare to Buy always keeps its own time (19:00 unless set)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = 'Pick a date.'; return; }
     const dow = new Date(date + 'T12:00:00Z').getUTCDay();
     if (!anyDay && dow !== new Date(curDate + 'T12:00:00Z').getUTCDay()) { msg.textContent = 'This post belongs to ' + dowName + '; pick another ' + dowName + '.'; return; }
-    if (anyDay && r.format !== 'Day Greeting' && r.character === DAY_CHAR[dow]) { msg.textContent = r.character + ' is that day\'s character; only the Day Greeting uses him. Pick another day.'; return; }
+    if (anyDay && r.format !== 'Day Greeting' && r.format !== 'Product' && r.format !== 'Dare to Buy' && r.character === DAY_CHAR[dow]) { msg.textContent = r.character + ' is that day\'s character; only the Day Greeting uses him. Pick another day.'; return; }
     const slot = time ? 'custom' : (r.format === 'Product' ? '12pm' : (r.format === 'Day Greeting' ? '6am' : '7am'));
     const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : ((dow === 0 || dow === 6) ? '09:00' : '07:00')))) + ':00Z');
     if (due.getTime() < Date.now() - 60 * 60000) { msg.textContent = 'That time has already passed.'; return; }
     // The day must not already hold a post of the same slot type (any time), nor any post at the exact custom time.
-    const clash = ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && (slotOfFormat(x.format) === slotOfFormat(r.format) || (time && x.post_time === time)));
+    const clash = r.format === 'Dare to Buy' ? null : ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && (slotOfFormat(x.format) === slotOfFormat(r.format) || (time && x.post_time === time)));
     if (clash) { msg.textContent = 'That slot already has a post (' + clash.character + ', ' + clash.format + '). Pick another time.'; return; }
     const post_date = date + (slot === '6am' ? 'T06:00:00.000Z' : (slot === '7am' ? 'T07:00:00.000Z' : 'T12:00:00.000Z'));
     const DAY_TITLE = { 1: 'Major Wood Monday', 2: "Hammerin' Tuesday", 3: 'White-Knuckle Wednesday', 4: 'Thrusting Thursday', 5: 'Full-Friction Friday', 6: 'Sailor Saturday', 0: 'Standing Tall Sunday' };
@@ -2106,13 +2106,19 @@ async function sendPlan(plan, statusEl) {
   if (!plan.length) { statusEl.textContent = 'Nothing selected.'; return; }
   // 12 Oct 2026 (Andy): "Brand Lore (Poster Wall)" is a Brand Lore post that uses the all-six poster clip; the planner marks the row with it.
   plan.forEach(p => { if (p.format === 'Brand Lore (Movie Poster)' || p.format === 'Brand Lore (Poster Wall)') { p.format = 'Brand Lore'; p.clip = 'posterwall'; } else if (p.format === 'Brand Lore (Roll Call)') { p.format = 'Brand Lore'; p.clip = 'rollcall'; } else if (p.format === 'Brand Lore (Roll Call cartoon flick)') { p.format = 'Brand Lore'; p.clip = 'rollcallcomic'; } if (p.format === 'Character Lore (Poster Wall)') { p.format = 'Character Lore'; p.clip = 'posterwall'; } });
+  statusEl.style.color = '';
   statusEl.textContent = 'Sending...';
   try {
     const res = await fetch(PLAN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: plan }) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    statusEl.textContent = 'Started: ' + plan.length + ' post(s). Each brief takes about a minute; the calendar refreshes every 30 seconds.';
-    startAutoRefresh();
-  } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
+    // 19 Oct 2026 (Andy): the planner answers with what it made and why anything was skipped, so a post is never silently not created.
+    let ans = null; try { ans = await res.json(); } catch (e) { ans = null; }
+    const skippedWhy = (ans && Array.isArray(ans.skipped)) ? ans.skipped : [];
+    const made = (ans && typeof ans.made === 'number') ? ans.made : plan.length - skippedWhy.length;
+    if (made > 0) startAutoRefresh();
+    statusEl.style.color = skippedWhy.length ? '#b00' : '';
+    statusEl.textContent = (made > 0 ? 'Created: ' + made + ' post(s). Each brief takes about a minute; the calendar refreshes every 30 seconds.' : '') + (skippedWhy.length ? (made > 0 ? ' ' : '') + 'NOT created: ' + skippedWhy.join('; ') + '.' : '');
+  } catch (e) { statusEl.style.color = '#b00'; statusEl.textContent = 'Failed: ' + e.message; }
 }
 function submitPlan() {
   const plan = [];
@@ -2178,7 +2184,7 @@ async function openAdhoc() {
     { const ap = document.getElementById('adProduct'); const av = ap.value; ap.innerHTML = productOptions(f === 'Dare to Buy' && av.indexOf('promo:') === 0 ? '' : av, f === 'Dare to Buy'); }
     if (f === 'Dare to Buy' && document.getElementById('adTime').value === '18:00') document.getElementById('adTime').value = '19:00';
     const n = (f === 'Day Greeting' || f.indexOf('Brand Lore') === 0 || dow === 0) ? leftFor(f === 'Day Greeting' && dow !== 0 ? DAY_CHAR[dow] : 'SC Logo', f) : leftOther(DAY_CHAR[dow], f);
-    const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (any of the six, the day\'s character included). Up to one a day, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (any of the six, the day\'s character included). As many a day as you like, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
