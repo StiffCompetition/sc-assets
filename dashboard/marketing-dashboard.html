@@ -187,6 +187,11 @@
   .stages span.ok { background: #e3f4e8; color: var(--c-done); } .stages span.now { background: var(--c-next); color: #fff; }
   .pfiles.pics figure { width: 120px; }
   #p_new { margin-top: 10px; border-style: dashed; } #p_new summary { cursor: pointer; font-size: 14px; }
+  /* Products tab sections (Andy, 19 Oct 2026): Make products, In progress, Live */
+  .psegs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+  .psegs button { font: inherit; padding: 8px 14px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
+  .psegs button.on { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+  .psegs button .n { font-family: var(--mono); font-size: 12px; opacity: .8; margin-left: 4px; }
   .pbox { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 12px; }
   .pbox h3 { margin: 0 0 8px; font-size: 15px; }
   .prow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -969,9 +974,10 @@ const COLOUR_HEX = { white: '#f7f7f5', black: '#1e1e1e', navy: '#1f2a44', royal:
 const inkFor = c => LIGHT.indexOf(c) !== -1 ? 'dark' : 'light';
 const PARTS = [['picture', 'Picture'], ['name', 'Name'], ['phrase', 'Phrase lines'], ['logo', 'Logo']];
 const DEFAULT_PARTS = { 1: 'picture,name,phrase,logo', 2: 'logo' };
-const STAGES = ['Print files', 'Your check', 'Gelato', 'Shopify draft', 'Our pictures', 'Your go-live', 'Live'];
+// 19 Oct 2026 (Andy): his design approval is the go-ahead, so a product goes live by itself after our pictures; no go-live stage
+const STAGES = ['Print files', 'Your check', 'Gelato', 'Shopify draft', 'Our pictures', 'Live'];
 function stageOf(r) {
-  return ({ queued: 0, layout_running: 0, design_ready: 1, gelato_created: 2, shopify_arrived: 3, pics_layout: 4, pics_running: 4, pics_read: 4, pics_swap: 4, pics_link: 4, pics_attach: 4, ready_check: 5, live: 6 })[r.status];
+  return ({ queued: 0, layout_running: 0, design_ready: 1, gelato_created: 2, shopify_arrived: 3, pics_layout: 4, pics_running: 4, pics_read: 4, pics_swap: 4, pics_link: 4, pics_attach: 4, ready_check: 4, live: 5 })[r.status];
 }
 
 async function productApi(body) {
@@ -1062,7 +1068,7 @@ function listingHtml(title, desc, tags, type) {
     + '<div class="lrow"><b>Tags</b>' + tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</div>'
     + '<div class="lrow"><b>Collections</b>' + (cs === null ? 'Reading Shopify…' : cs.length ? cs.join(' · ') : '<span style="color:#c62828">None: no collection picks these tags</span>') + '</div>'
     + '<div class="lrow"><b>Type</b>' + esc(type) + '</div>'
-    + '<div class="lrow"><b>Sales channels</b>Online Store, Facebook &amp; Instagram (when you press Go live)</div>'
+    + '<div class="lrow"><b>Sales channels</b>Online Store, Facebook &amp; Instagram (when it goes live)</div>'
     + '<div class="lrow"><b>Price</b>Gelato\'s default first, then set by your pricing workflow</div></div>';
 }
 const libDesigns = () => prod.designs.filter(d => d.status === 'approved' && d.kind !== 'logo');
@@ -1149,7 +1155,13 @@ function renderProducts() {
   const t = prod.tpl, rule = t ? prodRule(t.product_type) : null, ruleOk = !!(rule && rule.approved === 'yes');
   let h = '';
 
-  // Needs you
+  // Sections (Andy, 19 Oct 2026): Make products on its own; products already made move to In progress, then Live
+  const progRuns = prod.runs.filter(r => r.waiting_on === 'runner' || r.waiting_on === 'andy_rules'), liveRuns = prod.runs.filter(r => r.status === 'live'), badRuns = prod.runs.filter(r => r.status === 'failed' || r.status === 'stopped');
+  const building = prod.designs.filter(d => d.kind !== 'logo' && d.status !== 'approved' && d.waiting_on !== 'andy_design');
+  const sec = prod.sec || 'make';
+  h += '<div class="psegs">' + [['make', 'Make products', ''], ['progress', 'In progress', progRuns.length + badRuns.length + building.length], ['live', 'Live', liveRuns.length]].map(x => '<button type="button" data-psec="' + x[0] + '" class="' + (sec === x[0] ? 'on' : '') + '">' + x[1] + (x[2] !== '' ? '<span class="n">' + x[2] + '</span>' : '') + '</button>').join('') + '</div>';
+
+  // Needs you (shown in every section)
   const needRuns = prod.runs.filter(r => /^andy_/.test(r.waiting_on || '') && r.waiting_on !== 'andy_rules');
   const needDesigns = prod.designs.filter(d => d.kind !== 'logo' && d.waiting_on === 'andy_design');
   const needPhotos = [];
@@ -1159,6 +1171,7 @@ function renderProducts() {
     h += needDesigns.map(designCard).join('') + needRuns.map(r => runCard(r, 'need')).join('');
   }
 
+  if (sec === 'make') {
   // The steps
   restorePicks();
   const all = libDesigns(), n = prod.picked.size;
@@ -1199,16 +1212,17 @@ function renderProducts() {
   h += fstep(6, 'Make', open ? 'now' : 'lock', '', s6);
   h += '</div>';
 
-  // Under way
-  const building = prod.designs.filter(d => d.kind !== 'logo' && d.status !== 'approved' && d.waiting_on !== 'andy_design');
-  if (building.length) h += '<div class="group-title">Designs being built (' + building.length + ')</div>' + building.map(designCard).join('');
-  [['In progress', r => r.waiting_on === 'runner' || r.waiting_on === 'andy_rules', 'prog'], ['Live', r => r.status === 'live', 'live'], ['Failed or stopped', r => r.status === 'failed' || r.status === 'stopped', 'bad']].forEach(g => {
-    const list = prod.runs.filter(g[1]);
-    if (!list.length) return;
-    if (g[2] === 'bad') h += '<details class="pbox lib"' + (prod.badOpen ? ' open' : '') + ' id="p_bad"><summary><b>' + g[0] + '</b> · ' + list.length + '</summary>' + list.map(r => runCard(r, g[2])).join('') + '</details>';
-    else h += '<div class="group-title">' + g[0] + ' (' + list.length + ')</div>' + list.map(r => runCard(r, g[2])).join('');
-  });
   h += libraryHtml();
+  }
+  if (sec === 'progress') {
+    if (building.length) h += '<div class="group-title">Designs being built (' + building.length + ')</div>' + building.map(designCard).join('');
+    if (progRuns.length) h += '<div class="group-title">In progress (' + progRuns.length + ')</div>' + progRuns.map(r => runCard(r, 'prog')).join('');
+    if (badRuns.length) h += '<div class="group-title">Failed or stopped (' + badRuns.length + ')</div>' + badRuns.map(r => runCard(r, 'bad')).join('');
+    if (!building.length && !progRuns.length && !badRuns.length) h += '<div class="empty">Nothing in progress. Made products appear here.</div>';
+  }
+  if (sec === 'live') {
+    h += liveRuns.length ? '<div class="group-title">Live (' + liveRuns.length + ')</div>' + liveRuns.map(r => runCard(r, 'live')).join('') : '<div class="empty">Nothing live yet.</div>';
+  }
   $('list').innerHTML = h;
   wireProducts();
 }
@@ -1255,6 +1269,7 @@ function runCard(r, cls) {
 function wireProducts() {
   const lib = $('p_lib'); if (lib) lib.ontoggle = () => { prod.libOpen = lib.open; };
   const bd = $('p_bad'); if (bd) bd.ontoggle = () => { prod.badOpen = bd.open; };
+  $('list').querySelectorAll('[data-psec]').forEach(b => b.onclick = () => { prod.sec = b.dataset.psec; renderProducts(); window.scrollTo(0, 0); });
   wireDesigns();
   const ck = $('p_check'); if (ck) ck.onclick = () => checkTemplate($('p_tid').value.trim());
   const er = $('p_editrule'); if (er) er.onclick = (e) => { e.preventDefault(); prod.editRule = true; renderProducts(); };
@@ -1299,10 +1314,10 @@ function wireProducts() {
   const st = $('p_start'); if (st) st.onclick = async () => {
     const t = prod.tpl; const keys = Array.from(prod.picked), r = prodRule(t.product_type);
     if (!t || !keys.length) return;
-    if (!confirm('Make ' + keys.length + ' ' + (r ? r.label.toLowerCase() : t.product_type) + (keys.length === 1 ? '' : 's') + ' from "' + t.templateName + '"?\n\n' + ($('list').querySelector('.makesum') || {}).textContent + '\n\nNothing goes to Gelato or Shopify until you approve each set of print files.')) return;
+    if (!confirm('Make ' + keys.length + ' ' + (r ? r.label.toLowerCase() : t.product_type) + (keys.length === 1 ? '' : 's') + ' from "' + t.templateName + '"?\n\n' + ($('list').querySelector('.makesum') || {}).textContent + '\n\nNothing goes to Gelato or Shopify until you approve each set of print files. Once approved, each one goes all the way to live by itself.')) return;
     st.disabled = true; st.textContent = 'Starting…';
     try { const colours = {}, models = {}; if (!(r && r.layout_mode === 'sides')) keys.forEach(k => { colours[k] = Array.from(colsOf(k)); models[k] = modelCols(k); });
-    const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys, colours: colours, models: models }); toast(d.started + ' started'); prod.picked.clear(); savePicks(); await loadProducts(); }
+    const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys, colours: colours, models: models }); toast(d.started + ' started: see In progress'); prod.picked.clear(); prod.cols = {}; prod.models = {}; prod.pv = ''; savePicks(); prod.sec = 'progress'; window.scrollTo(0, 0); await loadProducts(); }
     catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
   };
   $('list').querySelectorAll('.prule').forEach(box => {
