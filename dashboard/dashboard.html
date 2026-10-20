@@ -2247,9 +2247,12 @@ async function openBoxes() {
   panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Product boxes</span><button class="btn secondary plan-back">Close &times;</button></div><h2>Product boxes</h2><div class="sub">Pick a product, then zoom and drag its photo until it fills the box the way you want. Save once; every Product post for it uses this framing.</div><div id="boxList">Loading products&hellip;</div>';
   let data;
   try { data = await (await fetch(BOX_LIST_URL)).json(); } catch (e) { document.getElementById('boxList').textContent = 'Could not load the Product Box tab.'; return; }
-  const items = (data.items || []).filter(i => i.photo);
-  document.getElementById('boxList').innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px">' + items.map((i, k) => '<button class="btn secondary boxPick" data-k="' + k + '" style="display:flex;flex-direction:column;align-items:center;width:120px;padding:6px"><img src="' + escapeHtml(i.crop || i.photo) + '" style="width:110px;height:110px;object-fit:cover;background:#fff;object-position:top"><span style="font-size:11px;margin-top:4px">' + escapeHtml(i.name || i.handle) + '</span><span style="font-size:10px;color:' + (i.crop ? '#2a7a2a' : '#b06a00') + '">' + (i.crop ? 'framed' : 'not framed yet') + '</span></button>').join('') + '</div><div id="boxEditor"></div>';
+  const items = (data.items || []).filter(i => i.photo && !i.gone);   // 19 Oct 2026 (Andy): the list is live; a product no longer in the shop is hidden
+  const isFramed = i => !!i.crop && !i.stale;
+  const todo = items.filter(i => !isFramed(i)).length;
+  document.getElementById('boxList').innerHTML = '<div style="margin:10px 0"><button class="btn" id="boxQuick"' + (todo ? '' : ' disabled') + '>Quick approve (' + todo + ' left)</button></div><div style="display:flex;flex-wrap:wrap;gap:10px">' + items.map((i, k) => '<button class="btn secondary boxPick" data-k="' + k + '" style="display:flex;flex-direction:column;align-items:center;width:120px;padding:6px"><img src="' + escapeHtml(isFramed(i) ? i.crop : i.photo) + '" style="width:110px;height:110px;object-fit:cover;background:#fff;object-position:top"><span style="font-size:11px;margin-top:4px">' + escapeHtml(i.name || i.handle) + '</span><span style="font-size:10px;color:' + (isFramed(i) ? '#2a7a2a' : '#b06a00') + '">' + (isFramed(i) ? 'framed' : (i.stale ? 'photo changed - frame again' : 'not framed yet')) + '</span></button>').join('') + '</div><div id="boxEditor"></div>';
   document.querySelectorAll('.boxPick').forEach(b => b.addEventListener('click', () => boxEditor(items[Number(b.dataset.k)])));
+  document.getElementById('boxQuick').addEventListener('click', () => quickApprove(items));
 }
 // T-shirts and hoodies (10 Oct 2026) also get a second, close-up photo that fades in over the box halfway through the clip.
 const hasSecond = item => /\b(TEE|HOODIE)\b/i.test(item.name || '') || /t-?shirt|hoodie|\btee\b/i.test(item.title || '');
@@ -2288,9 +2291,40 @@ function framer(holder, item, slot, src) {
     const w = nw * base * z, h = nh * base * z, f = v => Math.max(0, Math.min(1, v)).toFixed(4);
     const crop = 'https://res.cloudinary.com/dkapdtxek/image/fetch/c_crop,g_xy_center,x_' + f((BOX_W / 2 - x) / w) + ',y_' + f((BOX_H / 2 - y) / h) + ',w_' + f(BOX_W / w) + ',h_' + f(BOX_H / h) + ',fl_relative/' + encodeURIComponent(src);
     const st = document.getElementById(id('Status')); st.textContent = 'Saving...';
-    try { const r = await (await fetch(BOX_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: item.handle, crop: crop, slot: slot }) })).json(); if (!r.ok) throw new Error('save failed'); if (slot === 2) item.crop2 = crop; else item.crop = crop; st.textContent = slot === 2 ? 'Saved. Product posts for this item now show this close-up.' : 'Saved. Every Product post for this item uses this framing.'; }
+    try { const r = await (await fetch(BOX_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: item.handle, crop: crop, slot: slot }) })).json(); if (!r.ok) throw new Error('save failed'); if (slot === 2) item.crop2 = crop; else { item.crop = crop; item.stale = false; } st.textContent = slot === 2 ? 'Saved. Product posts for this item now show this close-up.' : 'Saved. Every Product post for this item uses this framing.'; }
     catch (e) { st.textContent = 'Not saved - please try again.'; }
   });
+}
+// Quick approve (19 Oct 2026, Andy): one unframed product at a time, framed from the top of the photo, saved with one click (or Enter).
+function quickApprove(items) {
+  const queue = items.filter(i => !i.crop || i.stale), ed = document.getElementById('boxEditor');
+  let n = 0, busy = false;
+  const keyH = e => { const b = document.getElementById('qaApprove'); if (e.key === 'Enter' && b && !busy) { e.preventDefault(); b.click(); } };
+  document.addEventListener('keydown', keyH);
+  const show = () => {
+    if (n >= queue.length) { document.removeEventListener('keydown', keyH); ed.innerHTML = '<h3 style="margin-top:16px">All done</h3><div class="sub">Every product is framed.</div>'; return; }
+    const it = queue[n];
+    ed.innerHTML = '<h3 style="margin-top:16px">' + escapeHtml(it.name || it.handle) + '</h3><div class="sub">' + (queue.length - n) + ' left' + (it.stale ? ' - its shop photo changed' : '') + '</div>' +
+      '<div style="width:' + BOX_W + 'px;height:' + BOX_H + 'px;overflow:hidden;border:5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);background:#1c3faa"><img id="qaImg" src="' + escapeHtml(it.photo) + '" style="width:100%;height:100%;object-fit:cover;object-position:center top"></div>' +
+      '<div style="margin-top:10px"><button class="btn" id="qaApprove">Approve (Enter)</button> <button class="btn secondary" id="qaAdjust">Adjust</button> <button class="btn secondary" id="qaSkip">Skip</button> <span id="qaStatus" style="font-size:12px"></span></div>';
+    const st = document.getElementById('qaStatus');
+    document.getElementById('qaSkip').addEventListener('click', () => { n++; show(); });
+    document.getElementById('qaAdjust').addEventListener('click', () => {
+      ed.innerHTML = '<h3 style="margin-top:16px">' + escapeHtml(it.name || it.handle) + '</h3><div id="qaAdj"></div><div style="margin-top:12px"><button class="btn" id="qaNext">Next product</button></div>';
+      framer(document.getElementById('qaAdj'), it, 1, it.photo);
+      document.getElementById('qaNext').addEventListener('click', () => { n++; show(); });
+    });
+    document.getElementById('qaApprove').addEventListener('click', async () => {
+      const im = document.getElementById('qaImg'), nw = im.naturalWidth, nh = im.naturalHeight;
+      if (!nw || busy) { st.textContent = 'Photo still loading...'; return; }
+      busy = true; st.textContent = 'Saving...';
+      const base = Math.max(BOX_W / nw, BOX_H / nh), w = nw * base, h = nh * base, x = (BOX_W - w) / 2, y = 0, f = v => Math.max(0, Math.min(1, v)).toFixed(4);
+      const crop = 'https://res.cloudinary.com/dkapdtxek/image/fetch/c_crop,g_xy_center,x_' + f((BOX_W / 2 - x) / w) + ',y_' + f((BOX_H / 2 - y) / h) + ',w_' + f(BOX_W / w) + ',h_' + f(BOX_H / h) + ',fl_relative/' + encodeURIComponent(it.photo);
+      try { const r = await (await fetch(BOX_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: it.handle, crop: crop, slot: 1 }) })).json(); if (!r.ok) throw new Error('save failed'); it.crop = crop; it.stale = false; busy = false; n++; show(); }
+      catch (e) { busy = false; st.textContent = 'Not saved - please try again.'; }
+    });
+  };
+  show();
 }
 document.getElementById('btnBoxes').addEventListener('click', openBoxes);
 
