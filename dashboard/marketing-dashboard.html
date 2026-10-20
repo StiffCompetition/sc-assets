@@ -1452,8 +1452,8 @@ loadTrack();
 // Data: n8n data table SC Pricing Matrix (inputs only: price, Gelato cost, Gelato shipping, FX, PayPal, code).
 // Profit is worked out here: price in GBP - Gelato cost - Gelato shipping (only where we pay it) - PayPal fee.
 // "After code" repeats it with the biggest promotion taken off. LOSS = zero or less. LOW = under the market's floor.
-const PRICING_URL = BASE + 'sc-pricing-list', PRICING_FLOOR_URL = BASE + 'sc-pricing-floor', PRICING_APPLY_URL = BASE + 'sc-price-apply', PRICING_HIST_URL = BASE + 'sc-pricing-history';
-const pr = { loaded: false, loading: false, rows: [], flags: [], stock: [], hist: [], histOpen: false, last: null, applying: null, fx: {}, floors: {}, pp: { pct: 2.9, fixed: 0.3 }, promo: 10, mkt: 'All', prob: false, err: '' };
+const PRICING_URL = BASE + 'sc-pricing-list', PRICING_FLOOR_URL = BASE + 'sc-pricing-floor', PRICING_APPLY_URL = BASE + 'sc-price-apply', PRICING_HIST_URL = BASE + 'sc-pricing-history', RECALL_LIST_URL = BASE + 'sc-recall-list', RECALL_RUN_URL = BASE + 'sc-order-recall';
+const pr = { recalls: [], rcBusy: false, rcInput: '', loaded: false, loading: false, rows: [], flags: [], stock: [], hist: [], histOpen: false, last: null, applying: null, fx: {}, floors: {}, pp: { pct: 2.9, fixed: 0.3 }, promo: 10, mkt: 'All', prob: false, err: '' };
 const PR_SYM = { GBP: '£', USD: '$', CAD: 'C$', EUR: '€', AUD: 'A$', NZD: 'NZ$' };
 async function loadPricing(quiet) {
   if (pr.loading) return; pr.loading = true;
@@ -1469,7 +1469,7 @@ async function loadPricing(quiet) {
       if (x.kind === 'setting' && x.group === 'promo') pr.promo = Number(x.margin_pct);
     });
     pr.loaded = true;
-    loadHistory();
+    loadHistory(); loadRecalls();
   } catch (e) { pr.err = e.message; if (!quiet) toast('Could not load pricing: ' + e.message); }
   pr.loading = false;
   if (view === 'Pricing') renderPricing(); else renderTabs();
@@ -1506,6 +1506,42 @@ async function loadHistory() {
     pr.hist = h.filter(x => x && x.event);
     if (view === 'Pricing' && !pr.applying) renderPricing();
   } catch (e) { /* history is optional */ }
+}
+
+// ----- Recalled orders (20 Oct 2026, Andy): Gelato could not make an order; refunded in full, notice and one-use code emailed automatically -----
+async function loadRecalls() {
+  try {
+    const r = await fetch(RECALL_LIST_URL); if (!r.ok) return;
+    let x = await r.json(); if (x && !Array.isArray(x)) x = [x]; if (!Array.isArray(x)) return;
+    pr.recalls = x.filter(y => y && y.order_number && y.status !== 'dry');
+    if (view === 'Pricing' && !pr.applying && !pr.rcBusy) renderPricing();
+  } catch (e) { /* optional */ }
+}
+function prRecallPanel() {
+  const rows = pr.recalls.slice().sort((a, b) => String(b.created).localeCompare(String(a.created)));
+  let x = '<div class="pbox"><h3>Recalled orders</h3><div class="tplinfo">When Gelato cannot make an order it is refunded in full automatically, and the customer gets the Notice of Recall email with a one-use code. NFTs are never touched. To do the same for an order yourself, type its number here.</div>'
+    + '<div class="prow" style="gap:8px;align-items:center;margin:8px 0"><label>Order number <input type="text" id="rc_num" value="' + esc(pr.rcInput) + '" placeholder="e.g. 1060" style="width:90px"></label>'
+    + '<button class="btn" id="rc_go"' + (pr.rcBusy ? ' disabled' : '') + '>' + (pr.rcBusy ? 'Working…' : 'Refund and send notice') + '</button></div>';
+  if (!rows.length) return x + '<div class="tplinfo">No orders recalled yet.</div></div>';
+  x += '<table class="prtab"><thead><tr><th>Date</th><th>Order</th><th>Customer</th><th>Item</th><th>Refunded</th><th>Code</th><th>Email</th><th>How</th></tr></thead><tbody>'
+    + rows.slice(0, 50).map(r => '<tr><td>' + esc(String(r.created || '').slice(0, 10)) + '</td><td>#' + esc(r.order_number) + '</td><td>' + esc(r.first_name) + '<span class="sub">' + esc(r.email) + '</span></td><td>' + esc(r.item) + '</td><td>' + (r.status === 'recalled-no-email' || r.status === 'recalled' || r.status === 'recalled-no-code' ? esc(r.currency) + ' ' + Number(r.amount || 0).toFixed(2) : '') + '</td><td>' + esc(r.code || '') + (r.code_expires ? '<span class="sub">expires ' + esc(String(r.code_expires).slice(0, 10)) + '</span>' : '') + '</td><td>' + esc(r.email_status || '') + (r.note ? '<span class="sub">' + esc(r.note) + '</span>' : '') + '</td><td>' + esc(r.source === 'manual' ? 'By you' : 'Automatic') + '</td></tr>').join('')
+    + '</tbody></table></div>';
+  return x;
+}
+async function prRecallGo() {
+  const n = String(pr.rcInput || '').replace(/[^0-9]/g, '');
+  if (!n) { toast('Type the order number'); return; }
+  if (!confirm('Refund order #' + n + ' in full and email the customer the Notice of Recall with a one-use code? This cannot be undone.')) return;
+  pr.rcBusy = true; renderPricing();
+  try {
+    const r = await fetch(RECALL_RUN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: n }) });
+    if (!r.ok) throw new Error('answered ' + r.status);
+    const d = await r.json().catch(() => null);
+    const row = Array.isArray(d) ? d[0] : d;
+    toast(row && row.status ? 'Done: refunded and emailed' : 'Nothing done. The order may not be paid, may be an NFT, or was already refunded.');
+    pr.rcInput = '';
+  } catch (e) { toast('Not done: ' + e.message); }
+  pr.rcBusy = false; await loadRecalls(); renderPricing();
 }
 const PR_OK_STOCK = ['in-stock', 'non-stockable', 'not-supported'];
 function prStockBad() { return pr.stock.filter(x => PR_OK_STOCK.indexOf(x.note) < 0); }
@@ -1646,7 +1682,7 @@ function renderPricing() {
     + '<div class="tplinfo">Profit = price in pounds - Gelato cost - Gelato shipping (where we pay it) - PayPal fee (' + pr.pp.pct + '% + £' + pr.pp.fixed.toFixed(2) + '). After code = the same with ' + pr.promo + '% off (STANDTALL10, ends 30 Nov 2026). Price rule: total cost (Gelato cost, Gelato shipping where we pay it, PayPal fee) plus 35% on top, rounded up to a whole number. Canada: 25% on top. NFTs are not on this tab yet.</div>'
     + '<div class="prow" style="flex-wrap:wrap;gap:8px">' + ['United States', 'Canada', 'United Kingdom', 'Germany (EU)', 'Australia', 'New Zealand', 'Europe'].map(m =>
       '<label>' + esc(m) + ' <input type="number" class="pr_fl" data-m="' + esc(m) + '" value="' + (pr.floors[m] || 0) + '" style="width:56px"></label>').join('') + '</div></details></div>'
-    + prFlagPanel() + prStockPanel() + prHistPanel()
+    + prFlagPanel() + prRecallPanel() + prStockPanel() + prHistPanel()
     + '<table class="prtab"><thead><tr>' + PR_COLS.map(c => '<th data-k="' + c[0] + '">' + c[1] + (pr.sort === c[0] ? (pr.dir === 1 ? ' ↑' : ' ↓') : '') + '</th>').join('') + '</tr></thead><tbody>';
   shown.forEach(([x, c]) => {
     const pd = c.pg * (1 - pr.promo / 100), fl = floorOf(x);
@@ -1679,6 +1715,7 @@ function renderPricing() {
     prApply({ custom: { ids: ids, price: n } }, ids, 'custom');
   });
   $('pr_p').onchange = e => { pr.prob = e.target.checked; renderPricing(); };
+  if ($('rc_num')) { $('rc_num').oninput = e => { pr.rcInput = e.target.value; }; $('rc_go').onclick = prRecallGo; }
   if ($('pr_hist')) $('pr_hist').ontoggle = e => { pr.histOpen = e.target.open; };
   $('list').querySelectorAll('.pr_fl').forEach(i => i.onchange = async () => {
     try {
