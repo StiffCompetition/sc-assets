@@ -1515,6 +1515,15 @@ function prWhy(note) {
   const parts = String(note || '').split('; ').filter(t => !/^price \d/.test(t) && !/^Moves together/.test(t));
   return parts.length ? parts.join('; ') : String(note || '');
 }
+function prChatUrl(groups) {
+  const lines = [];
+  groups.forEach(g => g.list.forEach(l => { lines.push(g.market + ' · ' + (PR_GROUP[g.group] || g.group) + ' · ' + (l.size === '-' ? 'all sizes' : l.size) + ': now ' + l.cur + ' ' + l.cur_ + (l.action === 'apply' ? ', new ' + l.nw + ' ' + l.cur_ : ', needs Andy\'s decision') + ' (' + prWhy(l.note) + ') [rows ' + l.ids.join(',') + ']'); }));
+  const more = lines.length > 30 ? '\n...and ' + (lines.length - 30) + ' more lines: read them from the flag rows.' : '';
+  const q = 'Marketing dashboard, Pricing tab: Gelato price changes to work through with Andy.\n' + lines.slice(0, 30).join('\n') + more
+    + '\nThe flagged lines are the rows with kind flag in the n8n data table SC Pricing Matrix; the price rule is in the playbook SC - Pricing, Shipping and Promotions Playbook. Explain each change in plain words and change nothing until Andy says yes.'
+    + ' To apply agreed prices, call the n8n workflow SC - Price Apply (webhook sc-price-apply) with {"ids":[the flag row ids Andy agreed]} (lines that need his decision cannot be applied); it updates the costs, runs the price sync and removes the flags.';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
 function prFlagPanel() {
   const head = '<div class="pbox"><h3>Gelato price changes</h3>';
   const last = pr.last && pr.last.updated ? 'Last Gelato check: ' + esc(pr.last.updated) + '. ' : 'The Gelato check has not run yet. ';
@@ -1523,10 +1532,12 @@ function prFlagPanel() {
   const all = []; groups.forEach(g => g.applyIds.forEach(i => all.push(i)));
   const busy = !!pr.applying, dis = busy ? ' disabled' : '';
   let h = head + '<div class="tplinfo">' + last + 'Nothing changes until you press Apply.</div>';
+  h += '<div class="prow" style="margin:6px 0"><a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl(groups)) + '">New chat about all of these</a></div>';
   if (all.length) h += '<div class="prow" style="margin:6px 0"><button class="btn pr_apply" data-all="1"' + dis + '>' + (busy ? 'Applying… about a minute' : 'Apply all ' + all.length + ' price' + (all.length === 1 ? '' : 's')) + '</button></div>';
   groups.forEach(g => {
     const n = g.applyIds.length;
     h += '<div style="border-top:1px solid #e6e6e6;margin-top:8px;padding-top:6px"><div class="prow" style="flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between"><b>' + esc(g.market) + ' · ' + esc(PR_GROUP[g.group] || g.group) + '</b>'
+      + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl([g])) + '">New chat</a>'
       + (n ? '<button class="btn pr_apply" data-ids="' + g.applyIds.join(',') + '"' + dis + '>Apply ' + n + ' new price' + (n === 1 ? '' : 's') + '</button>' : '<span style="color:#6b4a00">Needs your decision</span>') + '</div>'
       + '<table class="prtab"><thead><tr><th>Size</th><th>Now</th><th>New</th><th>Why</th></tr></thead><tbody>'
       + g.list.map(l => { const sy = PR_SYM[l.cur_] || ''; return '<tr><td>' + esc(l.size === '-' ? 'All' : l.size) + '</td><td>' + sy + l.cur + '</td><td>' + (l.action === 'apply' ? '<b>' + sy + l.nw + '</b>' : '<span style="color:#6b4a00">your call</span>') + '</td><td>' + esc(prWhy(l.note)) + '</td></tr>'; }).join('')
