@@ -1171,7 +1171,7 @@ function mugDesignHtml(t, rule) {
   };
   const s = sel && L[sel.n] && L[sel.n][sel.i] ? L[sel.n][sel.i] : null;
   return '<div class="design mug" data-pt="' + esc(rule.product_type) + '">'
-    + '<div class="mstages">' + side(1) + side(2) + '</div>'
+    + '<div class="mstages">' + (half === 'right' ? side(2) + side(1) : side(1) + side(2)) + '</div>'   // shown in print order, left half first, so it matches the print preview (Andy, 20 Oct 2026)
     + '<div class="mtools">' + (s ? '<b>' + esc(mugName(s.src)) + '</b> size <input type="range" id="m_size" min="8" max="100" value="' + Math.round(s.w * 100) + '"><button type="button" class="btn ghost small" id="m_centre">Centre</button><button type="button" class="btn ghost small" id="m_del">Remove</button>' : '<span style="color:var(--grey)">Drag an image to move it. Tap one to resize it.</span>') + '</div>'
     + '<div class="mtools"><label class="printon">Side 1 sits on the <select data-half><option value="left"' + (half === 'left' ? ' selected' : '') + '>left half</option><option value="right"' + (half === 'right' ? ' selected' : '') + '>right half</option></select> of the print</label>'
     + (libDesigns().length > 1 ? '<label class="printon">Show <select id="p_pvchar">' + libDesigns().map(x => '<option value="' + esc(x.key) + '"' + (d && x.key === d.key ? ' selected' : '') + '>' + esc(x.character) + '</option>').join('') + '</select></label>' : '')
