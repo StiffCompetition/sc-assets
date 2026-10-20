@@ -1535,47 +1535,64 @@ function prHistPanel() {
 function prFlagGroups() {
   const mk = x => (x.market === 'Germany (EU)' || /^Europe/.test(x.market)) ? 'European Union' : x.market;
   const groups = {};
+  const rank = { fx: 4, apply: 3, review: 2, notice: 1 };
   pr.flags.forEach(x => {
     const k = mk(x) + '|' + x.group;
     const g = groups[k] = groups[k] || { market: mk(x), group: x.group, lines: {} };
-    const l = g.lines[x.size] = g.lines[x.size] || { size: x.size, cur: x.price_local, nw: x.new_price, cur_: x.currency, action: 'apply', note: '', ids: [] };
+    const l = g.lines[x.size] = g.lines[x.size] || { size: x.size, cur: x.price_local, nw: x.new_price, cur_: x.currency, action: 'notice', note: '', ids: [] };
     l.ids.push(x.id);
-    if (x.action !== 'apply' && x.action !== 'fx') l.action = 'review'; else if (x.action === 'fx' && l.action === 'apply') l.action = 'fx';
+    const a = x.action === 'fx' || x.action === 'apply' || x.action === 'notice' ? x.action : 'review';
+    if (rank[a] > rank[l.action]) l.action = a;
     if (!l.note || /^Moves together/.test(l.note)) l.note = x.note || '';
   });
-  return Object.keys(groups).sort().map(k => { const g = groups[k]; g.list = Object.keys(g.lines).map(z => g.lines[z]); g.applyIds = []; g.allIds = []; g.keepIds = []; g.list.forEach(l => { if (l.action === 'review') g.keepIds = g.keepIds.concat(l.ids); if (l.action === 'apply' || l.action === 'fx') g.applyIds = g.applyIds.concat(l.ids); if (l.action === 'apply') g.allIds = g.allIds.concat(l.ids); }); return g; });
+  return Object.keys(groups).sort().map(k => {
+    const g = groups[k];
+    g.list = Object.keys(g.lines).map(z => g.lines[z]);
+    g.ackIds = []; g.fxIds = [];
+    g.list.forEach(l => { if (l.action === 'review' || l.action === 'notice') g.ackIds = g.ackIds.concat(l.ids); if (l.action === 'fx') g.fxIds = g.fxIds.concat(l.ids); });
+    return g;
+  });
 }
 function prWhy(note) {
   const parts = String(note || '').split('; ').filter(t => !/^price \d/.test(t) && !/^Moves together/.test(t));
-  return parts.length ? parts.join('; ') : String(note || '');
+  return (parts.length ? parts.join('; ') : String(note || '')).replace(/^Price changed automatically\. /, '');
 }
 function prChatUrl(groups) {
   const lines = [];
-  groups.forEach(g => g.list.forEach(l => { lines.push(g.market + ' · ' + (PR_GROUP[g.group] || g.group) + ' · ' + (l.size === '-' ? 'all sizes' : l.size) + ': now ' + l.cur + ' ' + l.cur_ + (l.action === 'apply' ? ', new ' + l.nw + ' ' + l.cur_ : ', needs Andy\'s decision') + ' (' + prWhy(l.note) + ') [rows ' + l.ids.join(',') + ']'); }));
+  groups.forEach(g => g.list.forEach(l => { lines.push(g.market + ' · ' + (PR_GROUP[g.group] || g.group) + ' · ' + (l.size === '-' ? 'all sizes' : l.size) + ': before ' + l.cur + ' ' + l.cur_ + (l.action === 'notice' || l.action === 'apply' ? ', now ' + l.nw + ' ' + l.cur_ + ' (changed by the rule)' : ', price not changed') + ' (' + prWhy(l.note) + ') [rows ' + l.ids.join(',') + ']'); }));
   const more = lines.length > 30 ? '\n...and ' + (lines.length - 30) + ' more lines: read them from the flag rows.' : '';
-  const q = 'Marketing dashboard, Pricing tab: Gelato price changes to work through with Andy.\n' + lines.slice(0, 30).join('\n') + more
-    + '\nThe flagged lines are the rows with kind flag in the n8n data table SC Pricing Matrix; the price rule is in the playbook SC - Pricing, Shipping and Promotions Playbook. Explain each change in plain words and change nothing until Andy says yes.'
-    + ' To apply agreed prices, call the n8n workflow SC - Price Apply (webhook sc-price-apply) with {"ids":[the flag row ids Andy agreed]} (lines that need his decision cannot be applied; to leave one as it is, send {\"keep\":[flag row ids]}); it updates the costs, runs the price sync and removes the flags.';
+  const q = 'Marketing dashboard, Pricing tab: pricing lines to work through with Andy.\n' + lines.slice(0, 30).join('\n') + more
+    + '\nThe lines are the rows with kind flag in the n8n data table SC Pricing Matrix; the price rule is in the playbook SC - Pricing, Shipping and Promotions Playbook. Prices that follow the rule are changed automatically by the weekly check. Explain each line in plain words and change nothing until Andy says yes.'
+    + ' To acknowledge lines call the n8n workflow SC - Price Apply (webhook sc-price-apply) with {"keep":[flag row ids]}; to set a price of Andy\'s own for one line send {"custom":{"ids":[the line\'s flag row ids],"price":N}} (0 goes back to the rule price).';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
 function prFlagPanel() {
-  const head = '<div class="pbox"><h3>Gelato price changes</h3>';
+  const head = '<div class="pbox"><h3>Pricing changes and notices</h3>';
   const last = pr.last && pr.last.updated ? 'Last Gelato check: ' + esc(pr.last.updated) + '. ' : 'The Gelato check has not run yet. ';
-  if (!pr.flags.length) return head + '<div class="tplinfo">' + last + 'No price changes waiting.</div></div>';
+  if (!pr.flags.length) return head + '<div class="tplinfo">' + last + 'Nothing waiting.</div></div>';
   const groups = prFlagGroups();
-  const all = []; groups.forEach(g => g.allIds.forEach(i => all.push(i)));
+  const ackAll = []; groups.forEach(g => g.ackIds.forEach(i => ackAll.push(i)));
   const busy = !!pr.applying, dis = busy ? ' disabled' : '';
-  let h = head + '<div class="tplinfo">' + last + 'Nothing changes until you press Apply.</div>';
-  h += '<div class="prow" style="margin:6px 0"><a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl(groups)) + '">New chat about all of these</a></div>';
-  if (all.length) h += '<div class="prow" style="margin:6px 0"><button class="btn pr_apply" data-all="1"' + dis + '>' + (busy ? 'Applying… about a minute' : 'Apply all ' + all.length + ' price' + (all.length === 1 ? '' : 's')) + '</button></div>';
+  let h = head + '<div class="tplinfo">' + last + 'Prices that follow the rule are changed automatically. Press Acknowledge to clear a line, or Change price to set your own.</div>';
+  h += '<div class="prow" style="margin:6px 0;gap:8px"><a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl(groups)) + '">New chat about all of these</a>'
+    + (ackAll.length ? '<button class="btn pr_keep" data-ids="' + ackAll.join(',') + '"' + dis + '>' + (busy ? 'Working… about a minute' : 'Acknowledge all ' + ackAll.length) + '</button>' : '') + '</div>';
   groups.forEach(g => {
-    const n = g.applyIds.length;
     h += '<div style="border-top:1px solid #e6e6e6;margin-top:8px;padding-top:6px"><div class="prow" style="flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between"><b>' + esc(g.market) + ' · ' + esc(PR_GROUP[g.group] || g.group) + '</b>'
-      + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl([g])) + '">New chat</a>'
-      + (n ? '<button class="btn pr_apply" data-ids="' + g.applyIds.join(',') + '"' + dis + '>' + (g.group === 'Exchange rate' ? 'Apply the new rate' : 'Apply ' + n + ' new price' + (n === 1 ? '' : 's')) + '</button>' : '<span style="color:#6b4a00">Needs your decision</span>')
-      + (g.keepIds.length ? '<button class="btn small ghost pr_keep" data-ids="' + g.keepIds.join(',') + '"' + dis + '>Keep as is</button>' : '') + '</div>'
-      + '<table class="prtab"><thead><tr><th>Size</th><th>Now</th><th>New</th><th>Why</th></tr></thead><tbody>'
-      + g.list.map(l => { const sy = PR_SYM[l.cur_] || ''; return '<tr><td>' + esc(l.size === '-' ? 'All' : l.size) + '</td><td>' + (Number(l.cur) ? sy + l.cur : '—') + '</td><td>' + (l.action === 'apply' || l.action === 'fx' ? '<b>' + sy + l.nw + '</b>' : '<span style="color:#6b4a00">your call</span>') + '</td><td>' + esc(prWhy(l.note)) + '</td></tr>'; }).join('')
+      + '<span style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl([g])) + '">New chat</a>'
+      + (g.fxIds.length ? '<button class="btn pr_apply" data-ids="' + g.fxIds.join(',') + '"' + dis + '>Apply the new rate</button>' : '')
+      + (g.ackIds.length ? '<button class="btn small pr_keep" data-ids="' + g.ackIds.join(',') + '"' + dis + '>Acknowledge</button>' : '') + '</span></div>'
+      + '<table class="prtab"><thead><tr><th>Size</th><th>Price before</th><th>Price now</th><th>What changed</th><th></th></tr></thead><tbody>'
+      + g.list.map(l => {
+        const sy = PR_SYM[l.cur_] || '';
+        const before = Number(l.cur) ? sy + l.cur : '—';
+        let now;
+        if (l.action === 'notice') now = '<b>' + sy + l.nw + '</b> <span style="color:#555">changed by the rule</span>';
+        else if (l.action === 'apply') now = '<b>' + sy + l.nw + '</b> <span style="color:#6b4a00">changing…</span>';
+        else if (l.action === 'fx') now = '<b>' + sy + l.nw + '</b>';
+        else now = Number(l.nw) && Number(l.cur) && l.nw !== l.cur ? '<b>' + sy + l.nw + '</b> <span style="color:#6b4a00">not changed, needs you</span>' : (Number(l.cur) ? 'same' : '—');
+        const chg = l.action !== 'fx' && Number(l.cur) ? '<button class="btn small ghost pr_cust" data-ids="' + l.ids.join(',') + '" data-cur="' + esc(l.cur_) + '" data-def="' + (Number(l.nw) || Number(l.cur)) + '"' + dis + '>Change price</button>' : '';
+        return '<tr><td>' + esc(l.size === '-' ? 'All' : l.size) + '</td><td>' + before + '</td><td>' + now + '</td><td>' + esc(prWhy(l.note)) + '</td><td>' + chg + '</td></tr>';
+      }).join('')
       + '</tbody></table></div>';
   });
   return h + '</div>';
@@ -1587,7 +1604,7 @@ async function prApply(body, ids, keep) {
     const r = await fetch(PRICING_APPLY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.ok === false) throw new Error(d.error || 'answered ' + r.status);
-    toast(keep ? 'Keeping as is. About a minute.' : 'Applying ' + d.applying + ' price' + (d.applying === 1 ? '' : 's') + '. About a minute.');
+    toast(keep === 'custom' ? 'Setting your price. About a minute.' : keep ? 'Acknowledged. About a minute.' : 'Applying the new rate. About a minute.');
     prPoll();
   } catch (e) { pr.applying = null; toast('Not applied: ' + e.message); renderPricing(); }
 }
@@ -1650,10 +1667,17 @@ function renderPricing() {
   $('list').querySelectorAll('.prtab th').forEach(th => th.onclick = () => { if (pr.sort === th.dataset.k) pr.dir = -pr.dir; else { pr.sort = th.dataset.k; pr.dir = 1; } renderPricing(); });
   $('pr_m').onchange = e => { pr.mkt = e.target.value; renderPricing(); };
   $('list').querySelectorAll('.pr_apply').forEach(b => b.onclick = () => {
-    if (b.dataset.all) { const ids = []; prFlagGroups().forEach(g => g.allIds.forEach(i => ids.push(i))); prApply({ all: true }, ids); }
-    else { const ids = b.dataset.ids.split(',').map(Number); prApply({ ids: ids }, ids); }
+    const ids = b.dataset.ids.split(',').map(Number); prApply({ ids: ids }, ids);
   });
   $('list').querySelectorAll('.pr_keep').forEach(b => b.onclick = () => { const ids = b.dataset.ids.split(',').map(Number); prApply({ keep: ids }, ids, true); });
+  $('list').querySelectorAll('.pr_cust').forEach(b => b.onclick = () => {
+    const v = window.prompt('Your price in ' + b.dataset.cur + ' for this line (whole number). Enter 0 to go back to the rule price.', b.dataset.def);
+    if (v === null) return;
+    const n = Number(String(v).replace(/[^0-9.]/g, ''));
+    if (!isFinite(n) || n < 0 || String(v).trim() === '') { toast('Not a price'); return; }
+    const ids = b.dataset.ids.split(',').map(Number);
+    prApply({ custom: { ids: ids, price: n } }, ids, 'custom');
+  });
   $('pr_p').onchange = e => { pr.prob = e.target.checked; renderPricing(); };
   if ($('pr_hist')) $('pr_hist').ontoggle = e => { pr.histOpen = e.target.open; };
   $('list').querySelectorAll('.pr_fl').forEach(i => i.onchange = async () => {
