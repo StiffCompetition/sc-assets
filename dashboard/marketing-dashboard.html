@@ -1119,11 +1119,24 @@ function panelHtml(title, d, ps, ink, hex) {
 // x, y = centre as a share of the side, w = width as a share of the side. The print file is built from exactly this.
 const libImages = () => prod.designs.filter(d => d.status === 'approved' && (d.kind === 'brand' || d.kind === 'logo'));
 const MUG_DEF = { picture: { y: 0.36, w: 0.5 }, name: { y: 0.69, w: 0.72 }, phrase: { y: 0.8, w: 0.78 }, logo: { y: 0.9, w: 0.5 } };
-function mugLayout(rule) {
-  if (prod.mlay && prod.mlayPt === rule.product_type) return prod.mlay;   // the layout being edited (saves run in the background)
-  prod.mlayPt = rule.product_type;
+// Each character and logo keeps its own layout (Andy, 20 Oct 2026): saved under layout.per[KEY] the moment it changes;
+// a character with no layout of its own uses the shared one (layout '1', '2', stack) until it is changed.
+const copyLay = L => ({ '1': (L['1'] || []).map(it => Object.assign({}, it)), '2': (L['2'] || []).map(it => Object.assign({}, it)), stack: (L.stack || []).map(Number) });
+function mugAll(rule) {
+  if (prod.mall && prod.mallPt === rule.product_type) return prod.mall;
   let L = null; try { L = rule.layout ? JSON.parse(rule.layout) : null; } catch (e) { L = null; }
-  if (L && (L['1'] || L['2'])) return { '1': (L['1'] || []).slice(), '2': (L['2'] || []).slice(), stack: (L.stack || []).map(Number) };
+  prod.mallPt = rule.product_type;
+  prod.mall = L && (L['1'] || L['2']) ? { base: copyLay(L), per: (L.per && typeof L.per === 'object') ? L.per : {} } : { base: null, per: {} };
+  return prod.mall;
+}
+const mugKey = () => { const d = libDesigns().find(x => x.key === prod.pv) || libDesigns().find(x => prod.picked.has(x.key)) || libDesigns()[0]; return d ? d.key : ''; };
+function mugLayout(rule, key) {
+  if (prod.mlay && prod.mlayPt === rule.product_type && prod.mlayKey === key) return prod.mlay;   // the layout being edited (saves run in the background)
+  prod.mlayPt = rule.product_type; prod.mlayKey = key; prod.msel = null;
+  const A = mugAll(rule);
+  if (key && A.per[key]) { prod.mown = true; return copyLay(A.per[key]); }
+  prod.mown = false;
+  if (A.base) return copyLay(A.base);
   const out = { '1': [], '2': [], stack: [1, 2] };   // first time: the parts already ticked, stacked as the t-shirt set (restacked once the images load)
   prod.mdefault = true;
   [1, 2].forEach(n => partsOf(rule, n).forEach(p => out[n].push({ src: p, x: 0.5, y: MUG_DEF[p].y, w: MUG_DEF[p].w })));
@@ -1142,8 +1155,8 @@ function mugName(src) {
   return (PARTS.find(p => p[0] === src) || [src, src])[1];
 }
 function mugDesignHtml(t, rule) {
-  const L = mugLayout(rule); prod.mlay = L;
   const d = libDesigns().find(x => x.key === prod.pv) || libDesigns().find(x => prod.picked.has(x.key)) || libDesigns()[0];
+  const L = mugLayout(rule, d ? d.key : ''); prod.mlay = L;
   const ar = mugAspect(t), sel = prod.msel || null, half = rule.side_1_half === 'right' ? 'right' : 'left';
   const side = n => {
     const items = L[n].map((it, i) => { const u = mugSrc(it, d); return u ? '<img class="mitem' + (sel && sel.n === n && sel.i === i ? ' sel' : '') + '" draggable="false" data-mn="' + n + '" data-mi="' + i + '" src="' + esc(safeUrl(u)) + '" alt="' + esc(mugName(it.src)) + '" style="left:' + (it.x * 100).toFixed(2) + '%;top:' + (it.y * 100).toFixed(2) + '%;width:' + (it.w * 100).toFixed(2) + '%">' : ''; }).join('');
@@ -1162,12 +1175,18 @@ function mugDesignHtml(t, rule) {
     + '<div class="mtools">' + (s ? '<b>' + esc(mugName(s.src)) + '</b> size <input type="range" id="m_size" min="8" max="100" value="' + Math.round(s.w * 100) + '"><button type="button" class="btn ghost small" id="m_centre">Centre</button><button type="button" class="btn ghost small" id="m_del">Remove</button>' : '<span style="color:var(--grey)">Drag an image to move it. Tap one to resize it.</span>') + '</div>'
     + '<div class="mtools"><label class="printon">Side 1 sits on the <select data-half><option value="left"' + (half === 'left' ? ' selected' : '') + '>left half</option><option value="right"' + (half === 'right' ? ' selected' : '') + '>right half</option></select> of the print</label>'
     + (libDesigns().length > 1 ? '<label class="printon">Show <select id="p_pvchar">' + libDesigns().map(x => '<option value="' + esc(x.key) + '"' + (d && x.key === d.key ? ' selected' : '') + '>' + esc(x.character) + '</option>').join('') + '</select></label>' : '')
-    + '<span class="saved" id="p_saved"></span></div></div>';
+    + '<span class="saved" id="p_saved"></span></div>'
+    + '<div class="mtools"><span class="tplinfo" style="margin:0">' + (prod.mown ? 'This layout is saved for <b>' + esc(d ? d.character : '') + '</b>. Every change saves straight away.' : '<b>' + esc(d ? d.character : '') + '</b> uses the shared layout. Change anything and it is saved for ' + esc(d ? d.character : 'this character') + ' only.') + '</span>'
+    + (prod.mown ? ' <button type="button" class="btn ghost small" id="m_all">Use this layout for every character</button>' : '') + '</div></div>';
 }
-async function saveMug(pt, extra) {
+async function saveMug(pt, extra, toAll) {
   const L = prod.mlay; if (!Array.isArray(L.stack)) L.stack = [];
-  const v = Object.assign({ layout: JSON.stringify(L) }, extra || {});
-  [1, 2].forEach(n => { v['side_' + n] = L[n].map(it => it.src).filter(s => PARTS.some(p => p[0] === s)).join(','); });
+  const A = prod.mall || { base: null, per: {} }, key = prod.mlayKey;
+  if (toAll) { A.base = copyLay(L); A.per = {}; prod.mown = false; }
+  else if (key) { A.per[key] = copyLay(L); prod.mown = true; } else A.base = copyLay(L);
+  const B = A.base || copyLay(L);
+  const v = Object.assign({ layout: JSON.stringify({ '1': B['1'], '2': B['2'], stack: B.stack, per: A.per }) }, extra || {});
+  [1, 2].forEach(n => { v['side_' + n] = B[n].map(it => it.src).filter(s => PARTS.some(p => p[0] === s)).join(','); });
   if ($('p_saved')) $('p_saved').textContent = 'Saving…';
   try { await productApi(Object.assign({ action: 'save_rule', product_type: pt }, v)); Object.assign(prodRule(pt), v); if ($('p_saved')) $('p_saved').textContent = 'Saved'; }
   catch (e) { toast('Could not save: ' + e.message); if ($('p_saved')) $('p_saved').textContent = ''; }
@@ -1217,6 +1236,7 @@ function wireMug(ds) {
     if (save) commit(); else if (moved > 0.002) redraw();   // only redraw when something moved, so restacking on show never loops
   };
   ds.querySelectorAll('[data-mstack]').forEach(b => b.onclick = () => stackSide(Number(b.dataset.mstack), true));
+  const ma = $('m_all'); if (ma) ma.onclick = () => { if (!confirm('Use this layout for every character and logo? Their own layouts are replaced.')) return; saveMug(pt, null, true).then(redraw); };
   if (prod.mdefault) { prod.mdefault = false; stackSide(1, false).then(() => stackSide(2, false)); }
   else if (prod.mrestack) { const n = prod.mrestack; prod.mrestack = 0; stackSide(n, true); }
   else [1, 2].filter(n => L.stack.indexOf(n) !== -1).reduce((p, n) => p.then(() => stackSide(n, false)), Promise.resolve());   // the character on show, stacked in its own proportions
@@ -1339,7 +1359,7 @@ function renderProducts() {
   h += fstep(2, 'Listing', !t ? 'lock' : (ruleOk && !prod.editRule) ? 'done' : 'now', ruleOk ? 'Title, description and tags approved <a href="#" id="p_editrule">Change</a>' : '', s2);
   const open = t && ruleOk && !prod.editRule;
   const s1p = partsOf(rule, 1), s2p = partsOf(rule, 2), nm = areaNames(rule);
-  const mugL = open && rule.layout_mode === 'sides' ? mugLayout(rule) : null;
+  const mugL = open && rule.layout_mode === 'sides' ? (prod.mlay && prod.mlayPt === rule.product_type ? prod.mlay : mugLayout(rule, mugKey())) : null;
   const designSum = mugL ? [1, 2].map(n => 'Side ' + n + ': ' + (mugL[n].length ? mugL[n].map(it => mugName(it.src).toLowerCase()).join(', ') : 'nothing')).join(' · ') : open ? [s1p.length ? nm[0] + ': ' + partWords(s1p) : '', s2p.length ? nm[1] + ': ' + partWords(s2p) : ''].filter(Boolean).join(' · ') : '';
   h += fstep(3, 'Design', open ? 'now' : 'lock', '', open ? designHtml(t, rule) : '');
   // 19 Oct 2026 (Andy): each character's colours sit right under its picture; tapping a colour also picks the character
@@ -1471,8 +1491,10 @@ function wireProducts() {
     if (!t || !keys.length) return;
     if (!confirm('Make ' + keys.length + ' ' + (r ? r.label.toLowerCase() : t.product_type) + (keys.length === 1 ? '' : 's') + ' from "' + t.templateName + '"?\n\n' + ($('list').querySelector('.makesum') || {}).textContent + '\n\nNothing goes to Gelato or Shopify until you approve each set of print files. Once approved, each one goes all the way to live by itself.')) return;
     if (r && r.layout_mode === 'sides') {   // mugs print exactly what the editor shows, so the layout on screen is saved first
-      const L = mugLayout(r); if (!L['1'].length && !L['2'].length) { toast('Put at least one image on the mug'); return; }
-      if (!r.layout) await saveMug(r.product_type);
+      // every picked character must have something to print: its own layout or the shared one
+      const A = mugAll(r), empty = keys.filter(k => { const L = A.per[k] || A.base || (prod.mlayKey === k ? prod.mlay : null) || prod.mlay; return !L || (!L['1'].length && !L['2'].length); });
+      if (empty.length) { toast('Put at least one image on the mug for ' + empty.join(', ')); return; }
+      if (!r.layout) await saveMug(r.product_type, null, true);
     }
     st.disabled = true; st.textContent = 'Starting…';
     try { const colours = {}, models = {}; if (!(r && r.layout_mode === 'sides')) keys.forEach(k => { colours[k] = Array.from(colsOf(k)); models[k] = modelCols(k); });
