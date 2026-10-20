@@ -164,6 +164,8 @@
   .printon { display: block; font-size: 14px !important; color: var(--ink) !important; } .printon select { width: auto !important; margin-left: 6px; font-size: 14px; }
   .pfiles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; } .pfiles figure { margin: 0; width: 170px; border: 1px solid var(--line); background: #fff; }
   .pfiles figure.onDark { background: #1e1e1e; } .pfiles img { width: 100%; display: block; } .pfiles figcaption { font-size: 12px; padding: 3px 6px; background: #fff; }
+  .tplused { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; } .tplused b { font-size: 13px; }
+  .tplused button { text-align: left; font-size: 13px; padding: 8px 10px; } .tplused button small { color: var(--grey); display: block; margin-top: 2px; }
   .mstages { display: flex; gap: 10px; flex-wrap: wrap; } .mside { flex: 1 1 240px; min-width: 0; }
   .mstage { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; touch-action: none; user-select: none; }
   .mstage::after { content: ''; position: absolute; inset: 6%; border: 1px dashed #d6d6d6; border-radius: 4px; pointer-events: none; }
@@ -974,7 +976,24 @@ async function addFollow(e) {
 const PRODUCT_URL = BASE + 'sc-product-api';
 const prod = { loaded: false, loading: false, designs: [], rules: [], runs: [], photos: [], tpl: null, tplErr: '', picked: new Set(), timer: null, open: {}, colour: '', cols: {}, models: {}, pv: '' };
 const SHOP_ADMIN = 'https://admin.shopify.com/store/stiifcompnft/products/';
-const TPL_KEY = 'sc_prod_tpl';
+const TPL_KEY = 'sc_prod_tpl', TPLS_KEY = 'sc_prod_tpls';
+// templates used before (Andy, 20 Oct 2026): every template a product was made from, plus any checked on this browser, newest first
+function sideWord(type, areas) { if (type === 'mug') return 'wrap print'; return areas.front && areas.back ? 'front and back print' : areas.back ? 'back print' : areas.front ? 'front print' : ''; }
+function usedTemplates() {
+  const m = {};
+  const put = (id, name, type, side, at) => { if (!id) return; const o = m[id] || (m[id] = { id: id, name: '', type: '', side: '', at: '' }); if (at >= o.at) { o.name = name || o.name; o.type = type || o.type; o.side = side || o.side; o.at = at; } else { o.name = o.name || name; o.type = o.type || type; o.side = o.side || side; } };
+  prod.runs.forEach(r => { let pf = {}; try { pf = r.print_files ? JSON.parse(r.print_files) : {}; } catch (e) { pf = {}; } const ks = Object.keys(pf);
+    put(r.template_id, r.template_name, r.product_type, sideWord(r.product_type, { front: ks.some(k => k.indexOf('print_front_') === 0), back: ks.some(k => k.indexOf('print_back_') === 0) }), String(r.updated_on || r.createdAt || '')); });
+  let saved = []; try { saved = JSON.parse(localStorage.getItem(TPLS_KEY) || '[]'); } catch (e) { saved = []; }
+  (Array.isArray(saved) ? saved : []).forEach(x => put(x.id, x.name, x.type, x.side, x.at || ''));
+  return Object.values(m).filter(x => /^[0-9a-f-]{36}$/i.test(x.id)).sort((a, b) => b.at.localeCompare(a.at));
+}
+function rememberTemplate(t) {
+  try { const sl = (t.imageSlots || []).join(' '); const side = sideWord(t.product_type, { front: /\(front/.test(sl), back: /\(back/.test(sl) });
+    let saved = JSON.parse(localStorage.getItem(TPLS_KEY) || '[]'); if (!Array.isArray(saved)) saved = [];
+    saved = saved.filter(x => x.id !== t.templateId); saved.unshift({ id: t.templateId, name: t.templateName || t.title || '', type: t.product_type || '', side: side, at: new Date().toISOString() });
+    localStorage.setItem(TPLS_KEY, JSON.stringify(saved.slice(0, 30))); } catch (e) {}
+}
 const LIGHT = ['white', 'light-blue', 'daisy', 'natural', 'ash', 'sand', 'light-pink', 'sport-grey', 'heather-grey', 'cream', 'ivory', 'gold'];
 const COLOUR_HEX = { white: '#f7f7f5', black: '#1e1e1e', navy: '#1f2a44', royal: '#2d4fa1', red: '#c0272d', orange: '#f26b21', gold: '#f2b233', purple: '#4b2e83',
   'irish-green': '#1d8a4a', 'military-green': '#5b5f45', daisy: '#f6d34a', 'light-blue': '#a7c8e6', 'sport-grey': '#b9bcbe', 'heather-grey': '#b5b5b8', ash: '#d9d9d6',
@@ -1301,6 +1320,7 @@ function renderProducts() {
     t ? esc(rule ? rule.label : t.product_type) + ' · ' + esc(t.templateName) + ' · ' + (t.colours || []).length + ' colours <a href="#" id="p_change">Change</a>' : '',
     '<div class="prow"><input type="text" id="p_tid" placeholder="Gelato template ID" value="' + esc($('p_tid') ? $('p_tid').value : '') + '"><button class="btn" id="p_check">Check</button>'
       + '<a class="btn ghost" href="https://dashboard.gelato.com/" target="_blank" rel="noopener">Open Gelato</a></div>'
+      + (usedTemplates().length ? '<div class="tplused"><b>Used before</b>' + usedTemplates().map(x => { const rl = prodRule(x.type); return '<button type="button" class="btn ghost" data-tpl="' + esc(x.id) + '">' + esc((rl ? rl.label : (x.type || 'Product')) + (x.side ? ', ' + x.side : '')) + '<small>' + esc(x.name || 'Gelato template') + '</small></button>'; }).join('') + '</div>' : '')
       + (prod.tplErr ? '<div class="tplinfo" style="color:#c62828">' + esc(prod.tplErr) + '</div>' : ''));
   let s2 = '';
   if (t && !rule) s2 = '<div class="tplinfo" style="color:#b06a00">Claude is drafting the ' + esc(t.product_type) + ' listing. It appears here for your yes.</div>';
@@ -1352,7 +1372,7 @@ async function checkTemplate(id) {
   prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.editRule = false; prod.cols = {}; prod.models = {}; prod.picksFor = '';
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { prod.tplErr = 'That is not a Gelato template ID.'; renderProducts(); return; }
   if ($('p_check')) { $('p_check').disabled = true; $('p_check').textContent = 'Checking…'; } else $('list').innerHTML = '<div class="empty">Loading products…</div>';
-  try { prod.tpl = await productApi({ action: 'check_template', templateId: id }); try { localStorage.setItem(TPL_KEY, id); } catch (e) {} }
+  try { prod.tpl = await productApi({ action: 'check_template', templateId: id }); try { localStorage.setItem(TPL_KEY, id); } catch (e) {} rememberTemplate(prod.tpl); }
   catch (e) { prod.tplErr = 'Gelato could not read that template: ' + e.message; try { localStorage.removeItem(TPL_KEY); } catch (x) {} }
   renderProducts();
 }
@@ -1394,6 +1414,7 @@ function wireProducts() {
   $('list').querySelectorAll('[data-psec]').forEach(b => b.onclick = () => { prod.sec = b.dataset.psec; renderProducts(); window.scrollTo(0, 0); });
   wireDesigns();
   const ck = $('p_check'); if (ck) ck.onclick = () => checkTemplate($('p_tid').value.trim());
+  $('list').querySelectorAll('[data-tpl]').forEach(b => b.onclick = () => { if ($('p_tid')) $('p_tid').value = b.dataset.tpl; checkTemplate(b.dataset.tpl); });
   const er = $('p_editrule'); if (er) er.onclick = (e) => { e.preventDefault(); prod.editRule = true; renderProducts(); };
   const sp = $('p_showphotos'); if (sp) sp.onclick = (e) => { e.preventDefault(); prod.showPhotos = true; renderProducts(); };
   const gp = $('p_gophotos'); if (gp) gp.onclick = (e) => { e.preventDefault(); prod.showPhotos = true; renderProducts(); const s = $('fstep5'); if (s) s.scrollIntoView({ behavior: 'smooth' }); };
