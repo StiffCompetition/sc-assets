@@ -1123,8 +1123,8 @@ function mugLayout(rule) {
   if (prod.mlay && prod.mlayPt === rule.product_type) return prod.mlay;   // the layout being edited (saves run in the background)
   prod.mlayPt = rule.product_type;
   let L = null; try { L = rule.layout ? JSON.parse(rule.layout) : null; } catch (e) { L = null; }
-  if (L && (L['1'] || L['2'])) return { '1': (L['1'] || []).slice(), '2': (L['2'] || []).slice() };
-  const out = { '1': [], '2': [] };   // first time: the parts already ticked, stacked as the t-shirt set (restacked once the images load)
+  if (L && (L['1'] || L['2'])) return { '1': (L['1'] || []).slice(), '2': (L['2'] || []).slice(), stack: (L.stack || []).map(Number) };
+  const out = { '1': [], '2': [], stack: [1, 2] };   // first time: the parts already ticked, stacked as the t-shirt set (restacked once the images load)
   prod.mdefault = true;
   [1, 2].forEach(n => partsOf(rule, n).forEach(p => out[n].push({ src: p, x: 0.5, y: MUG_DEF[p].y, w: MUG_DEF[p].w })));
   return out;
@@ -1152,7 +1152,7 @@ function mugDesignHtml(t, rule) {
     return '<figure class="mside" style="margin:0"><div class="mstage" data-mstage="' + n + '" style="aspect-ratio:' + ar.toFixed(3) + '">' + items + '</div>'
       + '<figcaption>Side ' + n + ' (' + (n === 1 ? half : (half === 'left' ? 'right' : 'left')) + ' half of the print)' + (L[n].length ? '' : ', nothing printed') + '</figcaption>'
       + '<div class="sides"><b>' + (d ? esc(d.character) : 'Character') + '</b>' + ticks + '</div>'
-      + '<div class="mtools"><select data-mlib="' + n + '"><option value="">Add from the library…</option>' + libImages().map(x => '<option value="lib:' + esc(x.key) + '">' + esc(x.character) + '</option>').join('') + '</select>' + (L[n].length > 1 ? '<button type="button" class="btn ghost small" data-mstack="' + n + '">Stack neatly</button>' : '') + '</div>'
+      + '<div class="mtools"><select data-mlib="' + n + '"><option value="">Add from the library…</option>' + libImages().map(x => '<option value="lib:' + esc(x.key) + '">' + esc(x.character) + '</option>').join('') + '</select>' + (L[n].length > 1 ? '<button type="button" class="btn ghost small" data-mstack="' + n + '">' + ((L.stack || []).indexOf(n) !== -1 ? 'Stacked neatly ✓' : 'Stack neatly') + '</button>' : '') + '</div>'
       + (libs.length ? '<div class="mlib">' + L[n].map((it, i) => it.src.indexOf('lib:') === 0 ? '<button type="button" class="btn ghost" data-mdel="' + n + ':' + i + '">✕ ' + esc(mugName(it.src)) + '</button>' : '').join('') + '</div>' : '')
       + '</figure>';
   };
@@ -1165,7 +1165,8 @@ function mugDesignHtml(t, rule) {
     + '<span class="saved" id="p_saved"></span></div></div>';
 }
 async function saveMug(pt, extra) {
-  const L = prod.mlay, v = Object.assign({ layout: JSON.stringify(L) }, extra || {});
+  const L = prod.mlay; if (!Array.isArray(L.stack)) L.stack = [];
+  const v = Object.assign({ layout: JSON.stringify(L) }, extra || {});
   [1, 2].forEach(n => { v['side_' + n] = L[n].map(it => it.src).filter(s => PARTS.some(p => p[0] === s)).join(','); });
   if ($('p_saved')) $('p_saved').textContent = 'Saving…';
   try { await productApi(Object.assign({ action: 'save_rule', product_type: pt }, v)); Object.assign(prodRule(pt), v); if ($('p_saved')) $('p_saved').textContent = 'Saved'; }
@@ -1173,26 +1174,32 @@ async function saveMug(pt, extra) {
 }
 function wireMug(ds) {
   const pt = ds.dataset.pt, L = prod.mlay;
+  if (!Array.isArray(L.stack)) L.stack = [];
+  // 'Stack neatly' is remembered per side (Andy, 20 Oct 2026): a stacked side is restacked for every character from its own
+  // images (each character's picture, name and phrase have different proportions), here and when the print file is made.
+  // Moving or resizing an image by hand turns it off for that side.
+  const unstack = n => { L.stack = L.stack.filter(x => x !== n); };
   const redraw = () => renderProducts();
   const commit = (extra) => { saveMug(pt, extra); redraw(); };
   ds.querySelectorAll('[data-mpart]').forEach(c => c.onchange = () => {
     const n = Number(c.dataset.mpart), p = c.value;
-    if (c.checked) { L[n].push({ src: p, x: 0.5, y: MUG_DEF[p].y, w: MUG_DEF[p].w }); prod.mrestack = n; } else L[n] = L[n].filter(it => it.src !== p);
+    if (c.checked) { L[n].push({ src: p, x: 0.5, y: MUG_DEF[p].y, w: MUG_DEF[p].w }); } else L[n] = L[n].filter(it => it.src !== p);
+    if (L.stack.indexOf(n) !== -1) prod.mrestack = n;
     prod.msel = null; commit();
   });
   ds.querySelectorAll('[data-mlib]').forEach(s => s.onchange = () => {
     if (!s.value) return; const n = Number(s.dataset.mlib);
     if (L[n].length >= 8) { toast('Up to 8 images on a side'); return; }
-    L[n].push({ src: s.value, x: 0.5, y: 0.5, w: 0.5 }); prod.msel = { n: n, i: L[n].length - 1 }; commit();
+    L[n].push({ src: s.value, x: 0.5, y: L.stack.indexOf(n) !== -1 ? 1.0 : 0.5, w: 0.5 }); prod.msel = { n: n, i: L[n].length - 1 }; if (L.stack.indexOf(n) !== -1) prod.mrestack = n; commit();
   });
-  ds.querySelectorAll('[data-mdel]').forEach(b => b.onclick = () => { const [n, i] = b.dataset.mdel.split(':').map(Number); L[n].splice(i, 1); prod.msel = null; commit(); });
+  ds.querySelectorAll('[data-mdel]').forEach(b => b.onclick = () => { const [n, i] = b.dataset.mdel.split(':').map(Number); L[n].splice(i, 1); prod.msel = null; if (L.stack.indexOf(n) !== -1) prod.mrestack = n; commit(); });
   const sz = $('m_size'), sel = prod.msel;
   if (sz && sel) {
-    sz.oninput = () => { L[sel.n][sel.i].w = Number(sz.value) / 100; const im = ds.querySelector('[data-mn="' + sel.n + '"][data-mi="' + sel.i + '"]'); if (im) im.style.width = sz.value + '%'; };
+    sz.oninput = () => { unstack(sel.n); L[sel.n][sel.i].w = Number(sz.value) / 100; const im = ds.querySelector('[data-mn="' + sel.n + '"][data-mi="' + sel.i + '"]'); if (im) im.style.width = sz.value + '%'; };
     sz.onchange = () => saveMug(pt);
   }
-  const mc = $('m_centre'); if (mc && sel) mc.onclick = () => { L[sel.n][sel.i].x = 0.5; commit(); };
-  const md = $('m_del'); if (md && sel) md.onclick = () => { L[sel.n].splice(sel.i, 1); prod.msel = null; commit(); };
+  const mc = $('m_centre'); if (mc && sel) mc.onclick = () => { unstack(sel.n); L[sel.n][sel.i].x = 0.5; commit(); };
+  const md = $('m_del'); if (md && sel) md.onclick = () => { L[sel.n].splice(sel.i, 1); if (L.stack.indexOf(sel.n) !== -1) prod.mrestack = sel.n; prod.msel = null; commit(); };
   const half = ds.querySelector('[data-half]'); if (half) half.onchange = () => commit({ side_1_half: half.value });
   // Stack: the side's images one under the other in their own proportions, filling the side like the t-shirt set
   const stackSide = async (n, save) => {
@@ -1202,14 +1209,17 @@ function wireMug(ds) {
     const ar = mugAspect(prod.tpl), SW = ar * 1000, SH = 1000, GAP = 120;
     const rows = ims.map(im => ({ i: Number(im.dataset.mi), nw: im.naturalWidth || 1000, nh: im.naturalHeight || 300 })).sort((a, b) => L[n][a.i].y - L[n][b.i].y);
     if (!rows.length) return;
+    if (L.stack.indexOf(n) === -1) L.stack.push(n);
     const W = Math.max(...rows.map(r => r.nw)), H = rows.reduce((s, r) => s + r.nh, 0) + GAP * (rows.length - 1);
     const k = Math.min(0.86 * SW / W, 0.86 * SH / H); let y = (SH - H * k) / 2;
-    rows.forEach(r => { const it = L[n][r.i]; it.w = r.nw * k / SW; it.x = 0.5; it.y = (y + r.nh * k / 2) / SH; y += (r.nh + GAP) * k; });
-    if (save) commit(); else redraw();
+    let moved = 0;
+    rows.forEach(r => { const it = L[n][r.i], w = r.nw * k / SW, cy = (y + r.nh * k / 2) / SH; moved = Math.max(moved, Math.abs(it.w - w), Math.abs(it.x - 0.5), Math.abs(it.y - cy)); it.w = w; it.x = 0.5; it.y = cy; y += (r.nh + GAP) * k; });
+    if (save) commit(); else if (moved > 0.002) redraw();   // only redraw when something moved, so restacking on show never loops
   };
   ds.querySelectorAll('[data-mstack]').forEach(b => b.onclick = () => stackSide(Number(b.dataset.mstack), true));
   if (prod.mdefault) { prod.mdefault = false; stackSide(1, false).then(() => stackSide(2, false)); }
   else if (prod.mrestack) { const n = prod.mrestack; prod.mrestack = 0; stackSide(n, true); }
+  else [1, 2].filter(n => L.stack.indexOf(n) !== -1).reduce((p, n) => p.then(() => stackSide(n, false)), Promise.resolve());   // the character on show, stacked in its own proportions
   // drag: pointer events work for mouse, touch and pen
   ds.querySelectorAll('.mitem').forEach(im => {
     im.onpointerdown = (e) => {
@@ -1222,7 +1232,7 @@ function wireMug(ds) {
         it.x = Math.min(1, Math.max(0, x0 + dx)); it.y = Math.min(1, Math.max(0, y0 + dy));
         im.style.left = (it.x * 100) + '%'; im.style.top = (it.y * 100) + '%';
       };
-      im.onpointerup = () => { im.onpointermove = null; im.onpointerup = null; prod.msel = { n: n, i: i }; if (moved) saveMug(pt); redraw(); };
+      im.onpointerup = () => { im.onpointermove = null; im.onpointerup = null; prod.msel = { n: n, i: i }; if (moved) { unstack(n); saveMug(pt); } redraw(); };
     };
   });
 }
@@ -1260,6 +1270,7 @@ function photosPlan(t, rule) {
   return slots.map(s => ({ slot: s, bases: bases.filter(p => p.slot === s) }));
 }
 function photosHtml(t, rule) {
+  if (rule.product_type === 'mug') return '<div class="tplinfo">Mug pictures are made automatically: your design at its true printed size on the white 15oz mug (handle left, front, handle right) on an SC colour background. No model photos needed.</div>';   // Andy, 20 Oct 2026
   if (!oursPictures(rule)) return '<div class="tplinfo">' + esc(rule.label) + ' products use Gelato\'s own pictures.</div>';
   const plan = photosPlan(t, rule), label = { main: 'Front', second: 'Second pose', back: 'Back' };
   if (!photosReady(t, rule)) return '<div class="tplinfo">Waiting for the model pictures for ' + esc(rule.label.toLowerCase()) + 's from the model process (<a href="' + MODELS_PLAYBOOK + '" target="_blank" rel="noopener">SC Models Playbook</a>). You can still press Make: the pictures go on as soon as they arrive.</div>';
@@ -1349,7 +1360,7 @@ function renderProducts() {
     open && phOk && oursPictures(rule) ? 'Ready <a href="#" id="p_showphotos">Show</a>' : '', open ? photosHtml(t, rule) : '');
   const what = rule ? rule.label.toLowerCase() : 'product';
   const noCol = open && !(rule.layout_mode === 'sides') && all.some(d => prod.picked.has(d.key) && !colsOf(d.key).size);
-  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
+  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (rule.product_type === 'mug' ? 'our true-size mug pictures' : oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
     + (noCol ? '<span style="color:#c62828">Every character needs at least one colour.</span><br>' : '') + '<div class="prow"><button class="btn" id="p_start"' + (n && !noCol ? '' : ' disabled') + '>' + (n ? 'Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') : 'Pick characters to make') + '</button></div>' : '';
   h += fstep(6, 'Make', open ? 'now' : 'lock', '', s6);
   h += '</div>';
