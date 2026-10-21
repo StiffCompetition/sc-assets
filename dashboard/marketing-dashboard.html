@@ -134,7 +134,7 @@
   .glink { display: flex; gap: 8px; align-items: center; } .glink input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); }
   .tracker { border: 1px solid var(--line); background: #fff; padding: 12px 14px; margin-bottom: 14px; }
   .tracker h2 { font-size: 17px; margin: 0; } .tracker .thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; } .tracker .thead .sub { font-size: 13px; color: var(--grey); flex: 1; }
-  .tfilter { margin: 0 0 10px; } .tfilter input { width: 100%; box-sizing: border-box; padding: 9px 10px; font-size: 14px; border: 1px solid var(--line); margin-bottom: 6px; }
+  .tfilter { margin: 0 0 10px; } .tfilter > .tchips:first-child { margin-bottom: 8px; } .tfilter input { width: 100%; box-sizing: border-box; padding: 9px 10px; font-size: 14px; border: 1px solid var(--line); margin-bottom: 6px; }
   .tchips { display: flex; flex-wrap: wrap; gap: 6px; } .tchip { border: 1px solid var(--line); background: var(--panel); padding: 5px 10px; font-size: 12.5px; cursor: pointer; border-radius: 14px; } .tchip.on { background: #222; color: #fff; border-color: #222; }
   .nextdm { border: 2px solid #b06a00; background: #fffaf0; padding: 10px 12px; margin-bottom: 10px; }
   .nextdm .nhead { font-size: 12.5px; color: var(--grey); margin-bottom: 4px; } .nextdm .nwho { font-size: 16px; } .nextdm .nfit { font-size: 12.5px; color: var(--grey); margin: 2px 0 6px; }
@@ -659,7 +659,7 @@ const DM_TEMPLATE = "Hey [name], I'm Andy. I had an idea for a brand but not the
 const GIFT_TEMPLATE = "Brilliant, here it is: [gift link]\nOpen it and choose where your NFT goes: your own wallet, or a free wallet I make for you with just your email. If you post about it, tag @stiffComp6969 on X or @stiffcompetition_hq on Instagram and I'll share it back. Enjoy.";
 const FOLLOWUP_TEMPLATE = "Hi, Andy again from Stiff Competition. Just bumping this in case it got buried: a free character NFT is yours if you'd like one, and a share with your followers would really help a small brand like ours. If it's not for you, no worries at all.";
 const giftMessage = url => GIFT_TEMPLATE.replace('[gift link]', url);
-let track = null, trackLoading = false, tEdit = null, tq = '', tfilt = 'All';
+let track = null, trackLoading = false, tEdit = null, tq = '', tfilt = 'All', tplat = (function () { try { return localStorage.getItem('sc_tplat') || 'All'; } catch (e) { return 'All'; } })();
 async function loadTrack() {
   if (trackLoading) return; trackLoading = true;
   try {
@@ -738,10 +738,12 @@ function tStage(t) {
 }
 function trackerHtml() {
   if (track === null) { loadTrack(); return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">Loading…</span></div></div>'; }
-  const open = track.filter(t => ['No reply', 'Removed', 'Followed', 'Followed back', 'Closed inbox'].indexOf(t.status) === -1);
-  const growth = track.filter(isGrowth);
-  const shut = track.filter(shutNow);
-  const closed = track.filter(t => t.status === 'No reply');
+  const platOf = t => { const p = String(t.platform || 'X').trim().toLowerCase(); return p === 'x' || p === 'twitter' ? 'X' : p === 'farcaster' ? 'Farcaster' : 'Other'; };
+  const tk = tplat === 'All' ? track : track.filter(t => platOf(t) === tplat);
+  const open = tk.filter(t => ['No reply', 'Removed', 'Followed', 'Followed back', 'Closed inbox'].indexOf(t.status) === -1);
+  const growth = tk.filter(isGrowth);
+  const shut = tk.filter(shutNow);
+  const closed = tk.filter(t => t.status === 'No reply');
   const order = t => followDue(t) ? 0 : ({ 'Replied': 1, 'To send': 2, 'Sent': 3, 'Gift sent': 4, 'Claimed': 5 }[t.status] || 6);
   // Tier (13 Oct 2026): 1 best fit, 2 first widening, 3 second widening; Tier 1 first within each stage.
   const tierN = t => Number(t.tier) || 9;
@@ -767,9 +769,10 @@ function trackerHtml() {
   const nextHtml = nx ? '<div class="nextdm" data-nid="' + esc(nx.id) + '" data-nk="' + nk + '">' + counts + '<div class="nhead"><b>' + titles[nk] + '</b></div><div class="nwho">' + (nx.tier ? '<span class="tier t' + esc(nx.tier) + '">Tier ' + esc(nx.tier) + '</span> ' : '') + '<b>' + esc(nx.handle) + '</b> <span class="gnote">' + esc(nx.platform || '') + '</span></div>' + (nx.fit ? '<div class="nfit">' + esc(nx.fit) + '</div>' : '') + (ntext ? '<div class="ndm">' + esc(ntext) + '</div>' : '') + '<div class="nbtns">' + nbtns[nk] + '</div></div>' : '<div class="nextdm">' + counts + '<div class="nhead">Nothing to do right now.</div></div>';
   // Search and state buttons (21 Oct 2026): type a handle, or press a state to see only those people.
   const FILTS = [['All', null], ['To follow', needFollow], ['DM to send', readyDm], ['Sent', t => t.status === 'Sent'], ['Replied', t => t.status === 'Replied'], ['Gift sent', t => t.status === 'Gift sent'], ['Claimed', t => t.status === 'Claimed'], ['Follow-back', isGrowth], ['Closed inbox', shutNow], ['No reply', t => t.status === 'No reply']];
-  const live = track.filter(t => t.status !== 'Removed');
+  const live = tk.filter(t => t.status !== 'Removed');
   const chips = FILTS.map(f => '<button type="button" class="tchip' + (f[0] === tfilt ? ' on' : '') + '" data-tf="' + esc(f[0]) + '">' + esc(f[0]) + ' ' + (f[1] ? live.filter(f[1]).length : open.length) + '</button>').join('');
-  const filterHtml = '<div class="tfilter"><input id="tsearch" type="search" placeholder="Search handle, name or note" autocomplete="off" value="' + esc(tq) + '"><div class="tchips">' + chips + '</div></div>';
+  const platBtns = ['All', 'X', 'Farcaster', 'Other'].map(n => '<button type="button" class="tchip' + (n === tplat ? ' on' : '') + '" data-tp="' + n + '">' + n + ' ' + (n === 'All' ? track.filter(t => t.status !== 'Removed').length : track.filter(t => t.status !== 'Removed' && platOf(t) === n).length) + '</button>').join('');
+  const filterHtml = '<div class="tfilter"><div class="tchips">' + platBtns + '</div><input id="tsearch" type="search" placeholder="Search handle, name or note" autocomplete="off" value="' + esc(tq) + '"><div class="tchips">' + chips + '</div></div>';
   const fdef = FILTS.find(f => f[0] === tfilt), ql = tq.trim().toLowerCase();
   const filtering = !!ql || (fdef && fdef[1]);
   const shown = filtering ? live.filter(t => (!fdef || !fdef[1] || fdef[1](t)) && (!ql || [t.handle, t.platform, t.fit, t.notes, t.product_title].join(' ').toLowerCase().includes(ql))) : [];
@@ -796,6 +799,7 @@ function trackerHtml() {
 function wireTracker() {
   const ts = $('list').querySelector('#tsearch');
   if (ts) ts.oninput = () => { tq = ts.value; render(); const n = $('list').querySelector('#tsearch'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } };
+  $('list').querySelectorAll('[data-tp]').forEach(b => b.onclick = () => { tplat = b.dataset.tp; try { localStorage.setItem('sc_tplat', tplat); } catch (e) {} render(); });
   $('list').querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { tfilt = b.dataset.tf; render(); });
   const np = $('list').querySelector('.nextdm[data-nid]');
   if (np) {
