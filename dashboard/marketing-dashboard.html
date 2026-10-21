@@ -649,7 +649,7 @@ $('g_cancel').onclick = () => $('giftDlg').close();
 const TRACK_URL = BASE + 'sc-gift-tracker';
 const FOLLOWUP_DAYS = 5;
 // Message wording agreed with Andy 20 Oct 2026 (NFT Creator Outreach Playbook): one message for everyone, only [name] changes.
-const DM_TEMPLATE = "Hey [name], I'm Andy. I had an idea for a brand but not the skills to build it, so I've learned what I could, with a lot of help from AI, and Stiff Competition is the result.\nIt's six characters from a 1994 action-figure line that never made the shelves, and I'm building their world piece by piece: one-of-one NFTs on Polygon, merch, stories and clips on social media, and plenty of cheeky British innuendo.\nIt's a tiny brand and I need your support to get it seen. I'd love to gift you one of the character NFTs, and if the brand gives you a laugh, a share or a shout-out to your followers would mean a lot. Say yes and I'll send you a private link to claim it.";
+const DM_TEMPLATE = "Hey [name], I'm Andy. I had an idea for a brand but not the skills to build it, so I've learned what I could, with a lot of help from AI, and Stiff Competition is the result.\nIt's six characters from a 1994 action-figure line that never made the shelves, and I'm building their world piece by piece: their stories, their presence on social media to cheer up your day, a selection of merch, and NFTs on Polygon, all with plenty of cheeky British innuendo.\nIt's a tiny brand and I need your support to get it seen. I'd love to gift you one of the character NFTs, and if the brand gives you a laugh, a share or a shout-out to your followers would mean a lot. Say yes and I'll send you a private link to claim it.";
 const GIFT_TEMPLATE = "Brilliant, here it is: [gift link]\nOpen it and choose where your NFT goes: your own wallet, or a free wallet I make for you with just your email. If you post about it, tag @stiffComp6969 on X or @stiffcompetition_hq on Instagram and I'll share it back. Enjoy.";
 const FOLLOWUP_TEMPLATE = "Hi, Andy again from Stiff Competition. Just bumping this in case it got buried: a free character NFT is yours if you'd like one, and a share with your followers would really help a small brand like ours. If it's not for you, no worries at all.";
 const giftMessage = url => GIFT_TEMPLATE.replace('[gift link]', url);
@@ -1889,8 +1889,8 @@ function prFlagPanel() {
   if (!pr.flags.length) return head + '<div class="tplinfo">' + last + 'Nothing waiting.</div>' + prCheckBar() + '</div>';
   const groups = prFlagGroups();
   const ackAll = []; groups.forEach(g => g.ackIds.forEach(i => ackAll.push(i)));
-  const busy = !!pr.applying && Date.now() - pr.applying.t < 540000, dis = busy ? ' disabled' : '';
-  let h = head + (pr.msg ? '<div class="error-state" style="margin:6px 0">' + esc(pr.msg) + '</div>' : '') + '<div class="tplinfo">' + last + 'Prices that follow the rule are changed automatically. Press Acknowledge to clear a line, or Change price to set your own.</div>' + prCheckBar();
+  const busy = !!pr.applying, dis = busy ? ' disabled' : '';
+  let h = head + '<div class="tplinfo">' + last + 'Prices that follow the rule are changed automatically. Press Acknowledge to clear a line, or Change price to set your own.</div>' + prCheckBar();
   h += '<div class="prow" style="margin:6px 0;gap:8px"><a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(prChatUrl(groups)) + '">New chat about all of these</a>'
     + (ackAll.length ? '<button class="btn pr_keep" data-ids="' + ackAll.join(',') + '"' + dis + '>' + (busy ? 'Working… about a minute' : 'Acknowledge all ' + ackAll.length) + '</button>' : '') + '</div>';
   groups.forEach(g => {
@@ -1915,16 +1915,15 @@ function prFlagPanel() {
   return h + '</div>';
 }
 async function prApply(body, ids, keep) {
-  if (pr.applying && Date.now() - pr.applying.t < 540000) return;
-  pr.applying = { ids: ids, t: Date.now() }; pr.msg = ''; renderPricing();
+  if (pr.applying) return;
+  pr.applying = { ids: ids, t: Date.now() }; renderPricing();
   try {
-    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 30000);
-    let r; try { r = await fetch(PRICING_APPLY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal }); } finally { clearTimeout(to); }
+    const r = await fetch(PRICING_APPLY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.ok === false) throw new Error(d.error || 'answered ' + r.status);
     toast(keep === 'custom' ? 'Setting your price. About a minute.' : keep ? 'Acknowledged. About a minute.' : 'Applying the new rate. About a minute.');
     prPoll();
-  } catch (e) { pr.applying = null; pr.msg = 'Not done: ' + (e.name === 'AbortError' ? 'the shop did not answer within 30 seconds' : e.message) + '. Nothing was changed. Press the button again.'; toast(pr.msg); renderPricing(); }
+  } catch (e) { pr.applying = null; toast('Not applied: ' + e.message); renderPricing(); }
 }
 function prPoll() {
   clearTimeout(prPoll.t);
@@ -1933,7 +1932,7 @@ function prPoll() {
     await loadPricing(true);
     const left = pr.flags.filter(f => pr.applying.ids.indexOf(f.id) >= 0).length;
     if (left === 0) { pr.applying = null; toast('Done'); renderPricing(); return; }
-    if (Date.now() - pr.applying.t > 480000) { pr.applying = null; pr.msg = 'Not finished after eight minutes. Press the button again.'; toast(pr.msg); renderPricing(); return; }
+    if (Date.now() - pr.applying.t > 480000) { pr.applying = null; toast('Not finished. Press Apply again.'); renderPricing(); return; }
     prPoll();
   }, 6000);
 }
