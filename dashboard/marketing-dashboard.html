@@ -134,6 +134,9 @@
   .glink { display: flex; gap: 8px; align-items: center; } .glink input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); }
   .tracker { border: 1px solid var(--line); background: #fff; padding: 12px 14px; margin-bottom: 14px; }
   .tracker h2 { font-size: 17px; margin: 0; } .tracker .thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; } .tracker .thead .sub { font-size: 13px; color: var(--grey); flex: 1; }
+  .nextdm { border: 2px solid #b06a00; background: #fffaf0; padding: 10px 12px; margin-bottom: 10px; }
+  .nextdm .nhead { font-size: 12.5px; color: var(--grey); margin-bottom: 4px; } .nextdm .nwho { font-size: 16px; } .nextdm .nfit { font-size: 12.5px; color: var(--grey); margin: 2px 0 6px; }
+  .nextdm .ndm { white-space: pre-wrap; font-size: 13px; background: #fff; border: 1px solid var(--line); padding: 8px; margin-bottom: 8px; max-height: 150px; overflow: auto; } .nextdm .nbtns { display: flex; gap: 8px; flex-wrap: wrap; }
   .trow { border-top: 1px solid var(--line); padding: 9px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .trow .who { flex: 1 1 220px; min-width: 0; } .trow .who b { font-size: 15px; } .trow .who .fit { font-size: 12.5px; color: var(--grey); }
   .trow .tacts { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -646,8 +649,8 @@ $('g_cancel').onclick = () => $('giftDlg').close();
 // with no reply, replied, gift sent (private gift link), claimed (set by the API when the link has been used).
 const TRACK_URL = BASE + 'sc-gift-tracker';
 const FOLLOWUP_DAYS = 5;
-// Message wording agreed with Andy 13 Oct 2026 (NFT Creator Outreach Playbook). [why] is written per person.
-const DM_TEMPLATE = "Hey [name], I'm Andy. I'm a nobody who started Stiff Competition with no knowledge of coding, NFTs or selling online, just an idea, and built the whole thing myself.\nIt's six characters from a 1994 action-figure line that never made the shelves: one-of-one NFTs on Polygon, merch, and plenty of cheeky British innuendo. [why]\nWe're a tiny brand and we need eyes on us. I'd love to gift you one of the character NFTs, and if it makes you laugh, a share or a shout-out to your followers would mean a lot. Say yes and I'll send you a private link to claim it.";
+// Message wording agreed with Andy 20 Oct 2026 (NFT Creator Outreach Playbook): one message for everyone, only [name] changes.
+const DM_TEMPLATE = "Hey [name], I'm Andy. I had an idea for a brand but not the skills to build it, so I've learned what I could, with a lot of help from AI, and Stiff Competition is the result.\nIt's six characters from a 1994 action-figure line that never made the shelves, and I'm building their world piece by piece: one-of-one NFTs on Polygon, merch, stories and clips on social media, and plenty of cheeky British innuendo.\nIt's a tiny brand and I need your support to get it seen. I'd love to gift you one of the character NFTs, and if the brand gives you a laugh, a share or a shout-out to your followers would mean a lot. Say yes and I'll send you a private link to claim it.";
 const GIFT_TEMPLATE = "Brilliant, here it is: [gift link]\nOpen it and choose where your NFT goes: your own wallet, or a free wallet we make for you with just your email. If you post about it, tag us and we'll share it back. Enjoy.";
 const FOLLOWUP_TEMPLATE = "Hi, Andy again from Stiff Competition. Just bumping this in case it got buried: a free character NFT is yours if you'd like one, and a share with your followers would really help a small brand like ours. If it's not for you, no worries at all.";
 const giftMessage = url => GIFT_TEMPLATE.replace('[gift link]', url);
@@ -691,6 +694,10 @@ function trackerHtml() {
   // Tier (13 Oct 2026): 1 best fit, 2 first widening, 3 second widening; Tier 1 first within each stage.
   const tierN = t => Number(t.tier) || 9;
   const due = open.filter(followDue).length;
+  // Next DM panel (20 Oct 2026): the first person still to send, with one button to copy the DM and open their profile, and one to mark it sent and move on.
+  const queue = open.filter(t => t.status === 'To send' && t.dm_text).sort((a, b) => tierN(a) - tierN(b));
+  const nx = queue[0];
+  const nextHtml = nx ? '<div class="nextdm" data-nid="' + esc(nx.id) + '"><div class="nhead">Next DM · ' + queue.length + ' left to send</div><div class="nwho">' + (nx.tier ? '<span class="tier t' + esc(nx.tier) + '">Tier ' + esc(nx.tier) + '</span> ' : '') + '<b>' + esc(nx.handle) + '</b> <span class="gnote">' + esc(nx.platform || '') + '</span></div>' + (nx.fit ? '<div class="nfit">' + esc(nx.fit) + '</div>' : '') + '<div class="ndm">' + esc(nx.dm_text) + '</div><div class="nbtns"><button class="btn" data-na="go">Copy DM and open profile</button><button class="btn done" data-na="sent">I sent it, next</button></div></div>' : '';
   const rowHtml = t => {
     const [lbl, cls] = tStage(t); const url = safeUrl(t.profile_url);
     let b = '';
@@ -702,16 +709,27 @@ function trackerHtml() {
     return '<div class="trow" data-tid="' + esc(t.id) + '"><div class="who">' + (t.tier ? '<span class="tier t' + esc(t.tier) + '">Tier ' + esc(t.tier) + '</span> ' : '') + '<b>' + esc(t.handle) + '</b> <span class="gnote">' + esc(t.platform || '') + '</span>' + (t.product_title ? ' <span class="gnote">· ' + esc(t.product_title) + '</span>' : '') + (t.fit ? '<div class="fit">' + esc(t.fit) + '</div>' : '') + '</div><span class="tstat ' + cls + '">' + esc(lbl) + '</span><div class="tacts">' + b + '</div></div>';
   };
   return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">' + open.length + ' people' + (due ? ' · <b style="color:#c62828">' + due + ' follow-up due</b>' : '') + '</span><button class="btn small" data-ta="add">+ Person</button></div>'
-    + (open.length ? open.slice().sort((a, b) => order(a) - order(b) || tierN(a) - tierN(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>')
+    + nextHtml + (open.length ? open.slice().sort((a, b) => order(a) - order(b) || tierN(a) - tierN(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>')
     + (closed.length ? '<details><summary class="gnote">No reply (' + closed.length + ')</summary>' + closed.map(rowHtml).join('') + '</details>' : '')
     + '</div>';
 }
 function wireTracker() {
+  const np = $('list').querySelector('.nextdm');
+  if (np) {
+    const nt = (track || []).find(x => String(x.id) === np.dataset.nid);
+    const go = np.querySelector('[data-na=go]'), sn = np.querySelector('[data-na=sent]');
+    if (nt && go) go.onclick = () => {
+      if (/\[name\]/.test(nt.dm_text)) { toast('Fill in [name] first (Edit)'); return; }
+      copyText(nt.dm_text, 'DM copied. Paste it into the message box');
+      const u = safeUrl(nt.profile_url); if (u) window.open(u, '_blank', 'noopener');
+    };
+    if (nt && sn) sn.onclick = () => saveTrack(Object.assign({}, nt, { status: 'Sent', sent_on: today() }));
+  }
   const add = $('list').querySelector('[data-ta=add]'); if (add) add.onclick = () => openTrack(null);
   $('list').querySelectorAll('.trow').forEach(el => {
     const t = (track || []).find(x => String(x.id) === el.dataset.tid); if (!t) return;
     const on = (k, f) => { const b = el.querySelector('[data-ta=' + k + ']'); if (b) b.onclick = f; };
-    on('dm', () => { if (/\[(name|why)\]/.test(t.dm_text)) { toast('Fill in [name] and [why] first (Edit)'); return; } copyText(t.dm_text, 'DM copied'); });
+    on('dm', () => { if (/\[name\]/.test(t.dm_text)) { toast('Fill in [name] first (Edit)'); return; } copyText(t.dm_text, 'DM copied'); });
     on('fu', () => copyText(t.followup_text || FOLLOWUP_TEMPLATE, 'Follow-up copied'));
     on('link', () => copyText(giftMessage(t.claim_url), 'Gift message copied'));
     on('sent', () => saveTrack(Object.assign({}, t, { status: 'Sent', sent_on: today() })));
