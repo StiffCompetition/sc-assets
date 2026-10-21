@@ -670,6 +670,21 @@ async function loadTrack() {
   render();
   autoClose();
 }
+// Quiet refresh (21 Oct 2026): while the Influencers tab is open and visible, the tracker reloads every minute so the counts stay current. It skips while a window is open or a box is being typed in.
+function quietRefresh() {
+  if (view !== 'Influencers' || document.visibilityState !== 'visible' || trackLoading || track === null) return;
+  if (document.querySelector('dialog[open]')) return;
+  const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+  const y = window.scrollY;
+  const before = JSON.stringify(track);
+  trackLoading = true;
+  fetch(TRACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) })
+    .then(r => r.json())
+    .then(d => { trackLoading = false; if (Array.isArray(d) && JSON.stringify(d) !== before) { track = d; render(); window.scrollTo(0, y); } })
+    .catch(() => { trackLoading = false; });
+}
+setInterval(quietRefresh, 60000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') quietRefresh(); });
 // Automatic close-out (20 Oct 2026): a follow-up sent FOLLOWUP_DAYS ago with no reply moves to No reply by itself.
 let autoClosing = false;
 async function autoClose() {
