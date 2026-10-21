@@ -316,7 +316,7 @@
     <label>Why they fit <input id="t_fit" maxlength="200" placeholder="One line: their audience matches our buyer because…"></label>
     <label>DM <textarea id="t_dm" rows="4" maxlength="4000"></textarea></label>
     <label>Follow-up DM <textarea id="t_fu" rows="3" maxlength="4000"></textarea></label>
-    <label>Status <select id="t_status"><option>To send</option><option>Sent</option><option>Replied</option><option>Gift sent</option><option>Claimed</option><option>No reply</option><option>Removed</option></select></label>
+    <label>Status <select id="t_status"><option>To send</option><option>Followed</option><option>Followed back</option><option>Sent</option><option>Replied</option><option>Gift sent</option><option>Claimed</option><option>No reply</option><option>Removed</option></select></label>
     <label>Note <textarea id="t_notes" rows="2" maxlength="1000"></textarea></label>
     <div class="foot">
       <button type="button" class="btn ghost" id="t_cancel">Cancel</button>
@@ -340,7 +340,7 @@ const CLIP_STATUSES = ['approved', 'scheduled', 'posted'];
 let cal = null, calLoading = false;
 const clipFiles = {};
 
-const CATEGORIES = ['Influencers', 'Follow list', 'Press and media','Posts and boosts', 'Shop', 'Systems', 'Ideas'];
+const CATEGORIES = ['Influencers', 'Press and media','Posts and boosts', 'Shop', 'Systems', 'Ideas'];
 const STATUSES = ['Today', 'Next', 'Waiting', 'Idea', 'Done'];
 const ACTIVE = ['Today', 'Next', 'Waiting'];
 
@@ -396,7 +396,6 @@ function tabCount(v) {
   if (v === 'Pages') return '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
-  if (v === 'Follow list') return frows.filter(FVIEWS['To follow']).length;
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
   if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
   const keep = view; view = v; let n;
@@ -694,7 +693,16 @@ function copyText(t, msg) {
 function daysSince(d) { return d ? Math.floor((new Date(today() + 'T12:00:00') - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 86400000) : 0; }
 function followDue(t) { return t.status === 'Sent' && t.sent_on && !t.followup_on && !t.replied_on && daysSince(t.sent_on) >= FOLLOWUP_DAYS; }
 function closeDue(t) { return t.status === 'Sent' && t.followup_on && !t.replied_on && daysSince(t.followup_on) >= FOLLOWUP_DAYS; }
+// One list (21 Oct 2026): the old Follow list is merged in. A person still To send with no followed_on needs following first; Followed = followed for a follow-back (growth), waiting or unfollow due.
+const FOLLOW_DAILY = 25;
+const isGrowth = t => t.status === 'Followed' || t.status === 'Followed back';
+const needFollow = t => t.status === 'To send' && !t.followed_on;
+const readyDm = t => t.status === 'To send' && t.followed_on && t.dm_text;
+const unfollowDue = t => t.status === 'Followed' && t.followed_on && daysSince(t.followed_on) >= UNFOLLOW_AFTER_DAYS;
 function tStage(t) {
+  if (t.status === 'Followed') return unfollowDue(t) ? ['Unfollow due', 'due'] : ['Followed ' + String(t.followed_on || '').slice(5) + ', waiting for follow-back', 'wait'];
+  if (t.status === 'Followed back') return ['Followed back', 'ok'];
+  if (needFollow(t)) return ['Follow first', 'todo'];
   if (followDue(t)) return ['Follow-up due', 'due'];
   if (t.status === 'To send') return ['DM to send', 'todo'];
   if (t.status === 'Sent') return [t.followup_on ? 'Follow-up sent ' + t.followup_on.slice(5) : 'Sent ' + String(t.sent_on || '').slice(5), 'wait'];
@@ -705,7 +713,8 @@ function tStage(t) {
 }
 function trackerHtml() {
   if (track === null) { loadTrack(); return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">Loading…</span></div></div>'; }
-  const open = track.filter(t => ['No reply', 'Removed'].indexOf(t.status) === -1);
+  const open = track.filter(t => ['No reply', 'Removed', 'Followed', 'Followed back'].indexOf(t.status) === -1);
+  const growth = track.filter(isGrowth);
   const closed = track.filter(t => t.status === 'No reply');
   const order = t => followDue(t) ? 0 : ({ 'Replied': 1, 'To send': 2, 'Sent': 3, 'Gift sent': 4, 'Claimed': 5 }[t.status] || 6);
   // Tier (13 Oct 2026): 1 best fit, 2 first widening, 3 second widening; Tier 1 first within each stage.
@@ -715,19 +724,26 @@ function trackerHtml() {
   // Do-next panel (20 Oct 2026): one list in priority order: gifts to give, follow-ups due, DMs to send. The first item shows with its buttons.
   const gifts = open.filter(t => t.status === 'Replied');
   const fus = open.filter(followDue);
-  const dms = open.filter(t => t.status === 'To send' && t.dm_text).sort((a, b) => tierN(a) - tierN(b));
-  const queue = gifts.map(t => ({ k: 'gift', t })).concat(fus.map(t => ({ k: 'fu', t })), dms.map(t => ({ k: 'dm', t })));
+  const dms = open.filter(readyDm).sort((a, b) => tierN(a) - tierN(b));
+  const unf = growth.filter(unfollowDue);
+  const followedToday = track.filter(t => t.followed_on === today()).length;
+  const allFol = open.filter(needFollow).sort((a, b) => tierN(a) - tierN(b));
+  const fols = followedToday >= FOLLOW_DAILY ? [] : allFol;
+  const queue = gifts.map(t => ({ k: 'gift', t })).concat(fus.map(t => ({ k: 'fu', t })), dms.map(t => ({ k: 'dm', t })), unf.map(t => ({ k: 'unf', t })), fols.map(t => ({ k: 'fol', t })));
   const nx = queue[0] && queue[0].t, nk = queue[0] && queue[0].k;
   const doneToday = track.filter(t => t.sent_on === today()).length + track.filter(t => t.followup_on === today()).length;
-  const counts = '<div class="nhead">Today: ' + doneToday + ' sent · To do: ' + gifts.length + ' gift' + (gifts.length === 1 ? '' : 's') + ' to give, ' + fus.length + ' follow-up' + (fus.length === 1 ? '' : 's') + ' due, ' + dms.length + ' DM' + (dms.length === 1 ? '' : 's') + ' to send</div>';
-  const titles = { gift: 'Next: they replied, give the gift', fu: 'Next: follow-up due', dm: 'Next: DM to send' };
-  const nbtns = { gift: '<button class="btn" data-na="gift">Give gift</button>', fu: '<button class="btn" data-na="fugo">Copy follow-up and open profile</button><button class="btn done" data-na="fusent">Follow-up sent, next</button><button class="btn ghost" data-na="replied">They replied</button>', dm: '<button class="btn" data-na="go">Copy DM and open profile</button><button class="btn done" data-na="sent">I sent it, next</button>' };
+  const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  const counts = '<div class="nhead">Today: ' + doneToday + ' sent, ' + followedToday + ' of ' + FOLLOW_DAILY + ' followed · To do: ' + pl(gifts.length, 'gift') + ' to give, ' + pl(fus.length, 'follow-up') + ' due, ' + pl(dms.length, 'DM') + ' to send, ' + pl(unf.length, 'unfollow') + ' due, ' + allFol.length + ' to follow</div>' + (followedToday >= FOLLOW_DAILY && allFol.length ? '<div class="nhead">You have followed ' + FOLLOW_DAILY + ' today. More follows tomorrow.</div>' : '');
+  const titles = { gift: 'Next: they replied, give the gift', fu: 'Next: follow-up due', dm: 'Next: DM to send', unf: 'Next: unfollow, no follow-back yet', fol: 'Next: follow this person' };
+  const nbtns = { gift: '<button class="btn" data-na="gift">Give gift</button>', fu: '<button class="btn" data-na="fugo">Copy follow-up and open profile</button><button class="btn done" data-na="fusent">Follow-up sent, next</button><button class="btn ghost" data-na="replied">They replied</button>', dm: '<button class="btn" data-na="go">Copy DM and open profile</button><button class="btn done" data-na="sent">I sent it, next</button>', unf: '<button class="btn" data-na="open">Open profile</button><button class="btn done" data-na="unfollowed">I unfollowed, next</button><button class="btn ghost" data-na="back">They followed back</button>', fol: '<button class="btn" data-na="open">Open profile</button><button class="btn done" data-na="followed">I followed, next</button><button class="btn ghost" data-na="skipfollow">DM without following</button>' };
   const ntext = nk === 'fu' ? (nx.followup_text || FOLLOWUP_TEMPLATE) : nk === 'dm' ? nx.dm_text : '';
   const nextHtml = nx ? '<div class="nextdm" data-nid="' + esc(nx.id) + '" data-nk="' + nk + '">' + counts + '<div class="nhead"><b>' + titles[nk] + '</b></div><div class="nwho">' + (nx.tier ? '<span class="tier t' + esc(nx.tier) + '">Tier ' + esc(nx.tier) + '</span> ' : '') + '<b>' + esc(nx.handle) + '</b> <span class="gnote">' + esc(nx.platform || '') + '</span></div>' + (nx.fit ? '<div class="nfit">' + esc(nx.fit) + '</div>' : '') + (ntext ? '<div class="ndm">' + esc(ntext) + '</div>' : '') + '<div class="nbtns">' + nbtns[nk] + '</div></div>' : '<div class="nextdm">' + counts + '<div class="nhead">Nothing to do right now.</div></div>';
   const rowHtml = t => {
     const [lbl, cls] = tStage(t); const url = safeUrl(t.profile_url);
     let b = '';
-    if (t.status === 'To send') b += (t.dm_text ? '<button class="btn small" data-ta="dm">Copy DM</button>' : '') + '<button class="btn small done" data-ta="sent">I sent it</button>';
+    if (needFollow(t)) b += '<button class="btn small done" data-ta="followed">I followed</button><button class="btn small ghost" data-ta="skipfollow">DM without following</button>';
+    else if (t.status === 'To send') b += (t.dm_text ? '<button class="btn small" data-ta="dm">Copy DM</button>' : '') + '<button class="btn small done" data-ta="sent">I sent it</button>';
+    if (t.status === 'Followed') b += '<button class="btn small done" data-ta="back">Followed back</button>' + (unfollowDue(t) ? '<button class="btn small warn" data-ta="unfollowed">I unfollowed</button>' : '');
     if (t.status === 'Sent') b += (followDue(t) ? '<button class="btn small warn" data-ta="fu">Copy follow-up</button>' : '') + (followDue(t) ? '<button class="btn small ghost" data-ta="fusent">Follow-up sent</button>' : '') + '<button class="btn small done" data-ta="replied">They replied</button>' + (t.followup_on ? '<button class="btn small ghost" data-ta="noreply">No reply</button>' : '');
     if (t.status === 'Replied') b += '<button class="btn small" data-ta="gift">Give gift</button>';
     if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift message</button>';
@@ -736,6 +752,7 @@ function trackerHtml() {
   };
   return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">' + open.length + ' people' + (due ? ' · <b style="color:#c62828">' + due + ' follow-up due</b>' : '') + '</span><button class="btn small" data-ta="add">+ Person</button></div>'
     + nextHtml + (open.length ? open.slice().sort((a, b) => order(a) - order(b) || tierN(a) - tierN(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>')
+    + (growth.length ? '<details><summary class="gnote">Follow-back list (' + growth.length + ')</summary>' + growth.map(rowHtml).join('') + '</details>' : '')
     + (closed.length ? '<details><summary class="gnote">No reply (' + closed.length + ')</summary>' + closed.map(rowHtml).join('') + '</details>' : '')
     + '</div>';
 }
@@ -755,6 +772,11 @@ function wireTracker() {
       if (q('fusent')) q('fusent').onclick = () => saveTrack(Object.assign({}, nt, { followup_on: today() }));
       if (q('replied')) q('replied').onclick = () => saveTrack(Object.assign({}, nt, { status: 'Replied', replied_on: today() }));
       if (q('gift')) q('gift').onclick = () => openGift(nt);
+      if (q('open')) q('open').onclick = openProfile;
+      if (q('followed')) q('followed').onclick = () => saveTrack(Object.assign({}, nt, { followed_on: today() }));
+      if (q('skipfollow')) q('skipfollow').onclick = () => saveTrack(Object.assign({}, nt, { followed_on: 'skipped' }));
+      if (q('unfollowed')) q('unfollowed').onclick = () => saveTrack(Object.assign({}, nt, { status: 'Removed' }));
+      if (q('back')) q('back').onclick = () => saveTrack(Object.assign({}, nt, { status: 'Followed back' }));
     }
   }
   const add = $('list').querySelector('[data-ta=add]'); if (add) add.onclick = () => openTrack(null);
@@ -769,6 +791,10 @@ function wireTracker() {
     on('replied', () => saveTrack(Object.assign({}, t, { status: 'Replied', replied_on: today() })));
     on('noreply', () => saveTrack(Object.assign({}, t, { status: 'No reply' })));
     on('gift', () => openGift(t));
+    on('followed', () => saveTrack(Object.assign({}, t, { followed_on: today() })));
+    on('skipfollow', () => saveTrack(Object.assign({}, t, { followed_on: 'skipped' })));
+    on('back', () => saveTrack(Object.assign({}, t, { status: 'Followed back' })));
+    on('unfollowed', () => saveTrack(Object.assign({}, t, { status: 'Removed' })));
     on('edit', () => openTrack(t));
   });
 }
@@ -783,6 +809,9 @@ $('t_cancel').onclick = () => $('tDlg').close();
 $('t_save').onclick = () => {
   if ($('t_handle').value.trim().replace('@', '').length < 2) { toast('Give their handle'); return; }
   const row = Object.assign({}, tEdit || {}, { handle: $('t_handle').value.trim(), platform: $('t_platform').value, profile_url: $('t_url').value.trim(), fit: $('t_fit').value.trim(), dm_text: $('t_dm').value, followup_text: $('t_fu').value, status: $('t_status').value, notes: $('t_notes').value });
+  const hh = String(row.handle).replace(/^@?/, '@').toLowerCase();
+  if (!tEdit && (track || []).some(x => String(x.handle).toLowerCase() === hh && x.status !== 'Removed')) { toast('Already on the list'); return; }
+  if (row.status === 'Followed' && !row.followed_on) row.followed_on = today();
   $('tDlg').close(); saveTrack(row);
 };
 
@@ -862,7 +891,7 @@ function dlineHtml(r) {
   const link = safeUrl(r.link);
   let extra = '';
   if (r.link === 'sc:clips-today' && !waiting) extra = clipsHtml(r);
-  const acts = (r.link === 'sc:follow' ? '<button class="btn small ghost" data-da="follow">Open Follow list</button>' : '')
+  const acts = (r.link === 'sc:follow' ? '<button class="btn small ghost" data-da="follow">Open Influencers</button>' : '')
     + (link ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(link) + '">Open</a>' : '')
     + '<button class="btn small ghost" data-da="edit">Edit</button>';
   return '<div class="dline' + cls + '" data-did="' + esc(r.id) + '">'
@@ -914,7 +943,7 @@ function wireRoutine() {
     const tick = el.querySelector('[data-da=tick]');
     tick.onchange = () => save(Object.assign({}, r, { done_on: tick.checked ? today() : '' }));
     el.querySelector('[data-da=edit]').onclick = () => openDlg(r);
-    const fo = el.querySelector('[data-da=follow]'); if (fo) fo.onclick = () => { view = 'Follow list'; render(); };
+    const fo = el.querySelector('[data-da=follow]'); if (fo) fo.onclick = () => { view = 'Influencers'; render(); };
     el.querySelectorAll('.clip').forEach(ce => {
       const c = (cal || []).find(x => String(x.id) === ce.dataset.cid);
       const cap = (c && (c.caption_instagram || c.text_content)) || '';
