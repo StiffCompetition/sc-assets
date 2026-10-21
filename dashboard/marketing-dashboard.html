@@ -134,6 +134,8 @@
   .glink { display: flex; gap: 8px; align-items: center; } .glink input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); }
   .tracker { border: 1px solid var(--line); background: #fff; padding: 12px 14px; margin-bottom: 14px; }
   .tracker h2 { font-size: 17px; margin: 0; } .tracker .thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; } .tracker .thead .sub { font-size: 13px; color: var(--grey); flex: 1; }
+  .tfilter { margin: 0 0 10px; } .tfilter input { width: 100%; box-sizing: border-box; padding: 9px 10px; font-size: 14px; border: 1px solid var(--line); margin-bottom: 6px; }
+  .tchips { display: flex; flex-wrap: wrap; gap: 6px; } .tchip { border: 1px solid var(--line); background: var(--panel); padding: 5px 10px; font-size: 12.5px; cursor: pointer; border-radius: 14px; } .tchip.on { background: #222; color: #fff; border-color: #222; }
   .nextdm { border: 2px solid #b06a00; background: #fffaf0; padding: 10px 12px; margin-bottom: 10px; }
   .nextdm .nhead { font-size: 12.5px; color: var(--grey); margin-bottom: 4px; } .nextdm .nwho { font-size: 16px; } .nextdm .nfit { font-size: 12.5px; color: var(--grey); margin: 2px 0 6px; }
   .nextdm .ndm { white-space: pre-wrap; font-size: 13px; background: #fff; border: 1px solid var(--line); padding: 8px; margin-bottom: 8px; max-height: 150px; overflow: auto; } .nextdm .nbtns { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -630,8 +632,12 @@ async function sendGift() {
     if (!d.ok) { $('g_send').disabled = false; $('g_status').textContent = d.error || d.message || 'The gift was not made.'; return; }
     $('g_status').textContent = 'Done: ' + d.product_title + ', order ' + d.order_name + ', ' + d.status + '. ' + (d.note || '') + (d.claim_url ? ' Copy the gift message (link included) into your DM:' : '');
     if (d.claim_url) {
-      $('g_link').innerHTML = '<input readonly value="' + esc(d.claim_url) + '"><button type="button" class="btn small">Copy gift message</button>';
-      $('g_link').querySelector('button').onclick = () => copyText(giftMessage(d.claim_url), 'Gift message copied');
+      $('g_link').innerHTML = '<input readonly value="' + esc(d.claim_url) + '"><button type="button" class="btn small">Copy gift message and open profile</button>';
+      $('g_link').querySelector('button').onclick = () => {
+        copyText(giftMessage(d.claim_url), 'Gift message copied. Paste it into the message box');
+        const row0 = giftRow || (track || []).find(t => String(t.handle).toLowerCase() === ('@' + handle.replace(/^@/, '')).toLowerCase()) || { handle, platform: $('g_platform').value };
+        const u = profileOf(row0); if (u) window.open(u, '_blank', 'noopener');
+      };
     }
     giftPool = giftPool.filter(p => p.handle !== giftPick.handle);
     // Record the gift on that person's tracker row (13 Oct 2026).
@@ -653,7 +659,7 @@ const DM_TEMPLATE = "Hey [name], I'm Andy. I had an idea for a brand but not the
 const GIFT_TEMPLATE = "Brilliant, here it is: [gift link]\nOpen it and choose where your NFT goes: your own wallet, or a free wallet I make for you with just your email. If you post about it, tag @stiffComp6969 on X or @stiffcompetition_hq on Instagram and I'll share it back. Enjoy.";
 const FOLLOWUP_TEMPLATE = "Hi, Andy again from Stiff Competition. Just bumping this in case it got buried: a free character NFT is yours if you'd like one, and a share with your followers would really help a small brand like ours. If it's not for you, no worries at all.";
 const giftMessage = url => GIFT_TEMPLATE.replace('[gift link]', url);
-let track = null, trackLoading = false, tEdit = null;
+let track = null, trackLoading = false, tEdit = null, tq = '', tfilt = 'All';
 async function loadTrack() {
   if (trackLoading) return; trackLoading = true;
   try {
@@ -687,8 +693,22 @@ async function saveTrack(row) {
   } catch (e) { toast('Not saved: ' + e.message); return; }
   await loadTrack();
 }
+// One copy function for the whole page (21 Oct 2026): a second copy later in the file used to override this one and dropped the "Copied" message.
 function copyText(t, msg) {
-  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast(msg || 'Copied'), () => toast('Copy failed'));
+  const done = () => { if (msg) toast(msg); };
+  const fallback = () => {
+    try { const a = document.createElement('textarea'); a.value = t; a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); const ok = document.execCommand('copy'); a.remove(); if (ok) done(); else toast('Copy failed'); return ok; }
+    catch (e) { toast('Copy failed'); return false; }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(done, fallback); return true; }
+  return fallback();
+}
+// Profile address for a person: the saved link, else built from their platform and handle.
+function profileOf(t) {
+  const u = safeUrl(t && t.profile_url); if (u) return u;
+  const h = String((t && t.handle) || '').replace(/^@/, ''); if (!h) return '';
+  const pf = String((t && t.platform) || 'X');
+  return pf === 'X' ? 'https://x.com/' + encodeURIComponent(h) : pf === 'Instagram' ? 'https://www.instagram.com/' + encodeURIComponent(h) + '/' : pf === 'TikTok' ? 'https://www.tiktok.com/@' + encodeURIComponent(h) : pf === 'YouTube' ? 'https://www.youtube.com/@' + encodeURIComponent(h) : '';
 }
 function daysSince(d) { return d ? Math.floor((new Date(today() + 'T12:00:00') - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 86400000) : 0; }
 function followDue(t) { return t.status === 'Sent' && t.sent_on && !t.followup_on && !t.replied_on && daysSince(t.sent_on) >= FOLLOWUP_DAYS; }
@@ -738,6 +758,14 @@ function trackerHtml() {
   const nbtns = { gift: '<button class="btn" data-na="gift">Give gift</button>', fu: '<button class="btn" data-na="fugo">Copy follow-up and open profile</button><button class="btn done" data-na="fusent">Follow-up sent, next</button><button class="btn ghost" data-na="replied">They replied</button>', dm: '<button class="btn" data-na="go">Copy DM and open profile</button><button class="btn done" data-na="sent">I sent it, next</button>', unf: '<button class="btn" data-na="open">Open profile</button><button class="btn done" data-na="unfollowed">I unfollowed, next</button><button class="btn ghost" data-na="back">They followed back</button>', fol: '<button class="btn" data-na="open">Open profile</button><button class="btn done" data-na="followed">I followed, next</button><button class="btn ghost" data-na="skipfollow">DM without following</button>' };
   const ntext = nk === 'fu' ? (nx.followup_text || FOLLOWUP_TEMPLATE) : nk === 'dm' ? nx.dm_text : '';
   const nextHtml = nx ? '<div class="nextdm" data-nid="' + esc(nx.id) + '" data-nk="' + nk + '">' + counts + '<div class="nhead"><b>' + titles[nk] + '</b></div><div class="nwho">' + (nx.tier ? '<span class="tier t' + esc(nx.tier) + '">Tier ' + esc(nx.tier) + '</span> ' : '') + '<b>' + esc(nx.handle) + '</b> <span class="gnote">' + esc(nx.platform || '') + '</span></div>' + (nx.fit ? '<div class="nfit">' + esc(nx.fit) + '</div>' : '') + (ntext ? '<div class="ndm">' + esc(ntext) + '</div>' : '') + '<div class="nbtns">' + nbtns[nk] + '</div></div>' : '<div class="nextdm">' + counts + '<div class="nhead">Nothing to do right now.</div></div>';
+  // Search and state buttons (21 Oct 2026): type a handle, or press a state to see only those people.
+  const FILTS = [['All', null], ['To follow', needFollow], ['DM to send', readyDm], ['Sent', t => t.status === 'Sent'], ['Replied', t => t.status === 'Replied'], ['Gift sent', t => t.status === 'Gift sent'], ['Claimed', t => t.status === 'Claimed'], ['Follow-back', isGrowth], ['No reply', t => t.status === 'No reply']];
+  const live = track.filter(t => t.status !== 'Removed');
+  const chips = FILTS.map(f => '<button type="button" class="tchip' + (f[0] === tfilt ? ' on' : '') + '" data-tf="' + esc(f[0]) + '">' + esc(f[0]) + ' ' + (f[1] ? live.filter(f[1]).length : open.length) + '</button>').join('');
+  const filterHtml = '<div class="tfilter"><input id="tsearch" type="search" placeholder="Search handle, name or note" autocomplete="off" value="' + esc(tq) + '"><div class="tchips">' + chips + '</div></div>';
+  const fdef = FILTS.find(f => f[0] === tfilt), ql = tq.trim().toLowerCase();
+  const filtering = !!ql || (fdef && fdef[1]);
+  const shown = filtering ? live.filter(t => (!fdef || !fdef[1] || fdef[1](t)) && (!ql || [t.handle, t.platform, t.fit, t.notes, t.product_title].join(' ').toLowerCase().includes(ql))) : [];
   const rowHtml = t => {
     const [lbl, cls] = tStage(t); const url = safeUrl(t.profile_url);
     let b = '';
@@ -746,17 +774,20 @@ function trackerHtml() {
     if (t.status === 'Followed') b += '<button class="btn small done" data-ta="back">Followed back</button>' + (unfollowDue(t) ? '<button class="btn small warn" data-ta="unfollowed">I unfollowed</button>' : '');
     if (t.status === 'Sent') b += (followDue(t) ? '<button class="btn small warn" data-ta="fu">Copy follow-up</button>' : '') + (followDue(t) ? '<button class="btn small ghost" data-ta="fusent">Follow-up sent</button>' : '') + '<button class="btn small done" data-ta="replied">They replied</button>' + (t.followup_on ? '<button class="btn small ghost" data-ta="noreply">No reply</button>' : '');
     if (t.status === 'Replied') b += '<button class="btn small" data-ta="gift">Give gift</button>';
-    if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift message</button>';
+    if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift message and open profile</button>';
     b += (url ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(url) + '">Profile</a>' : '') + '<button class="btn small ghost" data-ta="edit">Edit</button>';
     return '<div class="trow" data-tid="' + esc(t.id) + '"><div class="who">' + (t.tier ? '<span class="tier t' + esc(t.tier) + '">Tier ' + esc(t.tier) + '</span> ' : '') + '<b>' + esc(t.handle) + '</b> <span class="gnote">' + esc(t.platform || '') + '</span>' + (t.product_title ? ' <span class="gnote">· ' + esc(t.product_title) + '</span>' : '') + (t.fit ? '<div class="fit">' + esc(t.fit) + '</div>' : '') + '</div><span class="tstat ' + cls + '">' + esc(lbl) + '</span><div class="tacts">' + b + '</div></div>';
   };
   return '<div class="tracker"><div class="thead"><h2>Gift tracker</h2><span class="sub">' + open.length + ' people' + (due ? ' · <b style="color:#c62828">' + due + ' follow-up due</b>' : '') + '</span><button class="btn small" data-ta="add">+ Person</button></div>'
-    + nextHtml + (open.length ? open.slice().sort((a, b) => order(a) - order(b) || tierN(a) - tierN(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>')
-    + (growth.length ? '<details><summary class="gnote">Follow-back list (' + growth.length + ')</summary>' + growth.map(rowHtml).join('') + '</details>' : '')
-    + (closed.length ? '<details><summary class="gnote">No reply (' + closed.length + ')</summary>' + closed.map(rowHtml).join('') + '</details>' : '')
+    + nextHtml + filterHtml + (filtering ? (shown.length ? shown.slice().sort((a, b) => order(a) - order(b) || tierN(a) - tierN(b)).map(rowHtml).join('') : '<div class="gnote">No one matches.</div>') : '') + (filtering ? '' : (open.length ? open.slice().sort((a, b) => order(a) - order(b) || tierN(a) - tierN(b)).map(rowHtml).join('') : '<div class="gnote">No one yet. People are added once their DM is ready.</div>'))
+    + (filtering ? '' : growth.length ? '<details><summary class="gnote">Follow-back list (' + growth.length + ')</summary>' + growth.map(rowHtml).join('') + '</details>' : '')
+    + (filtering ? '' : closed.length ? '<details><summary class="gnote">No reply (' + closed.length + ')</summary>' + closed.map(rowHtml).join('') + '</details>' : '')
     + '</div>';
 }
 function wireTracker() {
+  const ts = $('list').querySelector('#tsearch');
+  if (ts) ts.oninput = () => { tq = ts.value; render(); const n = $('list').querySelector('#tsearch'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } };
+  $('list').querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { tfilt = b.dataset.tf; render(); });
   const np = $('list').querySelector('.nextdm[data-nid]');
   if (np) {
     const nt = (track || []).find(x => String(x.id) === np.dataset.nid);
@@ -785,7 +816,7 @@ function wireTracker() {
     const on = (k, f) => { const b = el.querySelector('[data-ta=' + k + ']'); if (b) b.onclick = f; };
     on('dm', () => { if (/\[name\]/.test(t.dm_text)) { toast('Fill in [name] first (Edit)'); return; } copyText(t.dm_text, 'DM copied'); });
     on('fu', () => copyText(t.followup_text || FOLLOWUP_TEMPLATE, 'Follow-up copied'));
-    on('link', () => copyText(giftMessage(t.claim_url), 'Gift message copied'));
+    on('link', () => { copyText(giftMessage(t.claim_url), 'Gift message copied. Paste it into the message box'); const u = profileOf(t); if (u) window.open(u, '_blank', 'noopener'); });
     on('sent', () => saveTrack(Object.assign({}, t, { status: 'Sent', sent_on: today() })));
     on('fusent', () => saveTrack(Object.assign({}, t, { followup_on: today() })));
     on('replied', () => saveTrack(Object.assign({}, t, { status: 'Replied', replied_on: today() })));
@@ -927,7 +958,6 @@ async function getClipFile(c) {
   clipFiles[c.id] = new File([blob], 'stiff-competition-' + c.id + '.mp4', { type: 'video/mp4' });
   return clipFiles[c.id];
 }
-function copyText(t) { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } }
 
 function wireRoutine() {
   const td = $('toggleDone'); if (td) td.onclick = e => { e.preventDefault(); showDone = !showDone; render(); };
