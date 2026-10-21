@@ -767,6 +767,8 @@ function trackerHtml() {
   const counts = '<div class="nhead">Today: ' + doneToday + ' sent, ' + followedToday + (capToday === Infinity ? '' : ' of ' + FOLLOW_DAILY) + ' followed · To do: ' + pl(gifts.length, 'gift') + ' to give, ' + pl(fus.length, 'follow-up') + ' due, ' + pl(dms.length, 'DM') + ' to send, ' + pl(unf.length, 'unfollow') + ' due, ' + rcs.length + ' closed inbox' + (rcs.length === 1 ? '' : 'es') + ' to re-check, ' + allFol.length + ' to follow</div>' + (followedToday >= capToday && allFol.length ? '<div class="nhead">You have followed ' + FOLLOW_DAILY + ' today. More follows tomorrow.</div>' : '');
   const titles = { gift: 'Next: they replied, give the gift', fu: 'Next: follow-up due', dm: 'Next: DM to send', unf: 'Next: unfollow, no follow-back yet', fol: 'Next: follow this person', rc: 'Next: closed inbox, see if they follow you now' };
   const nbtns = { gift: '<button class="btn" data-na="gift">Give gift</button>', fu: '<button class="btn" data-na="fugo">Copy follow-up and open profile</button><button class="btn done" data-na="fusent">Follow-up sent, next</button><button class="btn ghost" data-na="replied">They replied</button><button class="btn ghost" data-na="closedinbox">Inbox closed</button>', dm: '<button class="btn" data-na="go">Copy DM and open profile</button><button class="btn done" data-na="sent">I sent it, next</button><button class="btn ghost" data-na="closedinbox">Inbox closed</button>', unf: '<button class="btn" data-na="open">Open profile</button><button class="btn done" data-na="unfollowed">I unfollowed, next</button><button class="btn ghost" data-na="back">They followed back</button>', rc: '<button class="btn" data-na="open">Open profile</button><button class="btn done" data-na="reopen">They follow me now, DM them</button><button class="btn ghost" data-na="stillclosed">Still closed</button>', fol: '<button class="btn" data-na="open">Open profile</button><button class="btn done" data-na="followed">I followed, next</button><button class="btn ghost" data-na="skipfollow">DM without following</button>' };
+  // Not suitable (21 Oct 2026): removes the person for good; they stay in the tracker so they are never added again.
+  Object.keys(nbtns).forEach(k => { nbtns[k] += '<button class="btn ghost" data-na="notsuit">Not suitable, remove</button>'; });
   const ntext = nk === 'fu' ? (nx.followup_text || FOLLOWUP_TEMPLATE) : nk === 'dm' ? nx.dm_text : '';
   const nextHtml = nx ? '<div class="nextdm" data-nid="' + esc(nx.id) + '" data-nk="' + nk + '">' + counts + '<div class="nhead"><b>' + titles[nk] + '</b></div><div class="nwho">' + (nx.tier ? '<span class="tier t' + esc(nx.tier) + '">Tier ' + esc(nx.tier) + '</span> ' : '') + '<b>' + esc(nx.handle) + '</b> <span class="gnote">' + esc(nx.platform || '') + '</span></div>' + (nx.fit ? '<div class="nfit">' + esc(nx.fit) + '</div>' : '') + (ntext ? '<div class="ndm">' + esc(ntext) + '</div>' : '') + '<div class="nbtns">' + nbtns[nk] + '</div></div>' : '<div class="nextdm">' + counts + '<div class="nhead">Nothing to do right now.</div></div>';
   // Search and state buttons (21 Oct 2026): type a handle, or press a state to see only those people.
@@ -788,6 +790,7 @@ function trackerHtml() {
     if (t.status === 'Sent') b += (followDue(t) ? '<button class="btn small warn" data-ta="fu">Copy follow-up</button>' : '') + (followDue(t) ? '<button class="btn small ghost" data-ta="fusent">Follow-up sent</button>' : '') + '<button class="btn small done" data-ta="replied">They replied</button>' + (t.followup_on ? '<button class="btn small ghost" data-ta="noreply">No reply</button>' : '');
     if (t.status === 'Replied') b += '<button class="btn small" data-ta="gift">Give gift</button>';
     if (t.status === 'Gift sent' && t.claim_url) b += '<button class="btn small" data-ta="link">Copy gift message and open profile</button>';
+    b += '<button class="btn small ghost" data-ta="notsuit">Not suitable</button>';
     b += (url ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(url) + '">Profile</a>' : '') + '<button class="btn small ghost" data-ta="edit">Edit</button>';
     return '<div class="trow" data-tid="' + esc(t.id) + '"><div class="who">' + (t.tier ? '<span class="tier t' + esc(t.tier) + '">Tier ' + esc(t.tier) + '</span> ' : '') + '<b>' + esc(t.handle) + '</b> <span class="gnote">' + esc(t.platform || '') + '</span>' + (t.product_title ? ' <span class="gnote">· ' + esc(t.product_title) + '</span>' : '') + (t.fit ? '<div class="fit">' + esc(t.fit) + '</div>' : '') + '</div><span class="tstat ' + cls + '">' + esc(lbl) + '</span><div class="tacts">' + b + '</div></div>';
   };
@@ -824,6 +827,7 @@ function wireTracker() {
       if (q('stillclosed')) q('stillclosed').onclick = () => saveTrack(Object.assign({}, nt, { closed_on: today() }));
       if (q('followed')) q('followed').onclick = () => saveTrack(Object.assign({}, nt, { followed_on: today() }));
       if (q('skipfollow')) q('skipfollow').onclick = () => saveTrack(Object.assign({}, nt, { followed_on: 'skipped' }));
+      if (q('notsuit')) q('notsuit').onclick = () => saveTrack(Object.assign({}, nt, { status: 'Removed', notes: 'NOT SUITABLE, do not use again. ' + (nt.notes || '') }));
       if (q('unfollowed')) q('unfollowed').onclick = () => saveTrack(Object.assign({}, nt, { status: 'Removed' }));
       if (q('back')) q('back').onclick = () => saveTrack(Object.assign({}, nt, { status: 'Followed back' }));
     }
@@ -846,6 +850,7 @@ function wireTracker() {
     on('followed', () => saveTrack(Object.assign({}, t, { followed_on: today() })));
     on('skipfollow', () => saveTrack(Object.assign({}, t, { followed_on: 'skipped' })));
     on('back', () => saveTrack(Object.assign({}, t, { status: 'Followed back' })));
+    on('notsuit', () => saveTrack(Object.assign({}, t, { status: 'Removed', notes: 'NOT SUITABLE, do not use again. ' + (t.notes || '') })));
     on('unfollowed', () => saveTrack(Object.assign({}, t, { status: 'Removed' })));
     on('edit', () => openTrack(t));
   });
@@ -862,7 +867,7 @@ $('t_save').onclick = () => {
   if ($('t_handle').value.trim().replace('@', '').length < 2) { toast('Give their handle'); return; }
   const row = Object.assign({}, tEdit || {}, { handle: $('t_handle').value.trim(), platform: $('t_platform').value, profile_url: $('t_url').value.trim(), fit: $('t_fit').value.trim(), dm_text: $('t_dm').value, followup_text: $('t_fu').value, status: $('t_status').value, notes: $('t_notes').value });
   const hh = String(row.handle).replace(/^@?/, '@').toLowerCase();
-  if (!tEdit && (track || []).some(x => String(x.handle).toLowerCase() === hh && x.status !== 'Removed')) { toast('Already on the list'); return; }
+  if (!tEdit && (track || []).some(x => String(x.handle).toLowerCase() === hh && (x.status !== 'Removed' || /NOT SUITABLE/.test(x.notes || '')))) { toast('Already on the list, or marked not suitable'); return; }
   if (row.status === 'Followed' && !row.followed_on) row.followed_on = today();
   $('tDlg').close(); saveTrack(row);
 };
