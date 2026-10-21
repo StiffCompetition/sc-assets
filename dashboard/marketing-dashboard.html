@@ -651,7 +651,7 @@ const TRACK_URL = BASE + 'sc-gift-tracker';
 const FOLLOWUP_DAYS = 5;
 // Message wording agreed with Andy 20 Oct 2026 (NFT Creator Outreach Playbook): one message for everyone, only [name] changes.
 const DM_TEMPLATE = "Hey [name], I'm Andy. I had an idea for a brand but not the skills to build it, so I've learned what I could, with a lot of help from AI, and Stiff Competition is the result.\nIt's six characters from a 1994 action-figure line that never made the shelves, and I'm building their world piece by piece: one-of-one NFTs on Polygon, merch, stories and clips on social media, and plenty of cheeky British innuendo.\nIt's a tiny brand and I need your support to get it seen. I'd love to gift you one of the character NFTs, and if the brand gives you a laugh, a share or a shout-out to your followers would mean a lot. Say yes and I'll send you a private link to claim it.";
-const GIFT_TEMPLATE = "Brilliant, here it is: [gift link]\nOpen it and choose where your NFT goes: your own wallet, or a free wallet I make for you with just your email. If you post about it, tag Stiff Competition and I'll share it back. Enjoy.";
+const GIFT_TEMPLATE = "Brilliant, here it is: [gift link]\nOpen it and choose where your NFT goes: your own wallet, or a free wallet I make for you with just your email. If you post about it, tag @stiffComp6969 on X or @stiffcompetition_hq on Instagram and I'll share it back. Enjoy.";
 const FOLLOWUP_TEMPLATE = "Hi, Andy again from Stiff Competition. Just bumping this in case it got buried: a free character NFT is yours if you'd like one, and a share with your followers would really help a small brand like ours. If it's not for you, no worries at all.";
 const giftMessage = url => GIFT_TEMPLATE.replace('[gift link]', url);
 let track = null, trackLoading = false, tEdit = null;
@@ -663,6 +663,22 @@ async function loadTrack() {
   } catch (e) { track = track || []; toast('Could not load the gift tracker'); }
   trackLoading = false;
   render();
+  autoClose();
+}
+// Automatic close-out (20 Oct 2026): a follow-up sent FOLLOWUP_DAYS ago with no reply moves to No reply by itself.
+let autoClosing = false;
+async function autoClose() {
+  if (autoClosing || !track) return;
+  const list = track.filter(closeDue); if (!list.length) return;
+  autoClosing = true; let n = 0;
+  for (const t of list) {
+    try {
+      const r = await fetch(TRACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', row: Object.assign({}, t, { status: 'No reply' }) }) });
+      const d = await r.json(); if (d.ok) n++;
+    } catch (e) {}
+  }
+  autoClosing = false;
+  if (n) { toast(n + ' moved to No reply'); await loadTrack(); }
 }
 async function saveTrack(row) {
   try {
@@ -677,6 +693,7 @@ function copyText(t, msg) {
 }
 function daysSince(d) { return d ? Math.floor((new Date(today() + 'T12:00:00') - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 86400000) : 0; }
 function followDue(t) { return t.status === 'Sent' && t.sent_on && !t.followup_on && !t.replied_on && daysSince(t.sent_on) >= FOLLOWUP_DAYS; }
+function closeDue(t) { return t.status === 'Sent' && t.followup_on && !t.replied_on && daysSince(t.followup_on) >= FOLLOWUP_DAYS; }
 function tStage(t) {
   if (followDue(t)) return ['Follow-up due', 'due'];
   if (t.status === 'To send') return ['DM to send', 'todo'];
@@ -695,9 +712,18 @@ function trackerHtml() {
   const tierN = t => Number(t.tier) || 9;
   const due = open.filter(followDue).length;
   // Next DM panel (20 Oct 2026): the first person still to send, with one button to copy the DM and open their profile, and one to mark it sent and move on.
-  const queue = open.filter(t => t.status === 'To send' && t.dm_text).sort((a, b) => tierN(a) - tierN(b));
-  const nx = queue[0];
-  const nextHtml = nx ? '<div class="nextdm" data-nid="' + esc(nx.id) + '"><div class="nhead">Next DM · ' + queue.length + ' left to send</div><div class="nwho">' + (nx.tier ? '<span class="tier t' + esc(nx.tier) + '">Tier ' + esc(nx.tier) + '</span> ' : '') + '<b>' + esc(nx.handle) + '</b> <span class="gnote">' + esc(nx.platform || '') + '</span></div>' + (nx.fit ? '<div class="nfit">' + esc(nx.fit) + '</div>' : '') + '<div class="ndm">' + esc(nx.dm_text) + '</div><div class="nbtns"><button class="btn" data-na="go">Copy DM and open profile</button><button class="btn done" data-na="sent">I sent it, next</button></div></div>' : '';
+  // Do-next panel (20 Oct 2026): one list in priority order: gifts to give, follow-ups due, DMs to send. The first item shows with its buttons.
+  const gifts = open.filter(t => t.status === 'Replied');
+  const fus = open.filter(followDue);
+  const dms = open.filter(t => t.status === 'To send' && t.dm_text).sort((a, b) => tierN(a) - tierN(b));
+  const queue = gifts.map(t => ({ k: 'gift', t })).concat(fus.map(t => ({ k: 'fu', t })), dms.map(t => ({ k: 'dm', t })));
+  const nx = queue[0] && queue[0].t, nk = queue[0] && queue[0].k;
+  const doneToday = track.filter(t => t.sent_on === today()).length + track.filter(t => t.followup_on === today()).length;
+  const counts = '<div class="nhead">Today: ' + doneToday + ' sent · To do: ' + gifts.length + ' gift' + (gifts.length === 1 ? '' : 's') + ' to give, ' + fus.length + ' follow-up' + (fus.length === 1 ? '' : 's') + ' due, ' + dms.length + ' DM' + (dms.length === 1 ? '' : 's') + ' to send</div>';
+  const titles = { gift: 'Next: they replied, give the gift', fu: 'Next: follow-up due', dm: 'Next: DM to send' };
+  const nbtns = { gift: '<button class="btn" data-na="gift">Give gift</button>', fu: '<button class="btn" data-na="fugo">Copy follow-up and open profile</button><button class="btn done" data-na="fusent">Follow-up sent, next</button><button class="btn ghost" data-na="replied">They replied</button>', dm: '<button class="btn" data-na="go">Copy DM and open profile</button><button class="btn done" data-na="sent">I sent it, next</button>' };
+  const ntext = nk === 'fu' ? (nx.followup_text || FOLLOWUP_TEMPLATE) : nk === 'dm' ? nx.dm_text : '';
+  const nextHtml = nx ? '<div class="nextdm" data-nid="' + esc(nx.id) + '" data-nk="' + nk + '">' + counts + '<div class="nhead"><b>' + titles[nk] + '</b></div><div class="nwho">' + (nx.tier ? '<span class="tier t' + esc(nx.tier) + '">Tier ' + esc(nx.tier) + '</span> ' : '') + '<b>' + esc(nx.handle) + '</b> <span class="gnote">' + esc(nx.platform || '') + '</span></div>' + (nx.fit ? '<div class="nfit">' + esc(nx.fit) + '</div>' : '') + (ntext ? '<div class="ndm">' + esc(ntext) + '</div>' : '') + '<div class="nbtns">' + nbtns[nk] + '</div></div>' : '<div class="nextdm">' + counts + '<div class="nhead">Nothing to do right now.</div></div>';
   const rowHtml = t => {
     const [lbl, cls] = tStage(t); const url = safeUrl(t.profile_url);
     let b = '';
@@ -714,16 +740,22 @@ function trackerHtml() {
     + '</div>';
 }
 function wireTracker() {
-  const np = $('list').querySelector('.nextdm');
+  const np = $('list').querySelector('.nextdm[data-nid]');
   if (np) {
     const nt = (track || []).find(x => String(x.id) === np.dataset.nid);
-    const go = np.querySelector('[data-na=go]'), sn = np.querySelector('[data-na=sent]');
-    if (nt && go) go.onclick = () => {
-      if (/\[name\]/.test(nt.dm_text)) { toast('Fill in [name] first (Edit)'); return; }
-      copyText(nt.dm_text, 'DM copied. Paste it into the message box');
-      const u = safeUrl(nt.profile_url); if (u) window.open(u, '_blank', 'noopener');
-    };
-    if (nt && sn) sn.onclick = () => saveTrack(Object.assign({}, nt, { status: 'Sent', sent_on: today() }));
+    const q = k => np.querySelector('[data-na=' + k + ']');
+    const openProfile = () => { const u = safeUrl(nt.profile_url); if (u) window.open(u, '_blank', 'noopener'); };
+    if (nt) {
+      if (q('go')) q('go').onclick = () => {
+        if (/\[name\]/.test(nt.dm_text)) { toast('Fill in [name] first (Edit)'); return; }
+        copyText(nt.dm_text, 'DM copied. Paste it into the message box'); openProfile();
+      };
+      if (q('sent')) q('sent').onclick = () => saveTrack(Object.assign({}, nt, { status: 'Sent', sent_on: today() }));
+      if (q('fugo')) q('fugo').onclick = () => { copyText(nt.followup_text || FOLLOWUP_TEMPLATE, 'Follow-up copied. Paste it into the message box'); openProfile(); };
+      if (q('fusent')) q('fusent').onclick = () => saveTrack(Object.assign({}, nt, { followup_on: today() }));
+      if (q('replied')) q('replied').onclick = () => saveTrack(Object.assign({}, nt, { status: 'Replied', replied_on: today() }));
+      if (q('gift')) q('gift').onclick = () => openGift(nt);
+    }
   }
   const add = $('list').querySelector('[data-ta=add]'); if (add) add.onclick = () => openTrack(null);
   $('list').querySelectorAll('.trow').forEach(el => {
@@ -1160,13 +1192,9 @@ function mugLayout(rule, key) {
   [1, 2].forEach(n => partsOf(rule, n).forEach(p => out[n].push({ src: p, x: 0.5, y: MUG_DEF[p].y, w: MUG_DEF[p].w })));
   return out;
 }
-// drag-and-place editor (Andy, 20 Oct 2026): mugs have two sides of a wrap; 'place' products (the water bottle) have one print area
-const placedRule = r => !!(r && (r.layout_mode === 'sides' || r.layout_mode === 'place'));
-const oneArea = r => !!(r && r.layout_mode === 'place');
-function mugAspect(t) {   // one side = half the wrap's print area; a one-area product uses the whole print area
+function mugAspect(t) {   // one side = half the wrap's print area
   const m = String(((t && t.imageSlots) || [])[0] || '').match(/([\d.]+)\s*x\s*([\d.]+)\s*mm/);
-  const one = oneArea(t ? prodRule(t.product_type) : null);
-  return m ? (parseFloat(m[1]) / (one ? 1 : 2)) / parseFloat(m[2]) : (one ? 0.75 : 1.2);
+  return m ? (parseFloat(m[1]) / 2) / parseFloat(m[2]) : 1.2;
 }
 function mugSrc(it, d) {
   if (it.src.indexOf('lib:') === 0) { const L = prod.designs.find(x => x.key === it.src.slice(4)); return L ? (L.print_dark_ink || L.art_url || '') : ''; }
@@ -1179,13 +1207,13 @@ function mugName(src) {
 function mugDesignHtml(t, rule) {
   const d = libDesigns().find(x => x.key === prod.pv) || libDesigns().find(x => prod.picked.has(x.key)) || libDesigns()[0];
   const L = mugLayout(rule, d ? d.key : ''); prod.mlay = L;
-  const ar = mugAspect(t), sel = prod.msel || null, half = rule.side_1_half === 'right' ? 'right' : 'left', one = oneArea(rule);
+  const ar = mugAspect(t), sel = prod.msel || null, half = rule.side_1_half === 'right' ? 'right' : 'left';
   const side = n => {
     const items = L[n].map((it, i) => { const u = mugSrc(it, d); return u ? '<img class="mitem' + (sel && sel.n === n && sel.i === i ? ' sel' : '') + '" draggable="false" data-mn="' + n + '" data-mi="' + i + '" src="' + esc(safeUrl(u)) + '" alt="' + esc(mugName(it.src)) + '" style="left:' + (it.x * 100).toFixed(2) + '%;top:' + (it.y * 100).toFixed(2) + '%;width:' + (it.w * 100).toFixed(2) + '%">' : ''; }).join('');
     const ticks = PARTS.map(([p, l]) => '<label class="tick"><input type="checkbox" data-mpart="' + n + '" value="' + p + '"' + (L[n].some(it => it.src === p) ? ' checked' : '') + '> ' + l + '</label>').join('');
     const libs = L[n].filter(it => it.src.indexOf('lib:') === 0);
     return '<figure class="mside" style="margin:0"><div class="mstage" data-mstage="' + n + '" style="aspect-ratio:' + ar.toFixed(3) + '">' + items + '</div>'
-      + '<figcaption>' + (one ? 'Print area' : 'Side ' + n + ' (' + (n === 1 ? half : (half === 'left' ? 'right' : 'left')) + ' half of the print)') + (L[n].length ? '' : ', nothing printed') + '</figcaption>'
+      + '<figcaption>Side ' + n + ' (' + (n === 1 ? half : (half === 'left' ? 'right' : 'left')) + ' half of the print)' + (L[n].length ? '' : ', nothing printed') + '</figcaption>'
       + '<div class="sides"><b>' + (d ? esc(d.character) : 'Character') + '</b>' + ticks + '</div>'
       + '<div class="mtools"><select data-mlib="' + n + '"><option value="">Add from the library…</option>' + libImages().map(x => '<option value="lib:' + esc(x.key) + '">' + esc(x.character) + '</option>').join('') + '</select>' + (L[n].length > 1 ? '<button type="button" class="btn ghost small" data-mstack="' + n + '">' + ((L.stack || []).indexOf(n) !== -1 ? 'Stacked neatly ✓' : 'Stack neatly') + '</button>' : '') + '</div>'
       + (libs.length ? '<div class="mlib">' + L[n].map((it, i) => it.src.indexOf('lib:') === 0 ? '<button type="button" class="btn ghost" data-mdel="' + n + ':' + i + '">✕ ' + esc(mugName(it.src)) + '</button>' : '').join('') + '</div>' : '')
@@ -1193,9 +1221,9 @@ function mugDesignHtml(t, rule) {
   };
   const s = sel && L[sel.n] && L[sel.n][sel.i] ? L[sel.n][sel.i] : null;
   return '<div class="design mug" data-pt="' + esc(rule.product_type) + '">'
-    + '<div class="mstages">' + (one ? side(1) : half === 'right' ? side(2) + side(1) : side(1) + side(2)) + '</div>'   // shown in print order, left half first, so it matches the print preview (Andy, 20 Oct 2026)
+    + '<div class="mstages">' + (half === 'right' ? side(2) + side(1) : side(1) + side(2)) + '</div>'   // shown in print order, left half first, so it matches the print preview (Andy, 20 Oct 2026)
     + '<div class="mtools">' + (s ? '<b>' + esc(mugName(s.src)) + '</b> size <input type="range" id="m_size" min="8" max="100" value="' + Math.round(s.w * 100) + '"><button type="button" class="btn ghost small" id="m_centre">Centre</button><button type="button" class="btn ghost small" id="m_del">Remove</button>' : '<span style="color:var(--grey)">Drag an image to move it. Tap one to resize it.</span>') + '</div>'
-    + '<div class="mtools">' + (one ? '' : '<label class="printon">Side 1 sits on the <select data-half><option value="left"' + (half === 'left' ? ' selected' : '') + '>left half</option><option value="right"' + (half === 'right' ? ' selected' : '') + '>right half</option></select> of the print</label>')
+    + '<div class="mtools"><label class="printon">Side 1 sits on the <select data-half><option value="left"' + (half === 'left' ? ' selected' : '') + '>left half</option><option value="right"' + (half === 'right' ? ' selected' : '') + '>right half</option></select> of the print</label>'
     + (libDesigns().length > 1 ? '<label class="printon">Show <select id="p_pvchar">' + libDesigns().map(x => '<option value="' + esc(x.key) + '"' + (d && x.key === d.key ? ' selected' : '') + '>' + esc(x.character) + '</option>').join('') + '</select></label>' : '')
     + '<span class="saved" id="p_saved"></span></div>'
     + '<div class="mtools"><span class="tplinfo" style="margin:0">' + (prod.mown ? 'This layout is saved for <b>' + esc(d ? d.character : '') + '</b>. Every change saves straight away.' : '<b>' + esc(d ? d.character : '') + '</b> uses the shared layout. Change anything and it is saved for ' + esc(d ? d.character : 'this character') + ' only.') + '</span>'
@@ -1279,7 +1307,7 @@ function wireMug(ds) {
   });
 }
 function designHtml(t, rule) {
-  if (placedRule(rule)) return mugDesignHtml(t, rule);
+  if (rule.layout_mode === 'sides') return mugDesignHtml(t, rule);
   const nm = areaNames(rule), mug = rule.layout_mode === 'sides', areas = mug ? { front: true, back: true } : tplAreas(t);
   const s1 = partsOf(rule, 1), s2 = partsOf(rule, 2);
   const mode = s1.length && s2.length ? 'both' : s2.length ? '2' : '1';
@@ -1382,11 +1410,11 @@ function renderProducts() {
   h += fstep(2, 'Listing', !t ? 'lock' : (ruleOk && !prod.editRule) ? 'done' : 'now', ruleOk ? 'Title, description and tags approved <a href="#" id="p_editrule">Change</a>' : '', s2);
   const open = t && ruleOk && !prod.editRule;
   const s1p = partsOf(rule, 1), s2p = partsOf(rule, 2), nm = areaNames(rule);
-  const mugL = open && placedRule(rule) ? (prod.mlay && prod.mlayPt === rule.product_type ? prod.mlay : mugLayout(rule, mugKey())) : null;
-  const designSum = mugL ? (oneArea(rule) ? [1] : [1, 2]).map(n => (oneArea(rule) ? 'Print' : 'Side ' + n) + ': ' + (mugL[n].length ? mugL[n].map(it => mugName(it.src).toLowerCase()).join(', ') : 'nothing')).join(' · ') : open ? [s1p.length ? nm[0] + ': ' + partWords(s1p) : '', s2p.length ? nm[1] + ': ' + partWords(s2p) : ''].filter(Boolean).join(' · ') : '';
+  const mugL = open && rule.layout_mode === 'sides' ? (prod.mlay && prod.mlayPt === rule.product_type ? prod.mlay : mugLayout(rule, mugKey())) : null;
+  const designSum = mugL ? [1, 2].map(n => 'Side ' + n + ': ' + (mugL[n].length ? mugL[n].map(it => mugName(it.src).toLowerCase()).join(', ') : 'nothing')).join(' · ') : open ? [s1p.length ? nm[0] + ': ' + partWords(s1p) : '', s2p.length ? nm[1] + ': ' + partWords(s2p) : ''].filter(Boolean).join(' · ') : '';
   h += fstep(3, 'Design', open ? 'now' : 'lock', '', open ? designHtml(t, rule) : '');
   // 19 Oct 2026 (Andy): each character's colours sit right under its picture; tapping a colour also picks the character
-  const garment = !placedRule(rule), tcols = t ? (t.colours || []) : [];
+  const garment = !(rule && rule.layout_mode === 'sides'), tcols = t ? (t.colours || []) : [];
   const s4 = open ? '<div class="dpick">' + all.map(d => {
       const busy = openRuns(d.key, t.templateId).length > 0, ink = inkFor(tcols[0] || 'white');
       const img = d['print_' + ink + '_ink'] || d.art_url, on = prod.picked.has(d.key), cs = colsOf(d.key), mc = on ? modelCols(d.key) : [];
@@ -1402,8 +1430,8 @@ function renderProducts() {
   h += fstep(5, 'Model photos', open ? (phOk && oursPictures(rule) && !prod.showPhotos ? 'done' : 'now') : 'lock',
     open && phOk && oursPictures(rule) ? 'Ready <a href="#" id="p_showphotos">Show</a>' : '', open ? photosHtml(t, rule) : '');
   const what = rule ? rule.label.toLowerCase() : 'product';
-  const noCol = open && !placedRule(rule) && ((t.colours || []).length > 0) && all.some(d => prod.picked.has(d.key) && !colsOf(d.key).size);
-  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (placedRule(rule) ? ((t.colours || []).length ? (t.colours || []).length + ' colours' : 'white') : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (rule.product_type === 'mug' ? 'our true-size mug pictures' : rule.product_type === 'bottle' ? 'our true-size bottle pictures' : oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
+  const noCol = open && !(rule.layout_mode === 'sides') && all.some(d => prod.picked.has(d.key) && !colsOf(d.key).size);
+  const s6 = open ? '<div class="makesum">' + esc(designSum) + ' · ' + (rule.layout_mode === 'sides' ? (t.colours || []).length + ' colours' : all.filter(d => prod.picked.has(d.key)).map(d => esc(d.character) + ' ' + colsOf(d.key).size + ' colours').join(', ') || 'no characters picked') + ' · ' + (rule.product_type === 'mug' ? 'our true-size mug pictures' : rule.product_type === 'bottle' ? 'our true-size bottle pictures' : oursPictures(rule) ? 'our pictures on the model photos' : 'Gelato\'s pictures') + (oursPictures(rule) && !phOk ? '<br><span style="color:#b06a00">The pictures go on when the model pictures arrive.</span>' : '') + '</div>'
     + (noCol ? '<span style="color:#c62828">Every character needs at least one colour.</span><br>' : '') + '<div class="prow"><button class="btn" id="p_start"' + (n && !noCol ? '' : ' disabled') + '>' + (n ? 'Make ' + n + ' ' + esc(what) + (n === 1 ? '' : 's') : 'Pick characters to make') + '</button></div>' : '';
   h += fstep(6, 'Make', open ? 'now' : 'lock', '', s6);
   h += '</div>';
@@ -1513,14 +1541,14 @@ function wireProducts() {
     const t = prod.tpl; const keys = Array.from(prod.picked), r = prodRule(t.product_type);
     if (!t || !keys.length) return;
     if (!confirm('Make ' + keys.length + ' ' + (r ? r.label.toLowerCase() : t.product_type) + (keys.length === 1 ? '' : 's') + ' from "' + t.templateName + '"?\n\n' + ($('list').querySelector('.makesum') || {}).textContent + '\n\nNothing goes to Gelato or Shopify until you approve each set of print files. Once approved, each one goes all the way to live by itself.')) return;
-    if (placedRule(r)) {   // mugs and bottles print exactly what the editor shows, so the layout on screen is saved first
+    if (r && r.layout_mode === 'sides') {   // mugs print exactly what the editor shows, so the layout on screen is saved first
       // every picked character must have something to print: its own layout or the shared one
       const A = mugAll(r), empty = keys.filter(k => { const L = A.per[k] || A.base || (prod.mlayKey === k ? prod.mlay : null) || prod.mlay; return !L || (!L['1'].length && !L['2'].length); });
-      if (empty.length) { toast('Put at least one image on the print for ' + empty.join(', ')); return; }
+      if (empty.length) { toast('Put at least one image on the mug for ' + empty.join(', ')); return; }
       if (!r.layout) await saveMug(r.product_type, null, true);
     }
     st.disabled = true; st.textContent = 'Starting…';
-    try { const colours = {}, models = {}; if (!placedRule(r) && ((t.colours || []).length > 0)) keys.forEach(k => { colours[k] = Array.from(colsOf(k)); models[k] = modelCols(k); });
+    try { const colours = {}, models = {}; if (!(r && r.layout_mode === 'sides')) keys.forEach(k => { colours[k] = Array.from(colsOf(k)); models[k] = modelCols(k); });
     const d = await productApi({ action: 'start', templateId: t.templateId, templateName: t.templateName, product_type: t.product_type, designs: keys, colours: colours, models: models }); toast(d.started + ' started: see In progress'); prod.picked.clear(); prod.cols = {}; prod.models = {}; prod.pv = ''; savePicks(); prod.sec = 'progress'; window.scrollTo(0, 0); await loadProducts(); }
     catch (e) { toast('Could not start: ' + e.message); renderProducts(); }
   };
