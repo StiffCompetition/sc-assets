@@ -1575,7 +1575,8 @@ function renderProducts() {
   const progRuns = prod.runs.filter(r => r.waiting_on === 'runner' || r.waiting_on === 'andy_rules'), liveRuns = prod.runs.filter(r => r.status === 'live'), badRuns = prod.runs.filter(r => r.status === 'failed' || r.status === 'stopped');
   const building = prod.designs.filter(d => d.kind !== 'logo' && d.status !== 'approved' && d.waiting_on !== 'andy_design');
   const sec = prod.sec || 'make';
-  h += '<div class="psegs">' + [['make', 'Make products', ''], ['progress', 'In progress', progRuns.length + badRuns.length + building.length], ['live', 'Live', liveRuns.length]].map(x => '<button type="button" data-psec="' + x[0] + '" class="' + (sec === x[0] ? 'on' : '') + '">' + x[1] + (x[2] !== '' ? '<span class="n">' + x[2] + '</span>' : '') + '</button>').join('') + '</div>';
+  if (!pre.loaded && !pre.loading) loadPre(true);
+  h += '<div class="psegs">' + [['make', 'Make products', ''], ['progress', 'In progress', progRuns.length + badRuns.length + building.length], ['live', 'Live', liveRuns.length], ['pre', 'Pre-order', pre.loaded ? pre.items.length : '']].map(x => '<button type="button" data-psec="' + x[0] + '" class="' + (sec === x[0] ? 'on' : '') + '">' + x[1] + (x[2] !== '' ? '<span class="n">' + x[2] + '</span>' : '') + '</button>').join('') + '</div>';
 
   // Needs you (shown in every section)
   const needRuns = prod.runs.filter(r => /^andy_/.test(r.waiting_on || '') && r.waiting_on !== 'andy_rules');
@@ -1641,8 +1642,85 @@ function renderProducts() {
   if (sec === 'live') {
     h += liveRuns.length ? '<div class="group-title">Live (' + liveRuns.length + ')</div>' + liveRuns.map(r => runCard(r, 'live')).join('') : '<div class="empty">Nothing live yet.</div>';
   }
+  if (sec === 'pre') h += preorderHtml();
   $('list').innerHTML = h;
   wireProducts();
+  wirePreorder();
+}
+
+// ===== Pre-order section (Andy, 23 Oct 2026): every product on pre-order in one place. SC - Pre-order API serves it;
+// SC - Pre-order Orders holds paid pre-order items until they are released here. Process: SC - Pre-order Playbook.
+const PRE_URL = BASE + 'sc-preorder-api';
+const pre = { loaded: false, loading: false, items: [], found: null, q: '', busy: '' };
+async function preApi(body) {
+  const r = await fetch(PRE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let d = null; try { d = await r.json(); } catch (e) { d = null; }
+  if (!r.ok || !d) throw new Error(d && (d.error || d.message) ? (d.error || d.message) : 'The pre-order service answered ' + r.status);
+  if (d.ok === false) throw new Error(d.error || 'Refused');
+  return d;
+}
+async function loadPre(quiet) {
+  if (pre.loading) return; pre.loading = true;
+  try { const d = await preApi({ action: 'list' }); pre.items = d.products || []; pre.loaded = true; }
+  catch (e) { if (!quiet) toast('Could not load pre-orders: ' + e.message); }
+  pre.loading = false;
+  if (view === 'Products') renderProducts();
+}
+function preStatus(p) { return p.status === 'ACTIVE' ? 'Live in the shop' : p.status === 'DRAFT' ? 'Draft, not in the shop' : 'Archived'; }
+function preCard(p) {
+  return '<div class="card run' + (p.held ? ' need' : '') + '" data-pre="' + esc(p.id) + '"><div class="body">'
+    + '<div class="title">' + esc(p.title) + '</div>'
+    + '<div class="step">' + preStatus(p) + (p.held ? ' · <b>' + p.held + ' waiting to deploy</b>' : '') + (p.released ? ' · ' + p.released + ' released to print' : '') + '</div>'
+    + '<div class="prow" style="margin-top:8px"><label><input type="checkbox" data-pf="preorder"' + (p.preorder ? ' checked' : '') + '> Pre-order on</label>'
+    + '<label>Deploys from <input type="date" data-pf="ship_date" value="' + esc(p.ship_date || '') + '"></label>'
+    + (p.variants === 1 ? '<label>Price £ <input type="number" step="0.01" min="0" data-pf="price" value="' + esc(p.price) + '" style="width:6em"></label>' : '')
+    + '<button class="btn small" data-pa="save">Save</button></div>'
+    + '<div class="acts2">' + (p.held ? '<button class="btn done small" data-pa="release">Release ' + p.held + ' to print</button>' : '')
+    + '<a class="btn ghost small" href="' + SHOP_ADMIN + esc(p.id) + '" target="_blank" rel="noopener">Open in Shopify</a></div>'
+    + '</div></div>';
+}
+function preorderHtml() {
+  if (!pre.loaded) return '<div class="empty">Loading pre-orders…</div>';
+  const on = pre.items.filter(p => p.preorder), off = pre.items.filter(p => !p.preorder);
+  let h = '<div class="group-title">On pre-order (' + on.length + ')</div>' + (on.length ? on.map(preCard).join('') : '<div class="empty">No products on pre-order.</div>');
+  if (off.length) h += '<div class="group-title">Pre-order switched off (' + off.length + ')</div>' + off.map(preCard).join('');
+  h += '<div class="pbox"><h3>Add a product</h3><div class="prow"><input type="text" id="pre_q" placeholder="Product name" value="' + esc(pre.q) + '"><button class="btn" id="pre_find">Find</button></div>';
+  if (pre.found) {
+    const ids = {}; pre.items.forEach(p => { ids[p.id] = true; });
+    const list = pre.found.filter(p => !ids[p.id]);
+    h += list.length ? list.map(p => '<div class="prow" style="margin-top:8px"><span style="flex:1">' + esc(p.title) + ' <small style="color:var(--grey)">' + esc(p.type) + ' · ' + preStatus(p) + '</small></span><button class="btn small" data-preadd="' + esc(p.id) + '">Put on pre-order</button></div>').join('') : '<div class="empty">No other products match.</div>';
+  }
+  return h + '</div>';
+}
+function wirePreorder() {
+  const f = $('pre_find'), q = $('pre_q');
+  if (f) f.onclick = async () => {
+    pre.q = q.value.trim(); if (pre.q.length < 2) { toast('Type at least two letters'); return; }
+    f.disabled = true; f.textContent = 'Finding…';
+    try { const d = await preApi({ action: 'search', q: pre.q }); pre.found = d.products || []; } catch (e) { toast('Could not search: ' + e.message); }
+    renderProducts();
+  };
+  if (q) q.onkeydown = (e) => { if (e.key === 'Enter' && f) f.click(); };
+  $('list').querySelectorAll('[data-preadd]').forEach(b => b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Adding…';
+    try { await preApi({ action: 'set', product_id: b.dataset.preadd, preorder: true }); pre.found = null; pre.q = ''; toast('On pre-order'); await loadPre(); }
+    catch (e) { toast('Could not add: ' + e.message); renderProducts(); }
+  });
+  $('list').querySelectorAll('[data-pre] [data-pa]').forEach(b => b.onclick = async () => {
+    const card = b.closest('[data-pre]'), id = card.dataset.pre, p = pre.items.find(x => x.id === id) || {};
+    if (b.dataset.pa === 'release') {
+      if (!confirm('Release ' + p.held + ' held ' + (p.held === 1 ? 'order' : 'orders') + ' of "' + p.title + '" to print now?')) return;
+      b.disabled = true; b.textContent = 'Releasing…';
+      try { const d = await preApi({ action: 'release', product_id: id }); toast(d.released + ' released' + (d.failed && d.failed.length ? ', ' + d.failed.length + ' need attention' : '')); await loadPre(); }
+      catch (e) { toast('Could not release: ' + e.message); renderProducts(); }
+      return;
+    }
+    const body = { action: 'set', product_id: id, preorder: card.querySelector('[data-pf="preorder"]').checked, ship_date: card.querySelector('[data-pf="ship_date"]').value };
+    const pr = card.querySelector('[data-pf="price"]'); if (pr && pr.value !== '' && pr.value !== p.price) body.price = pr.value;
+    b.disabled = true; b.textContent = 'Saving…';
+    try { await preApi(body); toast('Saved'); await loadPre(); }
+    catch (e) { toast('Could not save: ' + e.message); renderProducts(); }
+  });
 }
 async function checkTemplate(id) {
   prod.tpl = null; prod.tplErr = ''; prod.picked.clear(); prod.editRule = false; prod.cols = {}; prod.models = {}; prod.picksFor = '';
