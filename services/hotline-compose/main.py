@@ -424,3 +424,51 @@ def nft_template(r: NftTpl):
             'checks': {'see_through_pixels_inside_character': holes_worst, 'green_pixels_worst_frame': green_worst},
             'nft': {'y': oy - 3, 'size': side + 6, 'keyframes': kf},
             'chroma_key': {'color': '#FF00FF', 'tolerance': 40}, 'fps': r.fps, 'duration': r.duration}
+
+# ---- Media move test (24 Oct 2026): proves this service can build a slide and a clip and put them straight into Shopify Files
+# through the upload addresses that SC - File Store hands out. TEST ONLY: no Cloudinary, no keys, no secrets.
+class MediaTest(BaseModel):
+    image_put: str = ''   # staged upload address for the PNG (from SC - File Store, action targets)
+    video_put: str = ''   # staged upload address for the MP4
+
+def _mt_font(size):
+    try:
+        return ImageFont.load_default(size=size)
+    except Exception:
+        return ImageFont.load_default()
+
+def _mt_frame(t, W=1080, H=1920):
+    bg = Image.new('RGBA', (W, H), (10, 10, 10, 255))
+    ch = Image.new('RGBA', (700, 1100), (0, 0, 0, 0)); cd = ImageDraw.Draw(ch)
+    cd.ellipse((50, 50, 650, 1050), fill=(200, 60, 60, 255), outline=(255, 255, 255, 255), width=12)
+    bg.alpha_composite(ch, (190, 300 + int(40 * t)))
+    bg.alpha_composite(Image.new('RGBA', (W, 260), (255, 214, 0, 230)), (0, 1500))
+    ImageDraw.Draw(bg).text((60, 1580), 'TEST - SC MEDIA MOVE', font=_mt_font(90), fill=(0, 0, 0, 255))
+    return bg.convert('RGB')
+
+@app.post('/media-test')
+def media_test(m: MediaTest):
+    out = {'ok': True}
+    try:
+        buf = io.BytesIO(); _mt_frame(0).save(buf, 'PNG'); png = buf.getvalue()
+        out['png_bytes'] = len(png)
+        if m.image_put:
+            r = requests.put(m.image_put, data=png, headers={'Content-Type': 'image/png'}, timeout=120)
+            out['image_put_status'] = r.status_code
+        path = '/tmp/mt_%d.mp4' % int(time.time() * 1000)
+        enc = _sp.Popen([_ffmpeg(), '-y', '-v', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', '1080x1920', '-r', '25', '-i', '-',
+                         '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', path], stdin=_sp.PIPE)
+        for i in range(125):
+            enc.stdin.write(np.array(_mt_frame(i / 25.0)).tobytes())
+        enc.stdin.close(); enc.wait()
+        mp4 = open(path, 'rb').read(); out['mp4_bytes'] = len(mp4)
+        if m.video_put:
+            r = requests.put(m.video_put, data=mp4, headers={'Content-Type': 'video/mp4'}, timeout=300)
+            out['video_put_status'] = r.status_code
+        try:
+            import os as _os; _os.remove(path)
+        except Exception:
+            pass
+    except Exception as e:
+        out['ok'] = False; out['error'] = str(e)[:300]
+    return out
