@@ -221,6 +221,22 @@
   .pfiles.pics figure { width: 120px; }
   #p_new { margin-top: 10px; border-style: dashed; } #p_new summary { cursor: pointer; font-size: 14px; }
   /* Products tab sections (Andy, 19 Oct 2026): Make products, In progress, Live */
+  .jtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .jtile { font: inherit; text-align: left; background: var(--panel); border: 1px solid var(--line); padding: 8px 10px; cursor: pointer; }
+  .jtile b { display: block; font-size: 20px; } .jtile span { font-size: 12px; color: var(--grey); }
+  .jtile.red b { color: #c62828; } .jtile.green b { color: #2a7a2a; } .jtile.amber b { color: #b06a00; } .jtile.on { outline: 2px solid #1f6feb; }
+  .jspec { font-size: 13px; color: var(--grey); margin-bottom: 12px; } .jspec .bad, .jprev .bad { color: #c62828; }
+  .jfilt { margin-bottom: 10px; flex-wrap: wrap; } .jfilt select, .jfilt input { font: inherit; padding: 6px 8px; } .jfilt input { flex: 1; min-width: 160px; }
+  .jrep summary { cursor: pointer; } .jrep input { font: inherit; padding: 6px 8px; flex: 1; min-width: 120px; } .jprev { font-size: 13px; margin-top: 8px; max-height: 260px; overflow: auto; }
+  .jbuild { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .jrow { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); padding: 8px 10px; margin-bottom: 6px; }
+  .jrow.s-Needsfixing { border-left-color: #c62828; } .jrow.s-Approved { border-left-color: #2a7a2a; }
+  .jhead { display: flex; gap: 8px; align-items: center; cursor: pointer; } .jno { font-family: var(--mono); font-size: 12px; color: var(--grey); min-width: 2.5em; }
+  .jt { flex: 1; font-weight: 600; } .jt small { font-weight: 400; color: var(--grey); }
+  .jchip { font-size: 11px; padding: 2px 6px; border: 1px solid var(--line); white-space: nowrap; } .jchip.red { color: #c62828; border-color: #c62828; } .jchip.green { color: #2a7a2a; border-color: #2a7a2a; } .jchip.amber { color: #b06a00; border-color: #b06a00; }
+  .jsum { font-size: 13px; color: var(--grey); margin-top: 4px; } .jiss { font-size: 13px; color: #c62828; margin-top: 4px; }
+  .jf { display: block; font-size: 12px; color: var(--grey); margin-top: 8px; } .jf input { display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 6px 8px; margin-top: 2px; color: inherit; }
+  .jcnt { float: right; font-family: var(--mono); }
   .psegs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
   .psegs button { font: inherit; padding: 8px 14px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
   .psegs button.on { background: #1f6feb; color: #fff; border-color: #1f6feb; }
@@ -414,6 +430,7 @@ function flatShown(r) {
 }
 function tabCount(v) {
   if (v === 'Pages') return '';
+  if (v === 'Journal') return jr.loaded && jr.book ? ((jr.book.status || {})['Needs fixing'] || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
@@ -428,7 +445,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Products', 'Pricing', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -603,6 +620,7 @@ function render() {
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); return; }
   if (view === 'Products') { renderProducts(); return; }
   if (view === 'Pricing') { renderPricing(); return; }
+  if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
   if (view === 'Done') {
@@ -1650,6 +1668,119 @@ function renderProducts() {
 
 // ===== Pre-order section (Andy, 23 Oct 2026): every product on pre-order in one place. SC - Pre-order API serves it;
 // SC - Pre-order Orders holds paid pre-order items until they are released here. Process: SC - Pre-order Playbook.
+// ---- Journal tab (23 Oct 2026): every page of the printed journal in one list; edit words, find and replace, approve; book checks for Lulu and Amazon.
+// Backend: n8n SC - Journal API (webhook sc-journal-api), table SC Journal Pages. Pages are rebuilt in Canva from the Day page V5 master by Claude.
+const JOURNAL_URL = BASE + 'sc-journal-api';
+const jr = { loaded: false, loading: false, pages: [], book: null, st: 'Needs fixing', type: 'all', ch: 'all', q: '', open: null, shown: 40, prev: null, find: '', rep: '', busy: false };
+const J_FIELDS = [['battle_cry', 'Battle cry'], ['spec_label', 'Spec label'], ['spec_value', 'Spec value']];
+const J_TYPES = { day: 'Day pages', mission: 'Mission pages', front: 'Front pages', back: 'Back pages' };
+async function jApi(body) {
+  const r = await fetch(JOURNAL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let d = null; try { d = await r.json(); } catch (e) { d = null; }
+  if (!r.ok || !d) throw new Error(d && (d.error || d.message) ? (d.error || d.message) : 'The journal service answered ' + r.status);
+  if (d.ok === false) throw new Error(d.error || 'Refused');
+  return d;
+}
+async function loadJournal(quiet) {
+  if (jr.loading) return; jr.loading = true;
+  try { const d = await jApi({ action: 'list' }); jr.pages = d.pages || []; jr.book = d.book || null; jr.loaded = true; }
+  catch (e) { if (!quiet) toast('Could not load the journal: ' + e.message); }
+  jr.loading = false;
+  if (view === 'Journal') renderJournal(); else renderTabs();
+}
+function jShown() {
+  const q = jr.q.trim().toUpperCase();
+  return jr.pages.filter(p => (jr.st === 'all' || p.status === jr.st || (jr.st === 'changed' && p.changed === 'yes'))
+    && (jr.type === 'all' || p.type === jr.type) && (jr.ch === 'all' || p.character === jr.ch)
+    && (!q || [p.day, p.battle_cry, p.spec_label, p.spec_value, p.issues, p.notes, String(p.page)].join(' ').toUpperCase().indexOf(q) !== -1));
+}
+function jBookHtml() {
+  const b = jr.book; if (!b) return '';
+  const s = b.status || {};
+  const tile = (n, l, cls, st) => '<button type="button" class="jtile ' + (cls || '') + (st && jr.st === st ? ' on' : '') + '"' + (st ? ' data-jst="' + st + '"' : '') + '><b>' + n + '</b><span>' + l + '</span></button>';
+  return '<div class="jtiles">' + tile(s['Needs fixing'] || 0, 'Needs fixing', 'red', 'Needs fixing') + tile(s['Ready'] || 0, 'Ready', '', 'Ready') + tile(s['Approved'] || 0, 'Approved', 'green', 'Approved')
+    + tile(b.changed || 0, 'Changed, to rebuild', 'amber', 'changed') + tile(b.pages, 'Pages', '', 'all') + '</div>'
+    + '<div class="jspec">Cover ' + b.cover_w_in + ' × ' + b.cover_h_in + ' in · spine ' + b.spine_in + ' in · ' + (b.lulu_ok_count && b.kdp_ok_count ? 'page count OK for Lulu and Amazon' : '<b class="bad">page count outside Lulu or Amazon limits</b>') + (b.even ? '' : ' · <b class="bad">odd page count</b>') + '</div>';
+}
+function jRow(p) {
+  const open = jr.open === p.page;
+  const title = p.type === 'day' ? p.day : (J_TYPES[p.type] || p.type).replace(/s$/, '');
+  let h = '<div class="jrow s-' + esc(p.status.replace(/\s/g, '')) + (open ? ' open' : '') + '" data-jp="' + p.page + '"><div class="jhead"><span class="jno">' + p.page + '</span><span class="jt">' + esc(title) + (p.character ? ' <small>' + esc(p.character) + '</small>' : '') + '</span>'
+    + (p.changed === 'yes' ? '<span class="jchip amber">changed</span>' : '') + '<span class="jchip ' + (p.status === 'Needs fixing' ? 'red' : p.status === 'Approved' ? 'green' : '') + '">' + esc(p.status) + '</span></div>';
+  if (p.type === 'day' && !open) h += '<div class="jsum">“' + esc(p.battle_cry) + '” · ' + esc(p.spec_label) + ' · ' + esc(p.spec_value) + '</div>';
+  if (p.issues) h += '<div class="jiss">' + esc(p.issues) + '</div>';
+  if (open) {
+    if (p.type === 'day') {
+      h += J_FIELDS.map(f => { const lim = (jr.book && jr.book.limits && jr.book.limits[f[0]]) || 99; return '<label class="jf">' + f[1] + ' <span class="jcnt" data-jc="' + f[0] + '">' + (p[f[0]] || '').length + '/' + lim + '</span><input type="text" data-jf="' + f[0] + '" maxlength="' + lim + '" value="' + esc(p[f[0]]) + '"></label>'; }).join('');
+    }
+    h += '<label class="jf">Notes<input type="text" data-jf="notes" maxlength="500" value="' + esc(p.notes) + '"></label>'
+      + '<div class="acts2"><button class="btn small" data-ja="save">Save</button>' + (p.status !== 'Approved' && !p.issues ? '<button class="btn done small" data-ja="approve">Approve</button>' : '') + (p.status === 'Approved' ? '<button class="btn ghost small" data-ja="unapprove">Back to ready</button>' : '') + '</div>';
+  }
+  return h + '</div>';
+}
+function jReplaceHtml() {
+  let h = '<details class="pbox jrep"' + (jr.prev || jr.find ? ' open' : '') + '><summary><b>Change words across many pages</b></summary><div class="prow" style="margin-top:8px"><input type="text" id="j_find" placeholder="Find" value="' + esc(jr.find) + '"><input type="text" id="j_rep" placeholder="Replace with" value="' + esc(jr.rep) + '"><button class="btn small" id="j_prev">Preview</button></div>';
+  if (jr.prev) {
+    const c = jr.prev.changes || [], s = jr.prev.skipped || [];
+    h += '<div class="jprev">' + (c.length ? '<b>' + c.length + (c.length === 1 ? ' page changes' : ' pages change') + '</b>' + c.slice(0, 30).map(x => '<div>Page ' + x.page + ': ' + Object.keys(x.after).map(k => esc(x.before[k]) + ' → <b>' + esc(x.after[k]) + '</b>').join(' · ') + '</div>').join('') + (c.length > 30 ? '<div>and ' + (c.length - 30) + ' more</div>' : '') : 'No page has those words.')
+      + (s.length ? '<div class="bad" style="margin-top:6px">' + s.length + ' left as they are because the words would not fit: pages ' + s.map(x => x.page).join(', ') + '</div>' : '') + '</div>'
+      + (c.length ? '<div class="acts2"><button class="btn done small" id="j_go">Change ' + c.length + (c.length === 1 ? ' page' : ' pages') + '</button><button class="btn ghost small" id="j_cancel">Cancel</button></div>' : '');
+  }
+  return h + '</div></details>';
+}
+function renderJournal() {
+  renderTabs();
+  if (!jr.loaded) { $('list').innerHTML = '<div class="empty">Loading the journal…</div>'; if (!jr.loading) loadJournal(); return; }
+  const chars = Array.from(new Set(jr.pages.map(p => p.character).filter(Boolean)));
+  const list = jShown();
+  let h = jBookHtml()
+    + '<div class="prow jfilt"><select id="j_type"><option value="all">All pages</option>' + Object.keys(J_TYPES).map(k => '<option value="' + k + '"' + (jr.type === k ? ' selected' : '') + '>' + J_TYPES[k] + '</option>').join('') + '</select>'
+    + '<select id="j_ch"><option value="all">All characters</option>' + chars.map(c => '<option' + (jr.ch === c ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>'
+    + '<input type="search" id="j_q" placeholder="Search words or page number" value="' + esc(jr.q) + '"></div>'
+    + jReplaceHtml()
+    + (jr.book && jr.book.changed ? '<div class="pbox jbuild"><b>' + jr.book.changed + (jr.book.changed === 1 ? ' page has' : ' pages have') + ' new words.</b> <a class="btn small" target="_blank" rel="noopener" href="' + jBuildChat() + '">Ask Claude to rebuild them in Canva</a></div>' : '')
+    + '<div class="group-title">' + list.length + (list.length === 1 ? ' page' : ' pages') + '</div>'
+    + (list.length ? list.slice(0, jr.shown).map(jRow).join('') : '<div class="empty">No pages here.</div>')
+    + (list.length > jr.shown ? '<button class="btn ghost" id="j_more" style="width:100%;margin-top:8px">Show more (' + (list.length - jr.shown) + ' left)</button>' : '');
+  $('list').innerHTML = h;
+  wireJournal();
+}
+function jBuildChat() {
+  const q = 'Journal: rebuild the changed pages. Read the n8n data table SC Journal Pages (rows with changed = yes), rebuild each of those pages in Canva from the master "Journal Day page MASTER V5 (Lulu and Amazon margins)" by autofill, put them into the journal in page order, then clear changed on those rows and update the SC - Journal Playbook. Follow the Journal Playbook.';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+function wireJournal() {
+  const L = $('list');
+  L.querySelectorAll('[data-jst]').forEach(b => b.onclick = () => { jr.st = b.dataset.jst; jr.shown = 40; jr.open = null; renderJournal(); });
+  const t = $('j_type'); if (t) t.onchange = () => { jr.type = t.value; jr.shown = 40; renderJournal(); };
+  const c = $('j_ch'); if (c) c.onchange = () => { jr.ch = c.value; jr.shown = 40; renderJournal(); };
+  const q = $('j_q'); if (q) { q.oninput = () => { clearTimeout(q.t); q.t = setTimeout(() => { jr.q = q.value; jr.shown = 40; renderJournal(); const n = $('j_q'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 350); }; }
+  const m = $('j_more'); if (m) m.onclick = () => { jr.shown += 60; renderJournal(); };
+  L.querySelectorAll('.jhead').forEach(hd => hd.onclick = () => { const p = Number(hd.parentNode.dataset.jp); jr.open = jr.open === p ? null : p; renderJournal(); });
+  L.querySelectorAll('[data-jf]').forEach(i => i.oninput = () => { const k = i.closest('.jrow').querySelector('[data-jc="' + i.dataset.jf + '"]'); if (k) k.textContent = i.value.length + '/' + i.maxLength; });
+  L.querySelectorAll('[data-ja]').forEach(b => b.onclick = async () => {
+    const row = b.closest('.jrow'), page = Number(row.dataset.jp), body = { action: 'save', page: page };
+    row.querySelectorAll('[data-jf]').forEach(i => { body[i.dataset.jf] = i.value; });
+    if (b.dataset.ja === 'approve') body.status = 'Approved';
+    if (b.dataset.ja === 'unapprove') body.status = 'Ready';
+    b.disabled = true; b.textContent = 'Saving…';
+    try { await jApi(body); toast(b.dataset.ja === 'approve' ? 'Approved' : 'Saved'); await loadJournal(); }
+    catch (e) { toast('Could not save: ' + e.message); renderJournal(); }
+  });
+  const pv = $('j_prev'); if (pv) pv.onclick = async () => {
+    jr.find = $('j_find').value; jr.rep = $('j_rep').value;
+    if (jr.find.trim().length < 2) { toast('Type at least two letters to find'); return; }
+    pv.disabled = true; pv.textContent = 'Checking…';
+    try { jr.prev = await jApi({ action: 'replace', find: jr.find, replace: jr.rep, dry: true }); } catch (e) { toast('Could not check: ' + e.message); }
+    renderJournal();
+  };
+  const go = $('j_go'); if (go) go.onclick = async () => {
+    go.disabled = true; go.textContent = 'Changing…';
+    try { const d = await jApi({ action: 'replace', find: jr.find, replace: jr.rep }); toast((d.updated || 0) + ' pages changed'); jr.prev = null; jr.find = ''; jr.rep = ''; await loadJournal(); }
+    catch (e) { toast('Could not change: ' + e.message); renderJournal(); }
+  };
+  const cn = $('j_cancel'); if (cn) cn.onclick = () => { jr.prev = null; renderJournal(); };
+}
 const PRE_URL = BASE + 'sc-preorder-api';
 const pre = { loaded: false, loading: false, items: [], found: null, q: '', busy: '' };
 async function preApi(body) {
