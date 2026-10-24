@@ -101,6 +101,24 @@
   .typechip.BUILD { color: var(--c-idea); border-color: var(--c-idea); } .typechip.RUN { color: var(--c-claude); border-color: var(--c-claude); } .typechip.ALERT { color: #c62828; border-color: #c62828; }
   .card.alert { border-left: 6px solid #c62828; background: #fdecea; }
   .card.alert .title { color: #8e1b1b; }
+  /* Alerts tab (23 Oct 2026, Andy): summary tiles on top, one colour-coded line per alert, mobile first, buttons to pay / open / ask Claude / done */
+  .astrip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  @media (min-width: 641px) { .astrip { grid-template-columns: repeat(6, 1fr); } }
+  .atile { border: 1px solid var(--line); border-top: 4px solid var(--ac); background: #fff; padding: 8px 10px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); }
+  .atile .n { font-size: 22px; font-weight: 800; color: var(--ac); line-height: 1.1; } .atile .l { font-size: 12px; color: var(--grey); }
+  .atile.on { background: var(--ac); border-color: var(--ac); } .atile.on .n, .atile.on .l { color: #fff; }
+  .atile.zero { opacity: .55; }
+  .arow { background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--ac); margin-bottom: 6px; }
+  .arow.red { background: #fdecea; }
+  .arow .ahead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; }
+  .arow .at { flex: 1; min-width: 0; font-weight: 600; font-size: 15px; line-height: 1.3; }
+  .arow .ag { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ac); white-space: nowrap; }
+  .arow .am { font-size: 12px; color: var(--grey); white-space: nowrap; }
+  .arow .abtns { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 12px 10px; }
+  .arow .abtns .btn { min-height: 40px; flex: 1 1 auto; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+  .arow .adet { display: none; padding: 0 12px 12px; font-size: 14px; color: #444; } .arow.open .adet { display: block; }
+  .arow .adet b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--grey); margin-top: 8px; }
+  .arow .adet .acts2 { display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
   .tab.alerttab, .tab.alerttab.on { background: #c62828; color: #fff; border-color: #c62828; font-weight: 700; }
   .steps .card { margin-left: 0; }
   .addbar { margin-bottom: 14px; } #addform { display:flex; gap:8px; }
@@ -468,6 +486,81 @@ function card(r, showMission) {
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
 
+// Alerts tab (23 Oct 2026, Andy): colour-coded groups, a summary strip, one compact line per alert.
+// The colour is stored on the row as severity (red / amber) by SC - Raise Alert; older rows fall back to the alert key.
+const AGROUPS = [
+  ['red', 'Act now', '#c62828'],
+  ['money', 'Money', '#e49b0f'],
+  ['work', 'Workflows', '#8e1b1b'],
+  ['tools', 'Tools & usage', '#e07b00'],
+  ['email', 'Email issues', '#5b6270'],
+  ['mention', 'Mentions', '#2e9e5b']
+];
+const AG = {}; AGROUPS.forEach(g => AG[g[0]] = { label: g[1], colour: g[2] });
+let afilter = '';
+const isPayLink = (u) => !!u && !/mail\.google\.com|n8n-production|railway\.app\/workflow/.test(u);
+function aGroup(r) {
+  const k = String(r.alert_key || ''), t = String(r.title || '');
+  if (/^(fail|off):/.test(k)) return 'work';
+  if (/^(usage|cost|spend)/.test(k)) return 'tools';
+  if (/^renewal/.test(k) || /^Renewal coming/i.test(t)) return 'money';
+  if (/talked about/i.test(t)) return 'mention';
+  if (/^inbox:/.test(k)) return (isPayLink(safeUrl(r.link)) || /payment|credit|balance|renew|invoice|billing|plan|outgrown|funds/i.test(t)) ? 'money' : 'email';
+  return 'tools';
+}
+function aRed(r) {
+  if (r.severity) return String(r.severity).toLowerCase() === 'red';
+  const k = String(r.alert_key || ''), t = String(r.title || '');
+  return /^(usage|usage-unreadable|off|fail)/.test(k) || /^RED ALERT/i.test(t)
+    || (/^inbox:/.test(k) && /failed|unsuccessful|suspended|paused|breach|security|critically|exceeded|outgrown|can't continue|cannot/i.test(t));
+}
+function ago(iso) {
+  const ms = Date.now() - new Date(iso || 0).getTime(); if (!iso || isNaN(ms)) return '';
+  const h = Math.floor(ms / 3600000); if (h < 1) return 'just now'; if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24); return d === 1 ? 'yesterday' : d + ' days ago';
+}
+function openAlerts() { return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r)); }
+function alertStrip(list) {
+  const counts = { red: list.filter(aRed).length };
+  AGROUPS.slice(1).forEach(g => counts[g[0]] = list.filter(r => aGroup(r) === g[0]).length);
+  return '<div class="astrip">' + AGROUPS.map(g => '<button class="atile' + (afilter === g[0] ? ' on' : '') + (counts[g[0]] ? '' : ' zero') + '" style="--ac:' + g[2] + '" data-ag="' + g[0] + '"><div class="n">' + counts[g[0]] + '</div><div class="l">' + esc(g[1]) + '</div></button>').join('') + '</div>';
+}
+function alertRow(r) {
+  const g = aGroup(r), red = aRed(r), colour = red ? AG.red.colour : AG[g].colour;
+  const link = safeUrl(r.link), pay = isPayLink(link);
+  const p = parseNotes(r.notes);
+  const problem = p ? p.problem : String(r.notes || '');
+  return '<div class="arow' + (red ? ' red' : '') + '" style="--ac:' + colour + '" data-id="' + esc(r.id) + '">'
+    + '<div class="ahead" data-act="toggle"><span class="ag">' + esc(red ? 'Red' : AG[g].label) + '</span><div class="at">' + esc(r.title) + '</div><span class="am">' + (Number(r.alert_count) > 1 ? esc(r.alert_count) + '× · ' : '') + esc(ago(r.last_seen || r.createdAt)) + '</span></div>'
+    + '<div class="abtns">'
+    + (link ? '<a class="btn small' + (pay ? ' warn' : ' ghost') + '" target="_blank" rel="noopener" href="' + esc(link) + '">' + (pay ? 'Top up / pay' : /mail\.google\.com/.test(link) ? 'Open email' : 'Open') + '</a>' : '')
+    + (safeUrl(r.chat_link) ? '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(safeUrl(r.chat_link)) + '">Open chat</a>' : '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">Ask Claude</a>')
+    + '<button class="btn small done" data-act="done">Done</button>'
+    + '</div>'
+    + '<div class="adet">' + (problem ? '<b>Problem</b>' + esc(problem) : '') + (p && p.solution ? '<b>Proposed solution</b>' + esc(p.solution) : '') + (r.next_step ? '<b>Next step</b>' + esc(r.next_step) : '') + (p && p.notes ? '<b>Notes</b>' + esc(p.notes) : '') + (r.waiting_on ? '<b>Waiting on</b>' + esc(r.waiting_on) : '')
+    + '<div class="acts2"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select><button class="btn small ghost" data-act="edit">Edit</button><span class="am">#' + esc(r.id) + '</span></div></div>'
+    + '</div>';
+}
+function alertsHtml(redOnly) {
+  let list = openAlerts();
+  const strip = alertStrip(list);
+  if (redOnly) list = list.filter(aRed);
+  else if (afilter === 'red') list = list.filter(aRed);
+  else if (afilter) list = list.filter(r => aGroup(r) === afilter);
+  list.sort((a, b) => (aRed(b) ? 1 : 0) - (aRed(a) ? 1 : 0) || String(b.last_seen || '').localeCompare(String(a.last_seen || '')));
+  return strip + (list.map(alertRow).join('') || '<div class="empty">' + (redOnly ? 'Nothing red.' : 'No open alerts.') + '</div>');
+}
+function wireAlerts() {
+  $('list').querySelectorAll('.atile').forEach(b => b.onclick = () => { afilter = afilter === b.dataset.ag ? '' : b.dataset.ag; render(); });
+  $('list').querySelectorAll('.arow').forEach(c => {
+    const r = rows.find(x => String(x.id) === c.dataset.id);
+    c.querySelector('[data-act=toggle]').onclick = () => c.classList.toggle('open');
+    c.querySelector('[data-act=done]').onclick = () => save(Object.assign({}, r, { status: 'Done', done_on: today(), next_step: 'none' }));
+    c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
+    c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
+  });
+}
+
 function missionCard(m) {
   const ks = kids(m);
   const done = ks.filter(r => r.status === 'Done').length;
@@ -516,18 +609,19 @@ function render() {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
     html = list.map(r => card(r, true)).join('');
   } else if (view === 'Alerts') {
-    html = rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r)).sort((a, b) => String(b.last_seen || '').localeCompare(String(a.last_seen || ''))).map(r => card(r, false)).join('') || '<div class="empty">No open alerts.</div>';
+    html = alertsHtml(false);
   } else {
     const ms = missions().filter(missionShown).sort((a, b) => {
       const ra = nextAction(a), rb = nextAction(b);
       return (ra ? rank[ra.status] : 9) - (rb ? rank[rb.status] : 9);
     });
-    html = (view === 'Now' ? rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r)).map(r => card(r, false)).join('') : '') + ms.map(missionCard).join('');
+    html = (view === 'Now' ? alertsHtml(true) : '') + ms.map(missionCard).join('');
     if (view === 'Now') html += loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).map(r => card(r, true)).join('');
   }
   if (view === 'Influencers') html = trackerHtml() + html;
   $('list').innerHTML = html || '<div class="empty">Nothing here.</div>';
   if (view === 'Influencers') wireTracker();
+  if (view === 'Alerts' || view === 'Now') wireAlerts();
   $('list').querySelectorAll('.card').forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id);
     c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
