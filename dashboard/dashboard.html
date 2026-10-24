@@ -249,6 +249,11 @@
     padding: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink);
   }
   .field textarea { min-height: 70px; resize: vertical; }
+  /* 23 Oct 2026 (Andy): date and time boxes are narrow, and open their picker wherever they are clicked */
+  .field input[type="date"], .field input[type="time"] { width: 11em; max-width: 100%; cursor: pointer; }
+  .clip-line { font-family: var(--mono); font-size: 11px; color: #565a44; margin-top: 4px; }
+  .from-box { border: 1px solid var(--line); background: #f7f7f2; padding: 8px 10px; font-size: 13px; line-height: 1.5; }
+  .from-box b { font-family: var(--mono); font-size: 11px; letter-spacing: 0.4px; color: #565a44; }
   .drawer-actions { display: flex; gap: 8px; margin-top: 18px; }
   .btn { font-family: var(--mono); font-size: 12px; padding: 8px 14px; border: 1px solid var(--olive); background: var(--olive); color: #fff; cursor: pointer; }
   .btn.secondary { background: #fff; color: var(--olive-dark); }
@@ -474,6 +479,7 @@ const DELETE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calend
 const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-concept-creator';
 const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
 const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
+const IDEAS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-ideas-list';   // 23 Oct 2026: approved Ideas-tab lines for the Recreate panel (SC - Ideas List Feed)
 const BOX_LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-product-box';
 const BOX_SAVE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-product-box-save';
 const PRODUCTBOX_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-productbox';
@@ -750,6 +756,42 @@ function render() {
   }
 }
 
+// 23 Oct 2026 (Andy): the clip a post uses is named wherever it is shown. Brand Lore: Roll Call portraits, Roll Call comic pages, Movie Poster,
+// or an action clip named by its on-screen line.
+function clipName(r) {
+  const n = String(r.notes || '');
+  if (/Clip:\s*posterwall/i.test(n)) return 'Movie Poster';
+  if (isRollCall(n)) return /RollVO:[^|]*\s\/\s/i.test(n) ? 'Roll Call portraits' : 'Roll Call comic pages';
+  const os = extractOnScreen(n);
+  if (!os.hasText) return 'Action clip';
+  return 'Action clip "' + ((os.isSplit ? os.setupText + ' ' : '') + os.deliveryText).replace(/\*/g, '').toUpperCase() + '"';
+}
+function fromBox(r) {
+  const n = String(r.notes || '');
+  const sheet = 'https://docs.google.com/spreadsheets/d/1h5EmblzL6kWV4WcG-T8B-b-utsNNYSgb55O0fFTWQ60/edit';
+  let id = briefPart(n, 'Source') || '';
+  id = id.split(/\s+(?:Roll:|Era:|Bed:|Payoff:|RollVO:|Location:)/i)[0].trim().replace(/[.]+$/, '');
+  const nft = id.match(/^NFT:([a-z0-9-]+)/i);
+  const shop = id.match(/^SHOP:([a-z0-9-]+)/i) || n.match(/products\/([a-z0-9-]+)/i);
+  const rows = [];
+  if (nft) rows.push('<b>FROM</b> Shop NFT: <a href="https://stiffcompetition.shop/products/' + nft[1] + '" target="_blank">' + escapeHtml(nft[1]) + '</a>');
+  else if (/^IDEA:/i.test(id)) rows.push('<b>FROM</b> A line of the <a href="' + sheet + '" target="_blank">Ideas tab</a> (' + escapeHtml(id) + ')');
+  else if (shop) rows.push('<b>FROM</b> Shop product: <a href="https://stiffcompetition.shop/products/' + shop[1] + '" target="_blank">' + escapeHtml(shop[1]) + '</a>');
+  else if (/Promo:/i.test(n)) rows.push('<b>FROM</b> Promotable item: ' + escapeHtml((n.match(/Promo:\s*([^.|]+)/i) || [, ''])[1].trim()));
+  else if (id) rows.push('<b>FROM</b> ' + escapeHtml(id) + ' &middot; <a href="' + sheet + '" target="_blank">Content spreadsheet</a>');
+  else if (r.format === 'NFT' && n) rows.push('<b>FROM</b> ' + escapeHtml(n));
+  else rows.push('<b>FROM</b> Not made yet - the brief is still being written.');
+  let clip = '';
+  if (r.format === 'Dare to Buy') clip = 'Three slides and an X image made from the product photo.';
+  else if (r.format === 'NFT') clip = 'The character\'s NFT template clip, with the shop NFT and its ticker.';
+  else if (r.format === 'Brand Lore') clip = clipName(r);
+  else if (isRollCall(n)) clip = clipName(r);
+  else if (r.format === 'Product' && /Reuse:\s*yes/i.test(n)) clip = 'The product\'s saved, approved clip with fresh captions.';
+  else if (r.format === 'Product') clip = 'Made-to-order clip: the product box set-up at the Shop Hotline.';
+  else if (r.video_url || n) clip = 'Made-to-order clip: a new start image (Gemini) animated by Kling.';
+  if (clip) rows.push('<b>CLIP</b> ' + (r.format === 'Brand Lore' || isRollCall(n) ? '<strong>' + escapeHtml(clip) + '</strong>' : escapeHtml(clip)));
+  return '<div class="field"><label>Where this came from</label><div class="from-box">' + rows.join('<br>') + '</div></div>';
+}
 function makeCard(r) {
   const card = document.createElement('div');
   card.className = 'card' + (r.character === 'SC Logo' ? ' sunday' : '') + (needsYou(r) ? ' needs' : '');
@@ -766,6 +808,7 @@ function makeCard(r) {
     charTag(r.character, r) +
     '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + r.format + '</div>' +
     osLine +
+    (r.format === 'Brand Lore' ? '<div class="clip-line">Clip: ' + escapeHtml(clipName(r)) + '</div>' : '') +
     '<span class="badge" style="border-color:' + st.color + ';color:' + st.color + ';margin-top:6px">' + escapeHtml(st.label) + '</span>';
   card.addEventListener('click', () => openDrawer(r));
   return card;
@@ -1067,22 +1110,22 @@ function escapeHtml(s) {
 function openDrawer(r) {
   const drawer = document.getElementById('drawer');
   drawer.classList.add('full');
-  const canPost = hasMedia(r) && ['approved', 'scheduled'].indexOf(r.status) !== -1;
+  const canPost = hasMedia(r);   // 23 Oct 2026 (Andy): Post Now is offered on any post with a clip or slides; a post that is not approved gets a warning, never a block
   drawer.innerHTML =
     '<div class="brief-topbar"><button class="btn secondary" id="backBtn">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">' + escapeHtml(stateName(r)) + '</span><button class="btn secondary" id="closeTopBtn">Close &times;</button></div>' +
     '<h2>' + escapeHtml(dayName(r)) + '</h2>' +
     '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + escapeHtml(charLabel(r.character, r)) + ' · ' + r.format + ' · <span class="postno">post #' + r.id + '</span></div>' +
+    fromBox(r) +
     (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' :
     // NFT posts are built whole by SC - NFT Post Builder (character template + NFT + ticker): no brief boxes to edit.
     r.format === 'NFT' ? panelBox(r) + (r.notes ? '<div class="field"><label>NFT (from the shop)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
     // Roll Call (Playbook 7.12): a locked master clip; the announcer voice-over is the only part made per post.
-    isRollCall(r.notes) ? panelBox(r) + sourceBox(r.notes) +
-      '<div class="field"><label>Video</label><div class="clip-info">' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie poster clip: the six-character poster wall.' : /RollVO:[^|]*\s\/\s/i.test(r.notes || '') ? 'Roll Call portrait clip: the six animated portraits with name tags (crew introduction).' : 'Roll Call comic-page clip: comic pages turning, the six characters in colour.') + ' Fixed clip, ends on the logo.</div></div>' +
+    isRollCall(r.notes) ? panelBox(r) +
+      '<div class="field"><label>Video</label><div class="clip-info"><b>' + escapeHtml(clipName(r)) + '</b> - ' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie poster clip: the six-character poster wall.' : /RollVO:[^|]*\s\/\s/i.test(r.notes || '') ? 'Roll Call portrait clip: the six animated portraits with name tags (crew introduction).' : 'Roll Call comic-page clip: comic pages turning, the six characters in colour.') + ' Fixed clip, ends on the logo.</div></div>' +
       rollVoEdit(r.notes) : (
     conceptPicker(r) +
     panelBox(r) +
-    sourceBox(r.notes) +
-    (r.format === 'Brand Lore' ? '<div class="field"><label>Clip</label><div class="clip-info">' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie poster clip: the six-character poster wall.' : 'Made-to-order clip: a new start image (Gemini) animated by the motion below (Kling). Not a fixed clip.') + '</div></div>' : '') +
+    (r.format === 'Brand Lore' ? '<div class="field"><label>Clip</label><div class="clip-info"><b>' + escapeHtml(clipName(r)) + '</b> - ' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie poster clip: the six-character poster wall.' : 'Made-to-order clip: a new start image (Gemini) animated by the motion below (Kling). Not a fixed clip.') + '</div></div>' : '') +
     '<div class="field"><label>On-Screen Text (what actually renders in the video)</label></div>' +
     onScreenPreviewHtml(r.notes) +
     previewTextButtonHtml(r) +
@@ -1133,7 +1176,7 @@ function openDrawer(r) {
     const st = document.getElementById('saveStatus'); st.textContent = 'Making the slides again (about a minute)...';
     try { const res = await fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-dare-to-buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ row_id: r.id }) }); if (!res.ok) throw new Error('HTTP ' + res.status); st.textContent = 'Done - reloading.'; setTimeout(() => location.reload(), 800); } catch (e) { st.textContent = 'Failed: ' + e.message; }
   });
-  const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r.id));
+  const pn = document.getElementById('postNowBtn'); if (pn) pn.addEventListener('click', () => postNow(r));
   const fb = document.getElementById('fbOnlyBtn'); if (fb) fb.addEventListener('click', () => postFacebookOnly(r.id));
   const rs = document.getElementById('reschedBtn'); if (rs) rs.addEventListener('click', () => openReschedule(r));
   document.getElementById('rejectBtn').addEventListener('click', () => rejectRow(r));
@@ -1273,18 +1316,33 @@ async function postFacebookOnly(id) {
   } catch (e) { statusEl.textContent = 'Failed: ' + e.message; }
 }
 
-async function postNow(id) {
+async function postNow(r) {
   const statusEl = document.getElementById('saveStatus');
-  if (!confirm('Post this now to all platforms immediately?')) return;
+  // 23 Oct 2026 (Andy): "I post what I want when I want" - anything that looks wrong is a warning with Do it anyway, never a block.
+  // The publish step only takes approved posts, so a post that is not approved is marked approved at the moment Andy confirms.
+  const warns = [];
+  const needsApproval = ['approved', 'scheduled'].indexOf(r.status) === -1 || r.panel_status === 'rejected';
+  if (r.status === 'posted') warns.push('This post has already been posted.');
+  else if (['approved', 'scheduled'].indexOf(r.status) === -1) warns.push('This post is not approved yet (it is "' + (r.status || 'draft') + '").');
+  if (r.panel_status === 'rejected') warns.push('This post was rejected.');
+  if (!confirm((warns.length ? warns.join('\n') + '\n\nDo it anyway? Posting marks it approved first.\n\n' : '') + 'Post this now to all platforms immediately?')) return;
   statusEl.textContent = 'Posting...';
   try {
+    if (needsApproval) {
+      const body = { id: r.id, status: 'approved' };
+      if (r.panel_status === 'rejected') body.panel_status = 'ready';
+      const up = await fetch(UPDATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!up.ok) throw new Error('could not mark it approved (HTTP ' + up.status + ')');
+      r.status = 'approved'; if (body.panel_status) r.panel_status = body.panel_status;
+    }
     const res = await fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-post-now', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rowId: id })
+      body: JSON.stringify({ rowId: r.id })
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     statusEl.textContent = 'Posted.';
+    setTimeout(() => { try { loadRows(); } catch (e) {} }, 2500);
   } catch (e) {
     statusEl.textContent = 'Failed: ' + e.message;
   }
@@ -1325,22 +1383,146 @@ async function remakeRow(r) {
 }
 
 async function rejectRow(r) {
-  const reason = prompt('Reason for rejecting this post?');
-  if (reason === null) return;
+  // 23 Oct 2026 (Andy): rejecting no longer asks for a comment (it did nothing). The post is rejected and the Recreate panel opens.
   const statusEl = document.getElementById('saveStatus');
   statusEl.textContent = 'Rejecting...';
   try {
     const res = await fetch(UPDATE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: r.id, panel_status: 'rejected', panel_notes: reason })
+      body: JSON.stringify({ id: r.id, panel_status: 'rejected', panel_notes: 'Rejected' })
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     statusEl.textContent = 'Rejected.';
-    r.panel_status = 'rejected'; r.panel_notes = reason;
+    r.panel_status = 'rejected'; r.panel_notes = 'Rejected';
     render();
-    setTimeout(closeDrawer, 500);
+    openRecreate(r);
   } catch (e) { statusEl.textContent = 'Failed to reject: ' + e.message; }
+}
+
+// Recreate (23 Oct 2026, Andy): after a reject, the same slot can be made again with chosen inputs: character, product or promotable item
+// (product posts), a specific approved line of the Ideas tab (Wisdom, Character Lore, Brand Lore, Day Greeting) and a new date and time.
+// The cost is quoted and nothing is made until Andy says yes.
+let IDEAS_LIST = null;
+async function loadIdeas() {
+  if (IDEAS_LIST) return IDEAS_LIST;
+  try { const res = await fetch(IDEAS_URL, { cache: 'no-store' }); const j = await res.json(); IDEAS_LIST = j.ideas || []; } catch (e) { IDEAS_LIST = []; }
+  return IDEAS_LIST;
+}
+function postProductHandle(r) {
+  const notes = String(r.notes || ''), pnotes = String(r.panel_notes || '');
+  return ((notes.match(/products\/([a-z0-9-]+)/i) || notes.match(/Source:\s*SHOP:([a-z0-9-]+)/i) || pnotes.match(/Item:\s*([a-z0-9-]+)\s*(?:\||$)/i) || [])[1] || '');
+}
+function recreateCost(r) {
+  const poster = /Clip:\s*posterwall/i.test(String(r.notes || ''));
+  return poster ? (r.format === 'Brand Lore' ? '$0.13' : '$0.08') : (REMAKE_COST[r.format] || 'a few cents');
+}
+async function openRecreate(r) {
+  const box = document.getElementById('saveStatus');
+  const f = r.format;
+  const prodPost = f === 'Product' || f === 'Dare to Buy';
+  const lineFormat = ['Wisdom', 'Character Lore', 'Brand Lore', 'Day Greeting'].indexOf(f) !== -1;
+  const charFormat = ['Wisdom', 'Character Lore', 'Travel the World', 'Product', 'Dare to Buy', 'NFT'].indexOf(f) !== -1;
+  const curDate = londonYmd(r.post_date);
+  const poster = /Clip:\s*posterwall/i.test(String(r.notes || ''));
+  box.innerHTML = '<div class="panel-box" style="margin-top:10px"><div style="font-weight:700">Recreate this post</div><div class="loading">Loading...</div></div>';
+  if (prodPost) await loadProducts();
+  const ideas = lineFormat ? await loadIdeas() : [];
+  const curHandle = prodPost ? postProductHandle(r) : '';
+  const dowOf = d => new Date(d + 'T12:00:00Z').getUTCDay();
+  box.innerHTML = '<div class="panel-box" style="margin-top:10px">' +
+    '<div style="font-weight:700;margin-bottom:6px">Recreate this post</div>' +
+    '<div class="lib-note" style="margin-bottom:8px">Rejected. Choose what the new post should use; anything left on its default keeps the post as it was. Nothing is made until you say yes to the cost.</div>' +
+    (f === 'Day Greeting' ? '<div class="lib-note" style="margin-bottom:8px">The character is the day\'s character for the date chosen.</div>' : '') +
+    (charFormat ? '<div class="field"><label>Character</label><select id="rcChar">' + charOptions(r.character === 'SC Logo' ? '' : r.character, (prodPost || f === 'Wisdom' || f === 'Character Lore') ? '' : DAY_CHAR[dowOf(curDate)]) + '</select></div>' : '') +
+    (prodPost ? '<div class="field"><label>Product' + (f === 'Product' ? ' or promotable item' : '') + '</label><select id="rcProduct">' + productOptions(curHandle, f === 'Dare to Buy').replace('No product post', 'Keep the same product') + '</select></div>' : '') +
+    (lineFormat ? '<div class="field"><label>Line from the Ideas tab</label><select id="rcLine"></select></div>' : '') +
+    '<div style="display:flex;gap:12px;flex-wrap:wrap"><div class="field"><label>Date (London)</label><input type="date" id="rcDate" value="' + curDate + '"></div>' +
+    '<div class="field"><label>Time (London, 24h) - blank keeps the usual slot</label><input type="time" id="rcTime" step="900" value="' + escapeHtml(r.post_time || '') + '"></div></div>' +
+    '<button class="btn" id="rcGo">Recreate</button> <button class="btn secondary" id="rcNo">Not now</button> <span id="rcMsg"></span></div>';
+  const fillLines = () => {
+    const sel = document.getElementById('rcLine'); if (!sel) return;
+    const date = document.getElementById('rcDate').value;
+    const dow = /^\d{4}-\d{2}-\d{2}$/.test(date) ? dowOf(date) : dowOf(curDate);
+    const ch = document.getElementById('rcChar') ? document.getElementById('rcChar').value : '';
+    const keep = sel.value;
+    const list = ideas.filter(i => String(i.category).toLowerCase() === f.toLowerCase()
+      && (f !== 'Brand Lore' || ((String(i.scene).toLowerCase() === 'poster wall') === poster))
+      && (f !== 'Character Lore' || !poster || String(i.scene).toLowerCase() === 'poster wall')
+      && (f !== 'Day Greeting' || (/standing tall sunday/i.test(i.text) === (dow === 0) && (dow === 0 || i.character === DAY_CHAR[dow])))
+      && (!ch || i.character === ch));
+    sel.innerHTML = '<option value="">Next one in rotation</option>' + list.map(i => '<option value="' + escapeHtml(i.key) + '"' + (i.key === keep ? ' selected' : '') + '>' + escapeHtml((i.character && i.character !== 'All' ? i.character + ' - ' : '') + String(i.text).replace(/\s+/g, ' ').slice(0, 90)) + '</option>').join('');
+  };
+  fillLines();
+  ['rcDate', 'rcChar'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', fillLines); });
+  document.getElementById('rcNo').addEventListener('click', closeDrawer);
+  document.getElementById('rcGo').addEventListener('click', () => submitRecreate(r, { prodPost, lineFormat, charFormat, poster, curHandle }));
+}
+async function submitRecreate(r, ctx) {
+  const msg = document.getElementById('rcMsg');
+  const f = r.format;
+  const date = document.getElementById('rcDate').value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = 'Pick a date.'; return; }
+  const dow = new Date(date + 'T12:00:00Z').getUTCDay();
+  const time = (document.getElementById('rcTime').value || '').trim() || (f === 'Dare to Buy' ? (r.post_time || '19:00') : (f === 'NFT' ? (r.post_time || '') : ''));
+  const charEl = document.getElementById('rcChar');
+  let character = charEl ? charEl.value : '';
+  const prodEl = document.getElementById('rcProduct');
+  const prodVal = prodEl ? prodEl.value : '';
+  const lineEl = document.getElementById('rcLine');
+  const sourceId = lineEl ? lineEl.value : '';
+  const slot = time ? 'custom' : (f === 'Product' ? '12pm' : (f === 'Day Greeting' ? '6am' : '7am'));
+  const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : ((dow === 0 || dow === 6) ? '09:00' : '07:00')))) + ':00Z');
+  const warns = [];
+  if (due.getTime() < Date.now() - 60 * 60000) warns.push('That time has already passed.');
+  const clash = f === 'Dare to Buy' ? null : ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && x.panel_status !== 'rejected' && (slotOfFormat(x.format) === slotOfFormat(f) || (time && x.post_time === time)));
+  if (clash) warns.push('That slot already has a post (' + clash.character + ', ' + clash.format + ').');
+  const cost = recreateCost(r);
+  if (!confirm((warns.length ? warns.join('\n') + '\n\n' : '') + 'Recreate this post? About ' + cost + '. It makes a new brief, image and clip for your approval.' + (warns.length ? '\n\nDo it anyway?' : ''))) { msg.textContent = 'Not recreated. Nothing was spent.'; return; }
+  const DAY_TITLE = { 1: 'Major Wood Monday', 2: "Hammerin' Tuesday", 3: 'White-Knuckle Wednesday', 4: 'Thrusting Thursday', 5: 'Full-Friction Friday', 6: 'Sailor Saturday', 0: 'Standing Tall Sunday' };
+  const post_date = date + (slot === '6am' ? 'T06:00:00.000Z' : (slot === '7am' ? 'T07:00:00.000Z' : 'T12:00:00.000Z'));
+  const statusEl = document.getElementById('saveStatus');
+  msg.textContent = 'Recreating...';
+  try {
+    if (ctx.lineFormat) {
+      // Wisdom, Character Lore, Brand Lore and Day Greeting go straight to the concept maker, which can take one chosen line of the Ideas tab.
+      if (f === 'Day Greeting') character = DAY_CHAR[dow];
+      else if (!character && f !== 'Brand Lore') character = r.character;
+      const body = { id: r.id, post_date: post_date, post_time: time || null, format: f, status: 'draft', notes: ctx.poster ? 'Clip: posterwall.' : '', text_content: '',
+        image_url: null, video_url: null, panel_status: 'creating', panel_notes: 'Recreate', caption_instagram: null, caption_x: null, caption_facebook: null };
+      if (character && f !== 'Brand Lore') body.character = character;
+      if (f === 'Day Greeting') body.day_of_week = DAY_TITLE[dow];
+      const rj = await fetch(UPDATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!rj.ok) throw new Error('HTTP ' + rj.status);
+      const cbody = { row_id: r.id }; if (sourceId) cbody.source_id = sourceId;
+      fetch(CONCEPT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cbody) }).catch(() => {});
+    } else {
+      // Product, Dare to Buy, NFT and Travel the World go through the planner, which remakes the rejected post in place at its (new) date and time.
+      const mv = { id: r.id, post_date: post_date, post_time: time || null, panel_status: 'rejected', panel_notes: 'Recreate requested' };
+      const rj = await fetch(UPDATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mv) });
+      if (!rj.ok) throw new Error('HTTP ' + rj.status);
+      const item = { date: date, format: f, character: character || (r.character === 'SC Logo' ? '' : r.character) || '' };
+      if (time) item.time = time;
+      if (f === 'Product' || f === 'Dare to Buy') {
+        const notes = String(r.notes || ''), pnotes = String(r.panel_notes || '');
+        let handle = prodVal || ctx.curHandle, promo = '';
+        if (handle.indexOf('promo:') === 0) { promo = handle.slice(6); handle = ''; }
+        else if (!handle) promo = ((notes.match(/Promo:\s*([^.|]+)/i) || (/Source:\s*PROMO:/i.test(notes) ? pnotes.match(/Item:\s*([^|]+)/i) : null) || [])[1] || '').trim();
+        if (handle) { await loadProducts(); const p = (PRODUCTS || []).find(x => x.handle === handle) || {}; item.product_handle = handle; item.product_title = p.title || ''; }
+        else if (promo && f === 'Product') item.promo_item = promo;
+        else throw new Error('could not find this post\'s product; pick one above');
+      }
+      const res = await fetch(PLAN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: [item] }) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      let out = null; try { out = await res.json(); } catch (e2) { out = null; }
+      const sk = out && (out.skipped || (Array.isArray(out) && out[0] && out[0].skipped));
+      if (sk && sk.length) throw new Error(sk.map(x => (x && x.why) || x).join('; '));
+    }
+    msg.textContent = '';
+    statusEl.textContent = 'Recreating: the new brief takes about a minute; the calendar refreshes itself.';
+    startAutoRefresh();
+    setTimeout(() => { closeDrawer(); loadRows(); }, 1500);
+  } catch (e) { msg.textContent = 'Recreate failed: ' + e.message; }
 }
 
 async function deleteRow(r) {
@@ -1783,13 +1965,15 @@ function openReschedule(r) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = 'Pick a date.'; return; }
     const dow = new Date(date + 'T12:00:00Z').getUTCDay();
     if (!anyDay && dow !== new Date(curDate + 'T12:00:00Z').getUTCDay()) { msg.textContent = 'This post belongs to ' + dowName + '; pick another ' + dowName + '.'; return; }
-    if (anyDay && r.format !== 'Day Greeting' && r.format !== 'Product' && r.format !== 'Dare to Buy' && r.character === DAY_CHAR[dow]) { msg.textContent = r.character + ' is that day\'s character; only the Day Greeting uses him. Pick another day.'; return; }
+    const warns = [];   // 23 Oct 2026 (Andy): every check below is a warning with Do it anyway, never a refusal
+    if (anyDay && r.format !== 'Day Greeting' && r.format !== 'Product' && r.format !== 'Dare to Buy' && r.character === DAY_CHAR[dow]) warns.push(r.character + ' is that day\'s character; only the Day Greeting normally uses him.');
     const slot = time ? 'custom' : (r.format === 'Product' ? '12pm' : (r.format === 'Day Greeting' ? '6am' : '7am'));
     const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : ((dow === 0 || dow === 6) ? '09:00' : '07:00')))) + ':00Z');
-    if (due.getTime() < Date.now() - 60 * 60000) { msg.textContent = 'That time has already passed.'; return; }
+    if (due.getTime() < Date.now() - 60 * 60000) warns.push('That time has already passed.');
     // The day must not already hold a post of the same slot type (any time), nor any post at the exact custom time.
     const clash = r.format === 'Dare to Buy' ? null : ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && (slotOfFormat(x.format) === slotOfFormat(r.format) || (time && x.post_time === time)));
-    if (clash) { msg.textContent = 'That slot already has a post (' + clash.character + ', ' + clash.format + '). Pick another time.'; return; }
+    if (clash) warns.push('That slot already has a post (' + clash.character + ', ' + clash.format + ').');
+    if (warns.length && !confirm(warns.join('\n') + '\n\nDo it anyway?')) { msg.textContent = 'Not moved.'; return; }
     const post_date = date + (slot === '6am' ? 'T06:00:00.000Z' : (slot === '7am' ? 'T07:00:00.000Z' : 'T12:00:00.000Z'));
     const DAY_TITLE = { 1: 'Major Wood Monday', 2: "Hammerin' Tuesday", 3: 'White-Knuckle Wednesday', 4: 'Thrusting Thursday', 5: 'Full-Friction Friday', 6: 'Sailor Saturday', 0: 'Standing Tall Sunday' };
     const body = { id: r.id, post_date: post_date, post_time: time || null };
@@ -1803,6 +1987,11 @@ function openReschedule(r) {
     } catch (e) { msg.textContent = 'Could not move it: ' + e.message; }
   });
 }
+// 23 Oct 2026 (Andy): a date or time box opens its picker wherever it is clicked, so nothing has to be scrolled across to the arrow.
+document.addEventListener('click', function (e) {
+  const t = e.target;
+  if (t && t.tagName === 'INPUT' && (t.type === 'date' || t.type === 'time') && !t.disabled && !t.readOnly && typeof t.showPicker === 'function') { try { t.showPicker(); } catch (err) {} }
+});
 function londonYmd(v) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(v)); }
 let PRODUCTS_AT = 0;
 async function loadProducts() {
@@ -1939,7 +2128,7 @@ async function openPlanner() {
   panel.innerHTML = '<div class="brief-topbar"><button class="btn secondary plan-back">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Plan content</span><button class="btn secondary plan-back">Close &times;</button></div>' +
     '<h2>Plan content</h2><div class="sub">Choose what to create. Each post gets one brief for you to approve. No image or video is made until you approve it.</div>' +
     '<div class="field"><label>Start date</label><input type="date" id="planStart" value="' + ymd(t) + '"></div>' +
-    '<div class="field"><label>How long</label><select id="planDays"><option value="7">1 week</option><option value="14">2 weeks</option></select></div>' +
+    '<div class="field"><label>How long</label><select id="planDays"><option value="1">1 day</option><option value="7" selected>1 week</option><option value="14">2 weeks</option></select></div>' +
     '<div id="planDaysBox"><div class="loading">Loading products...</div></div>' +
     '<div class="drawer-actions"><button class="btn secondary" id="planFill">Fill empty slots</button><button class="btn secondary" id="planNone">Select none</button></div>' +
     '<div class="drawer-actions"><button class="btn" id="planGo">Create briefs</button><button class="btn secondary" id="planClose">Close</button></div>' +
