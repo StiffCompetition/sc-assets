@@ -51,7 +51,7 @@
         return '<div class="c4__hero'+(n===1?' one':'')+'"><div class="c4__ring">'+(ch.info?'<img src="'+A.CDN+'sc-cert-portrait-'+ch.info.key+'.png" alt="'+A.esc(ch.name)+'">':'')+'</div>'+
           '<div class="c4__cn" style="font-size:'+cn+'mm">'+A.esc(ch.name)+'</div>'+(n===1&&ch.phrase?'<div class="c4__ph">&ldquo;'+A.esc(ch.phrase)+'&rdquo;</div>':'')+'</div>';}).join('')+'</div>';
     } else hero='<img class="c4__mono" src="'+A.CDN+'sc-cert-monogram-trim.png" alt="Stiff Competition"><div class="c4__tag">Always Standing Tall</div>';
-    var name=String(c.name||''), ns=name.length>18?10:name.length>11?13:22, sw=name.length>11?28:34;
+    var name=String(c.name||''), ns=Math.max(6,Math.min(22,Math.floor((118-name.length)/(0.85*Math.max(1,name.length))))), sw=30;
     var mode=c.mode==='ISSUED'?'ISSUED':'DEPLOYED';
     var date=String(c.date_long||'').replace(/^(\d+)\w\w day of /,'$1 ');
     var rows=c.manifest||[]; var dense=n>3; var rh=Math.min(10,42/Math.max(1,rows.length)), rf=Math.min(4.6,rh*0.5);
@@ -62,7 +62,7 @@
     return '<div class="c4'+(dense?' dense':'')+'" style="--c1:'+c1+'"><div class="c4__o"><div class="c4__i">'+
       '<div class="c4__band"><div class="c4__top">Stiff Competition &middot; Official Record of Release</div><div class="c4__title">Certificate<br>of Deployment</div><div class="c4__hz">'+hero+'</div></div>'+
       '<div class="c4__cust"><div class="c4__txt">Released from storage '+A.esc(date)+'<br>Deployed to the custody of</div>'+
-      '<div class="c4__nrow" style="--sw:'+sw+'mm"><div class="side">&nbsp;</div><div class="c4__name" style="font-size:'+ns+'mm">'+A.esc(name)+'</div><div class="side"><img src="'+A.CDN+'sc-cert-stamp-'+mode.toLowerCase()+'.png" alt="'+mode+'"></div></div>'+
+      '<div class="c4__nrow" style="--sw:'+sw+'mm"><div class="side">&nbsp;</div><div class="c4__name" style="font-size:'+ns+'mm;letter-spacing:'+(name.length>10?0.5:1)+'mm">'+A.esc(name)+'</div><div class="side"><img src="'+A.CDN+'sc-cert-stamp-'+mode.toLowerCase()+'.png" alt="'+mode+'"></div></div>'+
       '<div class="c4__txt">Thirty-two years sealed &middot; Nothing has softened</div></div>'+
       man+'<div class="c4__lz"><img class="c4__logo" src="'+A.CDN+'sc-cert-wordmark-trim.png" alt="Stiff Competition"></div>'+
       '</div></div></div>';

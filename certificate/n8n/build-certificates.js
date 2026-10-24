@@ -6,9 +6,9 @@
 // (never the customer), the subject starts "TEST - ", and it is not linked to the customer's
 // account. It sends once per TEST_SINCE value: change TEST_SINCE to send another.
 // Set TEST_ORDER to '' when testing is finished.
-const TEST_ORDER = '';
+const TEST_ORDER = '1062';
 const TEST_TO = 'andy@stiffcompetitionart.com';
-const TEST_SINCE = '2026-10-24T22:05:00Z';
+const TEST_SINCE = '2026-10-24T23:25:00Z';
 // HOLD_CUSTOMERS = true holds every customer certificate (not sent, not logged).
 // Released by Andy 24 Oct 2026: certificates go to customers 24 hours after a paid order.
 const HOLD_CUSTOMERS = false;
@@ -181,8 +181,8 @@ function manifestHtml(rows, orderNumber) {
       h += '<tr><td style="padding:0 10px;">' +
         '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;' + (i ? 'border-top:1px dotted ' + RULE + ';' : '') + '"><tr>' +
         '<td width="30" valign="middle" style="padding:8px 0;vertical-align:middle;font-family:' + DISPLAY + ';font-weight:700;font-size:14px;line-height:1;color:' + r.color + ';">' + n2(i + 1) + '</td>' +
-        '<td width="30%" valign="middle" style="padding:8px 6px 8px 0;vertical-align:middle;font-family:' + DISPLAY + ';font-weight:700;font-size:12px;line-height:1.2;letter-spacing:0.5px;text-transform:uppercase;color:' + INK + ';">' + esc(r.unit) + (r.qty > 1 ? ' &times; ' + r.qty : '') + '</td>' +
-        '<td align="right" valign="middle" style="padding:8px 0;vertical-align:middle;font-family:' + DISPLAY + ';font-weight:700;font-size:10px;line-height:1.2;letter-spacing:0.8px;text-transform:uppercase;color:' + r.color + ';word-wrap:break-word;">' + esc(r.name) + '</td>' +
+        '<td width="36%" valign="middle" style="padding:8px 6px 8px 0;vertical-align:middle;font-family:' + DISPLAY + ';font-weight:700;font-size:11px;line-height:1.2;letter-spacing:0.5px;text-transform:uppercase;color:' + INK + ';word-break:keep-all;">' + esc(r.unit).replace(/-/g, '&#8209;') + (r.qty > 1 ? ' &times; ' + r.qty : '') + '</td>' +
+        '<td align="right" valign="middle" style="padding:8px 0;vertical-align:middle;font-family:' + DISPLAY + ';font-weight:700;font-size:10px;line-height:1.2;letter-spacing:0.5px;text-transform:uppercase;color:' + r.color + ';word-break:keep-all;">' + esc(r.name) + '</td>' +
         '</tr></table></td></tr>';
     });
     h += '</table>';
@@ -224,8 +224,9 @@ for (const o of orders) {
   const otherItems = found.length ? rows.filter(r => !r.character || found.indexOf(r.character) === -1).length : Math.max(0, rows.length - 1);
   const firstName = String((o.customer && o.customer.first_name) || '').trim() || 'Collector';
   const displayName = firstName.toUpperCase();
-  // Name size from its length, so it stays on one line even when a phone app enlarges text.
-  const nameSize = Math.max(14, Math.min(40, Math.floor(190 / (displayName.length * 0.95 + 0.5))));
+  // Name size from its length, so it always fits on ONE line: sized for the narrowest view
+  // (a forwarded email on a small phone) with the text enlarged by the mail app.
+  const nameSize = Math.max(12, Math.min(32, Math.floor(130 / (displayName.length * 1.0 + 0.3))));
   const chars = found.map(c => ({ name: c, phrase: catchphrases[c] || '', style: CHAR_STYLE[c] || null }));
   const c1 = (chars.length && chars[0].style) ? chars[0].style.color : INK;
   const mode = chars.length ? 'DEPLOYED' : 'ISSUED';
@@ -292,28 +293,28 @@ for (const o of orders) {
   const display = (px, extra) => 'font-family:' + DISPLAY + ';font-weight:700;font-size:' + px + 'px;line-height:1.05;letter-spacing:1px;text-transform:uppercase;' + (extra || '');
   // PORTRAITS: one character = large portrait with name and catchphrase; several = smaller portraits, three to a row, name under each.
   const one = chars.length === 1;
-  const msize = chars.length <= 1 ? 92 : chars.length === 2 ? 72 : 60;
+  const msize = chars.length <= 1 ? 92 : chars.length === 2 ? 60 : 56;
   const ring = msize > 70 ? 4 : 3;
   const portrait = (src, alt) => '<table cellpadding="0" cellspacing="0" align="center" style="border-collapse:separate;margin:0 auto;"><tr><td style="width:' + msize + 'px;height:' + msize + 'px;border-radius:50%;background:#ffffff;border:' + ring + 'px solid ' + PAPER + ';overflow:hidden;">' +
     '<img src="' + src + '" alt="' + esc(alt) + '" width="' + msize + '" height="' + msize + '" style="width:' + msize + 'px;height:' + msize + 'px;display:block;border-radius:50%;"></td></tr></table>';
   let heroBlock;
   if (chars.length) {
-    const cells = chars.map(c => '<td valign="top" align="center" style="padding:0 5px;' + (one ? '' : 'width:' + (msize + 20) + 'px;') + '">' +
+    const cells = chars.map(c => '<td valign="top" align="center" width="' + (one ? '100%' : '33%') + '" style="padding:0 3px;">' +
       portrait(c.style ? CDN + 'sc-cert-portrait-' + c.style.key + '.png' : MONOGRAM, c.name) +
-      '<div style="' + display(one ? 20 : 11, 'color:' + PAPER + ';letter-spacing:' + (one ? 2 : 1) + 'px;line-height:1.15;padding-top:' + (one ? 8 : 6) + 'px;') + '">' + esc(c.name) + '</div>' +
+      '<div style="' + display(one ? 20 : 10, 'color:' + PAPER + ';letter-spacing:' + (one ? 2 : 0.5) + 'px;line-height:1.15;padding-top:' + (one ? 8 : 6) + 'px;') + '">' + esc(c.name) + '</div>' +
       (one && c.phrase ? '<div style="font-family:' + DISPLAY + ';font-size:14px;line-height:1.3;color:' + PAPER + ';padding-top:2px;">&ldquo;' + esc(c.phrase) + '&rdquo;</div>' : '') +
       '</td>');
     const rowsOf3 = [];
     for (let k = 0; k < cells.length; k += 3) rowsOf3.push(cells.slice(k, k + 3));
-    heroBlock = rowsOf3.map((r, k) => '<table align="center" cellpadding="0" cellspacing="0" ' + (one ? 'width="100%" ' : '') + 'style="border-collapse:collapse;margin:' + (k ? '14px' : '0') + ' auto 0;"><tr>' + r.join('') + '</tr></table>').join('');
+    heroBlock = rowsOf3.map((r, k) => '<table align="center" cellpadding="0" cellspacing="0" width="' + (one ? '100%' : String(Math.round(100 * r.length / 3)) + '%') + '" style="border-collapse:collapse;table-layout:fixed;margin:' + (k ? '14px' : '0') + ' auto 0;"><tr>' + r.join('') + '</tr></table>').join('');
   } else {
     // No character: the Stiff Competition badge on its own, no ring, with the brand line.
     heroBlock = '<div style="height:6px;line-height:6px;font-size:0;">&nbsp;</div>' +
       '<img src="' + MONOGRAM_TRIM + '" alt="Stiff Competition" width="88" height="84" style="width:88px;height:84px;display:block;margin:0 auto;">' +
       '<div style="' + display(16, 'color:' + PAPER + ';letter-spacing:1px;line-height:1.15;padding-top:12px;text-align:center;') + '">Always Standing Tall</div>';
   }
-  const stampSize = 46;
-  const stampCol = '52';
+  const stampSize = 40;
+  const stampCol = '44';
   const stampImg = '<img src="' + STAMP_IMG[mode] + '" alt="' + mode + '" width="' + stampSize + '" height="' + stampSize + '" style="width:' + stampSize + 'px;height:' + stampSize + 'px;display:block;margin:0 auto 0 0;">';
   const certificate =
   '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:' + PAPER + ';border:3px solid ' + INK + ';table-layout:fixed;"><tr><td style="padding:4px;">' +
@@ -322,7 +323,7 @@ for (const o of orders) {
   '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;background:' + c1 + ';"><tr><td style="padding:10px 10px 14px;">' +
   '<div class="sc-l" style="text-align:center;' + display(8, 'color:' + PAPER + ';letter-spacing:0.5px;line-height:1.4;') + '">Stiff&nbsp;Competition &middot; Official&nbsp;Record&nbsp;of&nbsp;Release</div>' +
   '<div style="height:8px;line-height:8px;font-size:0;">&nbsp;</div>' +
-  '<div style="text-align:center;' + display(20, 'color:' + PAPER + ';letter-spacing:1px;line-height:1.15;') + '">Certificate<br>of Deployment</div>' +
+  '<div style="text-align:center;' + display(18, 'color:' + PAPER + ';letter-spacing:1px;line-height:1.15;') + '">Certificate<br>of Deployment</div>' +
   '<div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>' +
   heroBlock +
   '</td></tr></table>' +
@@ -331,7 +332,7 @@ for (const o of orders) {
   '<div style="text-align:center;' + small(10, 'color:' + INK + ';letter-spacing:0.5px;line-height:1.6;') + '" class="sc-t">Released from storage ' + SEND_DATE_PLAIN.replace(/ /g, '&nbsp;') + '<br>Deployed to the custody of</div>' +
   '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;"><tr>' +
   '<td width="' + stampCol + '" style="font-size:0;line-height:0;">&nbsp;</td>' +
-  '<td align="center" valign="middle" style="vertical-align:middle;text-align:center;' + display(nameSize, 'color:' + INK + ';letter-spacing:' + (displayName.length > 7 ? 1 : 2) + 'px;padding:6px 0 4px;') + '">' + esc(displayName) + '</td>' +
+  '<td align="center" valign="middle" style="vertical-align:middle;text-align:center;' + display(nameSize, 'color:' + INK + ';letter-spacing:1px;padding:6px 0 4px;white-space:nowrap;word-wrap:normal;word-break:keep-all;') + '">' + esc(displayName) + '</td>' +
   '<td width="' + stampCol + '" align="left" valign="middle" style="vertical-align:middle;">' + stampImg + '</td>' +
   '</tr></table>' +
   '<div style="text-align:center;' + small(9, 'color:' + INK + ';letter-spacing:0;') + '" class="sc-s">Thirty-two&nbsp;years&nbsp;sealed &middot; Nothing&nbsp;has&nbsp;softened</div>' +

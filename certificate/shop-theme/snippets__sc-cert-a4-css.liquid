@@ -1,9 +1,10 @@
-/* A4 PRINT CERTIFICATE: one fixed layout for every order, one page */
-.c4{--ink:#15181c;--paper:#f3efe6;--rule:#b9b2a3;width:210mm;height:297mm;box-sizing:border-box;padding:7mm;background:#fff;font-family:'Inter','Helvetica Neue',Helvetica,Arial,sans-serif;color:var(--ink)}
+/* PRINT CERTIFICATE: one fixed layout for every order, one page. Sized for US Letter (279mm tall) by default,
+   and for A4 (297mm) when the paper is tall enough, so it fits both. 210mm wide fits both. */
+.c4{--ink:#15181c;--paper:#f3efe6;--rule:#b9b2a3;--H:279mm;--band:104mm;--cust:62mm;--mz:50mm;width:210mm;height:var(--H);margin:0 auto;box-sizing:border-box;padding:7mm;background:#fff;font-family:'Inter','Helvetica Neue',Helvetica,Arial,sans-serif;color:var(--ink)}
 .c4 *{box-sizing:border-box}
 .c4__o{height:100%;border:2.2mm solid var(--ink);padding:1.6mm;background:var(--paper)}
 .c4__i{height:100%;border:.4mm solid var(--ink);padding:6mm;display:flex;flex-direction:column}
-.c4__band{background:var(--c1);color:var(--paper);text-align:center;height:112mm;flex:0 0 112mm;padding:5mm 6mm 4mm;display:flex;flex-direction:column;overflow:hidden}
+.c4__band{background:var(--c1);color:var(--paper);text-align:center;height:var(--band);flex:0 0 var(--band);padding:5mm 6mm 4mm;display:flex;flex-direction:column;overflow:hidden}
 .c4__hz{flex:1;display:flex;flex-direction:column;justify-content:center}
 .c4__top{font-weight:700;font-size:3.1mm;letter-spacing:.5mm;text-transform:uppercase;white-space:nowrap}
 .c4__title{font-weight:700;font-size:11.5mm;line-height:1.1;letter-spacing:.8mm;text-transform:uppercase;margin:3mm 0 5mm}
@@ -16,13 +17,13 @@
 .c4__ph{font-size:5mm;margin-top:1mm}
 .c4__mono{width:44mm;display:block;margin:2mm auto 0}
 .c4__tag{font-weight:700;font-size:7.5mm;letter-spacing:.6mm;text-transform:uppercase;margin-top:5mm}
-.c4__cust{flex:0 0 68mm;height:68mm;display:flex;flex-direction:column;justify-content:center;text-align:center;overflow:hidden}
+.c4__cust{flex:0 0 var(--cust);height:var(--cust);display:flex;flex-direction:column;justify-content:center;text-align:center;overflow:hidden}
 .c4__txt{font-size:4mm;line-height:1.6;letter-spacing:.2mm;text-transform:uppercase}
 .c4__nrow{display:flex;align-items:center;justify-content:center;margin:2mm 0}
 .c4__nrow .side{flex:0 0 var(--sw);display:block !important;font-size:0;line-height:0}
 .c4__nrow .side img{width:var(--sw);display:block}
-.c4__name{font-weight:700;text-transform:uppercase;letter-spacing:1mm;line-height:1;padding:0 4mm}
-.c4__mz{flex:0 0 54mm;height:54mm;overflow:hidden}
+.c4__name{font-weight:700;text-transform:uppercase;letter-spacing:1mm;line-height:1;padding:0 4mm;white-space:nowrap}
+.c4__mz{flex:0 0 var(--mz);height:var(--mz);overflow:hidden}
 .c4__man{border:.35mm solid var(--ink);background:#fbf8f1}
 .c4__mh{background:var(--ink);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:2.4mm 4mm}
 .c4__mh b{font-size:4.6mm;letter-spacing:.9mm;text-transform:uppercase}
@@ -40,3 +41,5 @@
 .c4.dense .c4__mh{padding:1.8mm 4mm}
 .c4.dense .c4__band{padding:5mm 6mm 6mm}
 .c4.dense .c4__heroes{gap:3mm 2mm}
+
+@media print and (min-height: 290mm){ .c4{--H:297mm;--band:112mm;--cust:68mm;--mz:54mm} }

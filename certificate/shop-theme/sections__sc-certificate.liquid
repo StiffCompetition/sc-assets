@@ -3,7 +3,7 @@
   Opened from "Print your certificate" in the certificate email and from the Stiff Vault: ?o=<order id>&k=<token>.
   Asks SC - Certificate Page (n8n, f=json) for the record, then draws:
     - on screen: the certificate in the same layout as the email;
-    - in print / save as PDF: the A4 certificate, one fixed layout, one page, shop header and footer hidden.
+    - in print / save as PDF: one page with a fixed layout that fits US Letter and A4, shop header and footer hidden.
   Images live in Shopify Files (sc-cert-*), with copies in GitHub sc-assets/certificate.
   Never write a closing body or html tag as plain text in the script: Shopify inserts app code before the first one it finds.
 {%- endcomment -%}
@@ -19,11 +19,15 @@
 {% render 'sc-cert-a4-css' %}
 #sccPrint{display:none}
 @media print{
-  @page{size:A4 portrait;margin:0}
-  html,body{background:#fff !important;margin:0 !important;padding:0 !important;display:block !important;min-height:0 !important;height:297mm !important;max-height:297mm !important;overflow:hidden !important;font-size:0 !important;line-height:0 !important;color:transparent !important}
+  @page{margin:0}
+  html,body{background:#fff !important;margin:0 !important;padding:0 !important;display:block !important;min-height:0 !important;height:279mm !important;max-height:279mm !important;overflow:hidden !important;font-size:0 !important;line-height:0 !important;color:transparent !important}
   body > *{display:none !important}
-  body > #sccPrint{display:block !important;width:210mm;height:297mm;margin:0;padding:0;overflow:hidden;font-size:16px;line-height:1.4;color:#15181c}
+  body > #sccPrint{display:block !important;width:100%;height:279mm;margin:0;padding:0;overflow:hidden;font-size:16px;line-height:1.4;color:#15181c}
   *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+}
+@media print and (min-height: 290mm){
+  html,body{height:297mm !important;max-height:297mm !important}
+  body > #sccPrint{height:297mm}
 }
 </style>
 <script>
