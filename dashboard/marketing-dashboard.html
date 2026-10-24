@@ -230,11 +230,10 @@
   .jrep summary { cursor: pointer; } .jrep input { font: inherit; padding: 6px 8px; flex: 1; min-width: 120px; } .jprev { font-size: 13px; margin-top: 8px; max-height: 260px; overflow: auto; }
   .jbuild { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .jrow { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); padding: 8px 10px; margin-bottom: 6px; }
-  .jrow.s-Needsfixing { border-left-color: #c62828; } .jrow.s-Approved { border-left-color: #2a7a2a; }
   .jhead { display: flex; gap: 8px; align-items: center; cursor: pointer; } .jno { font-family: var(--mono); font-size: 12px; color: var(--grey); min-width: 2.5em; }
   .jt { flex: 1; font-weight: 600; } .jt small { font-weight: 400; color: var(--grey); }
   .jchip { font-size: 11px; padding: 2px 6px; border: 1px solid var(--line); white-space: nowrap; } .jchip.red { color: #c62828; border-color: #c62828; } .jchip.green { color: #2a7a2a; border-color: #2a7a2a; } .jchip.amber { color: #b06a00; border-color: #b06a00; }
-  .jsum { font-size: 13px; color: var(--grey); margin-top: 4px; } .jiss { font-size: 13px; color: #c62828; margin-top: 4px; }
+  .jsum { font-size: 13px; color: var(--grey); margin-top: 4px; }
   .jf { display: block; font-size: 12px; color: var(--grey); margin-top: 8px; } .jf input { display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 6px 8px; margin-top: 2px; color: inherit; }
   .jcnt { float: right; font-family: var(--mono); }
   .psegs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
@@ -430,7 +429,7 @@ function flatShown(r) {
 }
 function tabCount(v) {
   if (v === 'Pages') return '';
-  if (v === 'Journal') return jr.loaded && jr.book ? ((jr.book.status || {})['Needs fixing'] || '') : '';
+  if (v === 'Journal') return jr.loaded && jr.book ? (jr.book.changed || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
@@ -1668,10 +1667,10 @@ function renderProducts() {
 
 // ===== Pre-order section (Andy, 23 Oct 2026): every product on pre-order in one place. SC - Pre-order API serves it;
 // SC - Pre-order Orders holds paid pre-order items until they are released here. Process: SC - Pre-order Playbook.
-// ---- Journal tab (23 Oct 2026): every page of the printed journal in one list; edit words, find and replace, approve; book checks for Lulu and Amazon.
+// ---- Journal tab (23 Oct 2026): every page of the printed journal in one list; edit words, find and replace, rebuild; cover and spine size for Lulu and Amazon. A tool to build the book, no review layer (Andy, 24 Oct 2026).
 // Backend: n8n SC - Journal API (webhook sc-journal-api), table SC Journal Pages. Pages are rebuilt in Canva from the Day page V5 master by Claude.
 const JOURNAL_URL = BASE + 'sc-journal-api';
-const jr = { loaded: false, loading: false, pages: [], book: null, st: 'Needs fixing', type: 'all', ch: 'all', q: '', open: null, shown: 40, prev: null, find: '', rep: '', busy: false };
+const jr = { loaded: false, loading: false, pages: [], book: null, st: 'all', type: 'all', ch: 'all', q: '', open: null, shown: 40, prev: null, find: '', rep: '', busy: false };
 const J_FIELDS = [['battle_cry', 'Battle cry'], ['spec_label', 'Spec label'], ['spec_value', 'Spec value']];
 const J_TYPES = { day: 'Day pages', mission: 'Mission pages', front: 'Front pages', back: 'Back pages' };
 async function jApi(body) {
@@ -1690,31 +1689,28 @@ async function loadJournal(quiet) {
 }
 function jShown() {
   const q = jr.q.trim().toUpperCase();
-  return jr.pages.filter(p => (jr.st === 'all' || p.status === jr.st || (jr.st === 'changed' && p.changed === 'yes'))
+  return jr.pages.filter(p => (jr.st === 'all' || (jr.st === 'changed' && p.changed === 'yes'))
     && (jr.type === 'all' || p.type === jr.type) && (jr.ch === 'all' || p.character === jr.ch)
-    && (!q || [p.day, p.battle_cry, p.spec_label, p.spec_value, p.issues, p.notes, String(p.page)].join(' ').toUpperCase().indexOf(q) !== -1));
+    && (!q || [p.day, p.battle_cry, p.spec_label, p.spec_value, p.notes, String(p.page)].join(' ').toUpperCase().indexOf(q) !== -1));
 }
 function jBookHtml() {
   const b = jr.book; if (!b) return '';
-  const s = b.status || {};
   const tile = (n, l, cls, st) => '<button type="button" class="jtile ' + (cls || '') + (st && jr.st === st ? ' on' : '') + '"' + (st ? ' data-jst="' + st + '"' : '') + '><b>' + n + '</b><span>' + l + '</span></button>';
-  return '<div class="jtiles">' + tile(s['Needs fixing'] || 0, 'Needs fixing', 'red', 'Needs fixing') + tile(s['Ready'] || 0, 'Ready', '', 'Ready') + tile(s['Approved'] || 0, 'Approved', 'green', 'Approved')
-    + tile(b.changed || 0, 'Changed, to rebuild', 'amber', 'changed') + tile(b.pages, 'Pages', '', 'all') + '</div>'
+  return '<div class="jtiles">' + tile(b.pages, 'Pages', '', 'all') + tile(b.changed || 0, 'Changed, to rebuild', 'amber', 'changed') + '</div>'
     + '<div class="jspec">Cover ' + b.cover_w_in + ' × ' + b.cover_h_in + ' in · spine ' + b.spine_in + ' in · ' + (b.lulu_ok_count && b.kdp_ok_count ? 'page count OK for Lulu and Amazon' : '<b class="bad">page count outside Lulu or Amazon limits</b>') + (b.even ? '' : ' · <b class="bad">odd page count</b>') + '</div>';
 }
 function jRow(p) {
   const open = jr.open === p.page;
   const title = p.type === 'day' ? p.day : (J_TYPES[p.type] || p.type).replace(/s$/, '');
-  let h = '<div class="jrow s-' + esc(p.status.replace(/\s/g, '')) + (open ? ' open' : '') + '" data-jp="' + p.page + '"><div class="jhead"><span class="jno">' + p.page + '</span><span class="jt">' + esc(title) + (p.character ? ' <small>' + esc(p.character) + '</small>' : '') + '</span>'
-    + (p.changed === 'yes' ? '<span class="jchip amber">changed</span>' : '') + '<span class="jchip ' + (p.status === 'Needs fixing' ? 'red' : p.status === 'Approved' ? 'green' : '') + '">' + esc(p.status) + '</span></div>';
+  let h = '<div class="jrow' + (open ? ' open' : '') + '" data-jp="' + p.page + '"><div class="jhead"><span class="jno">' + p.page + '</span><span class="jt">' + esc(title) + (p.character ? ' <small>' + esc(p.character) + '</small>' : '') + '</span>'
+    + (p.changed === 'yes' ? '<span class="jchip amber">changed</span>' : '') + '</div>';
   if (p.type === 'day' && !open) h += '<div class="jsum">“' + esc(p.battle_cry) + '” · ' + esc(p.spec_label) + ' · ' + esc(p.spec_value) + '</div>';
-  if (p.issues) h += '<div class="jiss">' + esc(p.issues) + '</div>';
   if (open) {
     if (p.type === 'day') {
       h += J_FIELDS.map(f => { const lim = (jr.book && jr.book.limits && jr.book.limits[f[0]]) || 99; return '<label class="jf">' + f[1] + ' <span class="jcnt" data-jc="' + f[0] + '">' + (p[f[0]] || '').length + '/' + lim + '</span><input type="text" data-jf="' + f[0] + '" maxlength="' + lim + '" value="' + esc(p[f[0]]) + '"></label>'; }).join('');
     }
     h += '<label class="jf">Notes<input type="text" data-jf="notes" maxlength="500" value="' + esc(p.notes) + '"></label>'
-      + '<div class="acts2"><button class="btn small" data-ja="save">Save</button>' + (p.status !== 'Approved' && !p.issues ? '<button class="btn done small" data-ja="approve">Approve</button>' : '') + (p.status === 'Approved' ? '<button class="btn ghost small" data-ja="unapprove">Back to ready</button>' : '') + '</div>';
+      + '<div class="acts2"><button class="btn small" data-ja="save">Save</button></div>';
   }
   return h + '</div>';
 }
@@ -1761,10 +1757,8 @@ function wireJournal() {
   L.querySelectorAll('[data-ja]').forEach(b => b.onclick = async () => {
     const row = b.closest('.jrow'), page = Number(row.dataset.jp), body = { action: 'save', page: page };
     row.querySelectorAll('[data-jf]').forEach(i => { body[i.dataset.jf] = i.value; });
-    if (b.dataset.ja === 'approve') body.status = 'Approved';
-    if (b.dataset.ja === 'unapprove') body.status = 'Ready';
     b.disabled = true; b.textContent = 'Saving…';
-    try { await jApi(body); toast(b.dataset.ja === 'approve' ? 'Approved' : 'Saved'); await loadJournal(); }
+    try { await jApi(body); toast('Saved'); await loadJournal(); }
     catch (e) { toast('Could not save: ' + e.message); renderJournal(); }
   });
   const pv = $('j_prev'); if (pv) pv.onclick = async () => {
