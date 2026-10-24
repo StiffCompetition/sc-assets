@@ -1,0 +1,100 @@
+(function(){
+  var API = 'https://n8n-production-afc2.up.railway.app/webhook/sc-certificate';
+  var STORE = 'https://www.stiffcompetition.shop';
+  var CDN = 'https://cdn.shopify.com/s/files/1/0661/7428/7966/files/';
+  var CHARS = {
+    'major wood':        { key:'MW', color:'#2e3820', handle:'major-wood' },
+    'the rear admiral':  { key:'RA', color:'#1d3557', handle:'the-rear-admiral' },
+    "hammerin' hanky":   { key:'HH', color:'#6b3f06', handle:'hammerin-hanky' },
+    'slick willy':       { key:'SW', color:'#2b2d33', handle:'slick-willy' },
+    'the velvet python': { key:'VP', color:'#1f4a3a', handle:'the-velvet-python' },
+    'the grip':          { key:'TG', color:'#24478f', handle:'the-grip' }
+  };
+  function charInfo(name){ return CHARS[String(name||'').toLowerCase().replace(/[‘’]/g,"'")] || null; }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function n2(k){ return (k<10?'0':'')+k; }
+  function plainDate(c){ return String(c.date_long||'').replace(/^(\d+)\w\w day of /,'$1 '); }
+  var A = { CDN: CDN, esc: esc, charInfo: charInfo };
+
+  // SCREEN: the same layout as the email.
+  function webHtml(c){
+    var chars=(c.characters||[]).map(function(ch){return {name:ch.name,phrase:ch.phrase||'',info:charInfo(ch.name)};});
+    var c1=chars.length&&chars[0].info?chars[0].info.color:'#15181c';
+    var n=chars.length, m=n<=1?92:n===2?72:60;
+    var hero;
+    if(n){ hero='<div class="scw__heroes" style="--m:'+m+'px">'+chars.map(function(ch){
+        return '<div class="scw__hero'+(n===1?' one':'')+'"><div class="scw__ring">'+(ch.info?'<img src="'+CDN+'sc-cert-portrait-'+ch.info.key+'.png" alt="'+esc(ch.name)+'">':'')+'</div>'+
+          '<div class="scw__cn">'+esc(ch.name)+'</div>'+(n===1&&ch.phrase?'<div class="scw__ph">&ldquo;'+esc(ch.phrase)+'&rdquo;</div>':'')+'</div>';}).join('')+'</div>';
+    } else hero='<img class="scw__mono" src="'+CDN+'sc-cert-monogram-trim.png" alt="Stiff Competition"><div class="scw__tag">Always Standing Tall</div>';
+    var name=String(c.name||''), long=name.length>7, ns=Math.max(16,Math.min(44,Math.floor(210/(name.length*0.95+0.5))));
+    var mode=c.mode==='ISSUED'?'ISSUED':'DEPLOYED';
+    var rows=c.manifest||[];
+    var man='<div class="scw__man"><div class="scw__mh"><b>Deployment Manifest</b><span>NO. '+esc(c.order_number)+'</span></div>'+
+      rows.map(function(r,i){var ci=charInfo(r.name);var col=ci?ci.color:'#15181c';
+        return '<div class="scw__row"><div class="n" style="color:'+col+'">'+n2(i+1)+'</div><div class="d">'+esc(r.unit)+(r.qty>1?' &times; '+r.qty:'')+'</div><div class="u" style="color:'+col+'">'+esc(r.name)+'</div></div>';}).join('')+'</div>';
+    return '<div class="scw" style="--c1:'+c1+'"><div class="scw__i">'+
+      '<div class="scw__band"><div class="scw__top">Stiff Competition &middot; Official Record of Release</div><div class="scw__title">Certificate<br>of Deployment</div>'+hero+'</div>'+
+      '<div class="scw__cust"><div class="scw__txt">Released from storage '+esc(plainDate(c))+'<br>Deployed to the custody of</div>'+
+      '<div class="scw__nrow" style="--sw:58px;--ss:50px"><div class="side">&nbsp;</div><div class="scw__name" style="font-size:'+ns+'px;letter-spacing:'+(long?1:2)+'px">'+esc(name)+'</div><div class="side"><img src="'+CDN+'sc-cert-stamp-'+mode.toLowerCase()+'.png" alt="'+mode+'"></div></div>'+
+      '<div class="scw__sealed">Thirty-two years sealed &middot; Nothing has softened</div></div>'+
+      man+'<img class="scw__logo" src="'+CDN+'sc-cert-wordmark-trim.png" alt="Stiff Competition">'+
+      '</div></div>';
+  }
+  // PRINT: A4, one fixed layout for every order.
+  // A4 certificate: same layout as the approved email (24 Oct 2026).
+  function a4Html(c, A){
+    var chars=(c.characters||[]).map(function(ch){return {name:ch.name,phrase:ch.phrase||'',info:A.charInfo(ch.name)};});
+    var c1=chars.length&&chars[0].info?chars[0].info.color:'#15181c';
+    var n=chars.length, m=n<=1?44:n===2?44:n===3?40:25, cn=n<=1?8:n<=3?4.6:3.8;
+    var hero;
+    if(n){ hero='<div class="c4__heroes" style="--m:'+m+'mm">'+chars.map(function(ch){
+        return '<div class="c4__hero'+(n===1?' one':'')+'"><div class="c4__ring">'+(ch.info?'<img src="'+A.CDN+'sc-cert-portrait-'+ch.info.key+'.png" alt="'+A.esc(ch.name)+'">':'')+'</div>'+
+          '<div class="c4__cn" style="font-size:'+cn+'mm">'+A.esc(ch.name)+'</div>'+(n===1&&ch.phrase?'<div class="c4__ph">&ldquo;'+A.esc(ch.phrase)+'&rdquo;</div>':'')+'</div>';}).join('')+'</div>';
+    } else hero='<img class="c4__mono" src="'+A.CDN+'sc-cert-monogram-trim.png" alt="Stiff Competition"><div class="c4__tag">Always Standing Tall</div>';
+    var name=String(c.name||''), ns=name.length>18?10:name.length>11?13:22, sw=name.length>11?28:34;
+    var mode=c.mode==='ISSUED'?'ISSUED':'DEPLOYED';
+    var date=String(c.date_long||'').replace(/^(\d+)\w\w day of /,'$1 ');
+    var rows=c.manifest||[]; var dense=n>3; var rh=Math.min(10,42/Math.max(1,rows.length)), rf=Math.min(4.6,rh*0.5);
+    var n2=function(k){return (k<10?'0':'')+k;};
+    var man='<div class="c4__mz"><div class="c4__man" style="--rh:'+rh.toFixed(2)+'mm;--rf:'+rf.toFixed(2)+'mm"><div class="c4__mh"><b>Deployment Manifest</b><span>NO. '+A.esc(c.order_number)+'</span></div>'+
+      rows.map(function(r,i){var ci=A.charInfo(r.name);var col=ci?ci.color:'#15181c';
+        return '<div class="c4__row"><div class="n" style="color:'+col+'">'+n2(i+1)+'</div><div class="d">'+A.esc(r.unit)+(r.qty>1?' &times; '+r.qty:'')+'</div><div class="u" style="color:'+col+'">'+A.esc(r.name)+'</div></div>';}).join('')+'</div></div>';
+    return '<div class="c4'+(dense?' dense':'')+'" style="--c1:'+c1+'"><div class="c4__o"><div class="c4__i">'+
+      '<div class="c4__band"><div class="c4__top">Stiff Competition &middot; Official Record of Release</div><div class="c4__title">Certificate<br>of Deployment</div><div class="c4__hz">'+hero+'</div></div>'+
+      '<div class="c4__cust"><div class="c4__txt">Released from storage '+A.esc(date)+'<br>Deployed to the custody of</div>'+
+      '<div class="c4__nrow" style="--sw:'+sw+'mm"><div class="side">&nbsp;</div><div class="c4__name" style="font-size:'+ns+'mm">'+A.esc(name)+'</div><div class="side"><img src="'+A.CDN+'sc-cert-stamp-'+mode.toLowerCase()+'.png" alt="'+mode+'"></div></div>'+
+      '<div class="c4__txt">Thirty-two years sealed &middot; Nothing has softened</div></div>'+
+      man+'<div class="c4__lz"><img class="c4__logo" src="'+A.CDN+'sc-cert-wordmark-trim.png" alt="Stiff Competition"></div>'+
+      '</div></div></div>';
+  }
+
+  var stage = document.getElementById('sccStage');
+  var printBox = document.getElementById('sccPrint');
+  function render(c){
+    var chars = (c.characters || []);
+    var first = chars.length ? charInfo(chars[0].name) : null;
+    stage.innerHTML = webHtml(c) +
+      '<div class="scc__actions">' +
+      '<a class="scc__btn" href="#" id="sccPrintBtn">Print or save as PDF</a>' +
+      '<a class="scc__btn scc__btn--ghost" href="' + STORE + '/pages/how-stiff">Report back to your Vault</a>' +
+      (first ? '<a class="scc__btn scc__btn--ghost" href="' + STORE + '/pages/' + first.handle + '">' + esc(chars[0].name) + '&rsquo;s full file</a>' : '<a class="scc__btn scc__btn--ghost" href="' + STORE + '/collections/all-products">Report to the shop</a>') +
+      '</div>';
+    printBox.innerHTML = a4Html(c, A);
+    if (printBox.parentNode !== document.body) document.body.appendChild(printBox);
+    document.getElementById('sccPrintBtn').addEventListener('click', function(e){ e.preventDefault(); window.print(); });
+  }
+  function message(title, text, buttons){
+    stage.innerHTML = '<div class="scc__msg"><p class="scc__msgt">' + title + '</p><p class="scc__msgp">' + text + '</p></div><div class="scc__actions">' + buttons + '</div>';
+  }
+  function notFound(){
+    message('No certificate at this address', 'Check the link in your Certificate of Deployment email, or open your Stiff Vault.',
+      '<a class="scc__btn" href="' + STORE + '/pages/how-stiff">Open my Stiff Vault</a><a class="scc__btn scc__btn--ghost" href="' + STORE + '">Stiff Competition</a>');
+  }
+  var q = new URLSearchParams(location.search);
+  var o = q.get('o') || '', k = q.get('k') || '';
+  if (!o || !k) { notFound(); return; }
+  fetch(API + '?f=json&o=' + encodeURIComponent(o) + '&k=' + encodeURIComponent(k), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if (j && j.ok && j.cert) { render(j.cert); document.title = 'Certificate of Deployment - No. ' + j.cert.order_number + ' | Stiff Competition'; } else { notFound(); } })
+    .catch(function(){ message('The stores are busy', 'Give it a moment and reload this page.', '<a class="scc__btn" href="' + location.href + '">Reload</a><a class="scc__btn scc__btn--ghost" href="' + STORE + '/pages/how-stiff">Open my Stiff Vault</a>'); });
+})();

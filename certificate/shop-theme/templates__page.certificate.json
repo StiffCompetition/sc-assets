@@ -1,0 +1,4 @@
+{
+  "sections": { "main": { "type": "sc-certificate", "settings": {} } },
+  "order": ["main"]
+}

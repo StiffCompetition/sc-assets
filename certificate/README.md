@@ -8,3 +8,10 @@ Images used by the Certificate of Deployment email (n8n "SC - Certificate Email"
 - `sc-cert-monogram-trim.png` - SC badge, trimmed, used in the header of brand-only certificates.
 
 Added 24 Oct 2026.
+
+## Backup copies of the live code (24 Oct 2026)
+
+- `n8n/build-certificates.js` - the Build Certificates node of n8n "SC - Certificate Email" as released to customers on 24 Oct 2026.
+- `shop-theme/` - the certificate page files in the live Shopify theme (folder name before `__`, file name after): the section, its three snippets and the page template. The page is www.stiffcompetition.shop/pages/certificate.
+
+The live copies are in n8n and in the Shopify theme; these are for restore and reference. Full description: SC - NFT Flow Master Reference (As-Built), section 3.10.

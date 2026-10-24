@@ -1,0 +1,33 @@
+{%- comment -%}
+  STIFF COMPETITION - CERTIFICATE OF DEPLOYMENT (web copy). Rebuilt 24 Oct 2026 to match the approved email.
+  Opened from "Print your certificate" in the certificate email and from the Stiff Vault: ?o=<order id>&k=<token>.
+  Asks SC - Certificate Page (n8n, f=json) for the record, then draws:
+    - on screen: the certificate in the same layout as the email;
+    - in print / save as PDF: the A4 certificate, one fixed layout, one page, shop header and footer hidden.
+  Images live in Shopify Files (sc-cert-*), with copies in GitHub sc-assets/certificate.
+  Never write a closing body or html tag as plain text in the script: Shopify inserts app code before the first one it finds.
+{%- endcomment -%}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<div class="scc" id="sccRoot">
+  <div class="scc__stage" id="sccStage"><div class="scc__msg"><p class="scc__msgp">Checking the stores&hellip;</p></div></div>
+  <div id="sccPrint" aria-hidden="true"></div>
+</div>
+<style>
+{% render 'sc-cert-web-css' %}
+{% render 'sc-cert-a4-css' %}
+#sccPrint{display:none}
+@media print{
+  @page{size:A4 portrait;margin:0}
+  html,body{background:#fff !important;margin:0 !important;padding:0 !important;display:block !important;min-height:0 !important;height:297mm !important;max-height:297mm !important;overflow:hidden !important;font-size:0 !important;line-height:0 !important;color:transparent !important}
+  body > *{display:none !important}
+  body > #sccPrint{display:block !important;width:210mm;height:297mm;margin:0;padding:0;overflow:hidden;font-size:16px;line-height:1.4;color:#15181c}
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+}
+</style>
+<script>
+{% render 'sc-cert-js' %}</script>
+{% schema %}
+{ "name": "SC Certificate", "tag": "section", "class": "section" }
+{% endschema %}
