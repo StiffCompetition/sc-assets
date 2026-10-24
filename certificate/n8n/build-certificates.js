@@ -6,15 +6,15 @@
 // (never the customer), the subject starts "TEST - ", and it is not linked to the customer's
 // account. It sends once per TEST_SINCE value: change TEST_SINCE to send another.
 // Set TEST_ORDER to '' when testing is finished.
-const TEST_ORDER = '1062';
+const TEST_ORDER = '';
 const TEST_TO = 'andy@stiffcompetitionart.com';
 const TEST_SINCE = '2026-10-24T23:25:00Z';
 // HOLD_CUSTOMERS = true holds every customer certificate (not sent, not logged).
 // Released by Andy 24 Oct 2026: certificates go to customers 24 hours after a paid order.
 const HOLD_CUSTOMERS = false;
 // RESEND: order number -> time. Sends that order's certificate again to the CUSTOMER, once,
-// even if it was sent before or customers are held. Joey (1062) had the broken certificate; Andy approved the resend 24 Oct 2026.
-const RESEND = { '1062': '2026-10-24T22:30:00Z' };
+// even if it was sent before or customers are held. Joey (1062): Andy approved resends at 22:30 and 23:35 UK on 24 Oct 2026.
+const RESEND = { '1062': '2026-10-24T23:35:00Z' };
 const LOGO = 'https://cdn.jsdelivr.net/gh/StiffCompetition/sc-assets/ecards/brand/logo.png';
 const CDN = 'https://cdn.shopify.com/s/files/1/0661/7428/7966/files/';
 const WORDMARK = CDN + 'sc-cert-wordmark-trim.png';

@@ -11,7 +11,7 @@ Added 24 Oct 2026.
 
 ## Backup copies of the live code (24 Oct 2026)
 
-- `n8n/build-certificates.js` - the Build Certificates node of n8n "SC - Certificate Email" as live on 24 Oct 2026 (name never splits; one TEST to Andy for order 1062).
+- `n8n/build-certificates.js` - the Build Certificates node of n8n "SC - Certificate Email" as live on 24 Oct 2026 (final: name never splits, tests off, customers live).
 - `shop-theme/` - the certificate page files in the live Shopify theme (folder name before `__`, file name after): the section, its three snippets and the page template. The page is www.stiffcompetition.shop/pages/certificate.
 
 The live copies are in n8n and in the Shopify theme; these are for restore and reference. Full description: SC - NFT Flow Master Reference (As-Built), section 3.10.
