@@ -472,3 +472,58 @@ def media_test(m: MediaTest):
     except Exception as e:
         out['ok'] = False; out['error'] = str(e)[:300]
     return out
+
+# ---- Bucket test (24 Oct 2026): proves a large clip can be stored in the Railway bucket and fetched by public link.
+# TEST ONLY. The bucket keys reach this service as Railway variable references; nothing is written into code.
+import hashlib as _hl, hmac as _hm, datetime as _dt, urllib.parse as _up, os as _os
+def _s3h(k, m): return _hm.new(k, m.encode(), _hl.sha256).digest()
+def _s3enc(s): return _up.quote(s, safe='-_.~')
+def s3_presign(method, host, key, access, secret, region, expires, now=None, service='s3'):
+    """Query-string SigV4 URL (virtual-host style, path = /key). Returns full https URL."""
+    t = now or _dt.datetime.utcnow(); amz = t.strftime('%Y%m%dT%H%M%SZ'); ds = t.strftime('%Y%m%d')
+    scope = '%s/%s/%s/aws4_request' % (ds, region, service)
+    q = {'X-Amz-Algorithm': 'AWS4-HMAC-SHA256', 'X-Amz-Credential': access + '/' + scope, 'X-Amz-Date': amz, 'X-Amz-Expires': str(expires), 'X-Amz-SignedHeaders': 'host'}
+    cq = '&'.join('%s=%s' % (_s3enc(k), _s3enc(v)) for k, v in sorted(q.items()))
+    path = '/' + '/'.join(_s3enc(p) for p in key.split('/'))
+    creq = '\n'.join([method, path, cq, 'host:' + host + '\n', 'host', 'UNSIGNED-PAYLOAD'])
+    sts = '\n'.join(['AWS4-HMAC-SHA256', amz, scope, _hl.sha256(creq.encode()).hexdigest()])
+    k = _s3h(_s3h(_s3h(_s3h(('AWS4' + secret).encode(), ds), region), service), 'aws4_request')
+    sig = _hm.new(k, sts.encode(), _hl.sha256).hexdigest()
+    return 'https://%s%s?%s&X-Amz-Signature=%s' % (host, path, cq, sig)
+
+
+class BucketTest(BaseModel):
+    seconds: int = 25
+    mbps: int = 8
+    key: str = 'TEST/media_test_25mb.mp4'
+
+@app.post('/bucket-test')
+def bucket_test(b: BucketTest):
+    out = {'ok': True}
+    try:
+        ep = _os.environ['BUCKET_ENDPOINT']; bk = _os.environ['BUCKET_NAME']; ak = _os.environ['BUCKET_ACCESS_KEY_ID']; sk = _os.environ['BUCKET_SECRET_ACCESS_KEY']; rg = _os.environ.get('BUCKET_REGION', 'auto')
+        host = bk + '.' + _up.urlparse(ep).netloc
+        path = '/tmp/bt_%d.mp4' % int(time.time() * 1000)
+        r = _sp.run([_ffmpeg(), '-y', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=0x202020:s=1080x1920:r=30', '-t', str(b.seconds), '-vf', 'noise=alls=60:allf=t',
+                     '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-b:v', '%dM' % b.mbps, '-minrate', '%dM' % b.mbps, '-maxrate', '%dM' % b.mbps, '-bufsize', '%dM' % (b.mbps * 2), '-movflags', '+faststart', path], capture_output=True, text=True)
+        if r.returncode != 0:
+            out['ok'] = False; out['error'] = r.stderr[:300]; return out
+        data = open(path, 'rb').read(); out['mp4_bytes'] = len(data)
+        put = requests.put(s3_presign('PUT', host, b.key, ak, sk, rg, 900), data=data, headers={'Content-Type': 'video/mp4'}, timeout=600)
+        out['put_status'] = put.status_code
+        if put.status_code >= 300:
+            out['ok'] = False; out['put_body'] = put.text[:300]
+        for label, secs in (('url_7d', 604800), ('url_90d', 7776000)):
+            u = s3_presign('GET', host, b.key, ak, sk, rg, secs)
+            g = requests.get(u, headers={'Range': 'bytes=0-1023'}, timeout=60)
+            out[label] = u
+            out[label + '_status'] = g.status_code
+            out[label + '_type'] = g.headers.get('Content-Type', '')
+            out[label + '_total'] = g.headers.get('Content-Range', '')
+        try:
+            _os.remove(path)
+        except Exception:
+            pass
+    except Exception as e:
+        out['ok'] = False; out['error'] = str(e)[:300]
+    return out
