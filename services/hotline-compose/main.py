@@ -588,3 +588,54 @@ def transform(t: Transform):
     except Exception as e:
         out['ok'] = False; out['error'] = str(e)[:300]
     return out
+
+# ---- Bucket store (25 Oct 2026): files over Shopify's 20 MB limit live in the Railway bucket.
+# bucket-put copies a file from one of our own addresses (Cloudinary account or the shop's CDN) into the bucket;
+# bucket-link gives a fresh signed read link (max 90 days) for a key already in the bucket. The bucket keys reach
+# this service as Railway variable references only.
+_BUCKET_OK_SRC = ('https://res.cloudinary.com/dkapdtxek/', 'https://cdn.shopify.com/s/files/1/0661/7428/7966/')
+
+def _bucket():
+    ep = _os.environ['BUCKET_ENDPOINT']; bk = _os.environ['BUCKET_NAME']
+    return bk + '.' + _up.urlparse(ep).netloc, _os.environ['BUCKET_ACCESS_KEY_ID'], _os.environ['BUCKET_SECRET_ACCESS_KEY'], _os.environ.get('BUCKET_REGION', 'auto')
+
+class BucketPut(BaseModel):
+    src: str                 # public link on one of our own addresses
+    key: str                 # bucket path, e.g. media/rollcall_comic_pages_v1.mp4
+    content_type: str = 'video/mp4'
+
+class BucketLink(BaseModel):
+    key: str
+    expires: int = 604800    # seconds; 7 days by default, 90 days at most
+
+@app.post('/bucket-put')
+def bucket_put(b: BucketPut):
+    out = {'ok': True, 'key': b.key}
+    try:
+        if not b.src.startswith(_BUCKET_OK_SRC):
+            return {'ok': False, 'error': 'source must be one of our own addresses'}
+        if not b.key or b.key.startswith('/') or '..' in b.key:
+            return {'ok': False, 'error': 'bad key'}
+        host, ak, sk, rg = _bucket()
+        data = _tf_fetch(b.src, 600); out['bytes'] = len(data)
+        put = requests.put(s3_presign('PUT', host, b.key, ak, sk, rg, 900), data=data, headers={'Content-Type': b.content_type}, timeout=900)
+        out['put_status'] = put.status_code
+        if put.status_code >= 300:
+            out['ok'] = False; out['put_body'] = put.text[:300]; return out
+        chk = requests.get(s3_presign('GET', host, b.key, ak, sk, rg, 300), headers={'Range': 'bytes=0-0'}, timeout=60)
+        out['stored_bytes'] = int((chk.headers.get('Content-Range', '/0').split('/')[-1]) or 0)
+        out['ok'] = out['stored_bytes'] == len(data)
+    except Exception as e:
+        out['ok'] = False; out['error'] = str(e)[:300]
+    return out
+
+@app.post('/bucket-link')
+def bucket_link(b: BucketLink):
+    try:
+        if not b.key or b.key.startswith('/') or '..' in b.key:
+            return {'ok': False, 'error': 'bad key'}
+        host, ak, sk, rg = _bucket()
+        secs = max(60, min(int(b.expires), 7776000))
+        return {'ok': True, 'key': b.key, 'expires': secs, 'url': s3_presign('GET', host, b.key, ak, sk, rg, secs)}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)[:300]}
