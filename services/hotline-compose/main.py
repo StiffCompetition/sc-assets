@@ -527,3 +527,64 @@ def bucket_test(b: BucketTest):
     except Exception as e:
         out['ok'] = False; out['error'] = str(e)[:300]
     return out
+
+# ---- Transform (25 Oct 2026): the picture work Cloudinary used to do on the fly, now done here.
+# resize = Cloudinary w_<width> (scale to a width, keep proportions); fill = c_fill,w_,h_,b_white (crop to fill the box,
+# white behind any transparency); frame = so_<seconds> (one still frame from a clip). The result is PUT to a staged
+# Shopify upload address from SC - File Store (action targets), so no key is held here and no bytes pass through n8n.
+class Transform(BaseModel):
+    src: str                 # public link of the picture or clip
+    op: str                  # resize | fill | frame
+    width: int = 1000
+    height: int = 0          # fill only; 0 = same as width
+    at: float = 0.0          # frame only: seconds into the clip
+    fmt: str = 'jpg'         # jpg | png
+    put: str = ''            # staged upload address; empty = return sizes only (test)
+
+def _tf_fetch(url, timeout=120):
+    r = requests.get(url, timeout=timeout, stream=True)
+    r.raise_for_status()
+    return r.content
+
+def _tf_encode(img, fmt):
+    buf = io.BytesIO()
+    if fmt == 'png':
+        img.save(buf, 'PNG', optimize=True); return buf.getvalue(), 'image/png'
+    if img.mode != 'RGB':
+        bg = Image.new('RGB', img.size, (255, 255, 255))
+        bg.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+        img = bg
+    img.save(buf, 'JPEG', quality=90, optimize=True); return buf.getvalue(), 'image/jpeg'
+
+@app.post('/transform')
+def transform(t: Transform):
+    out = {'ok': True, 'op': t.op}
+    try:
+        if t.op == 'frame':
+            src = '/tmp/tf_%d_src' % int(time.time() * 1000); dst = src + '.png'
+            open(src, 'wb').write(_tf_fetch(t.src, 300))
+            _sp.run([_ffmpeg(), '-y', '-v', 'error', '-ss', str(t.at), '-i', src, '-frames:v', '1', dst], check=True, timeout=300)
+            img = Image.open(dst).convert('RGB')
+            for p in (src, dst):
+                try: _os.remove(p)
+                except Exception: pass
+        else:
+            img = Image.open(io.BytesIO(_tf_fetch(t.src)))
+            img = ImageOps.exif_transpose(img)
+            if t.op == 'resize':
+                w = max(1, int(t.width)); h = max(1, round(img.height * w / img.width))
+                img = img.convert('RGBA' if img.mode in ('RGBA', 'LA', 'P') else 'RGB').resize((w, h), Image.LANCZOS)
+            elif t.op == 'fill':
+                w = max(1, int(t.width)); h = max(1, int(t.height or t.width))
+                img = img.convert('RGBA'); img = ImageOps.fit(img, (w, h), Image.LANCZOS, centering=(0.5, 0.5))
+                bg = Image.new('RGBA', (w, h), (255, 255, 255, 255)); bg.alpha_composite(img); img = bg
+            else:
+                return {'ok': False, 'error': 'op must be resize, fill or frame'}
+        data, ctype = _tf_encode(img, 'png' if t.fmt == 'png' else 'jpg')
+        out.update({'width': img.width, 'height': img.height, 'bytes': len(data), 'content_type': ctype})
+        if t.put:
+            r = requests.put(t.put, data=data, headers={'Content-Type': ctype}, timeout=300)
+            out['put_status'] = r.status_code
+    except Exception as e:
+        out['ok'] = False; out['error'] = str(e)[:300]
+    return out
