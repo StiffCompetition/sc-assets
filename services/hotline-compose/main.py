@@ -639,3 +639,23 @@ def bucket_link(b: BucketLink):
         return {'ok': True, 'key': b.key, 'expires': secs, 'url': s3_presign('GET', host, b.key, ak, sk, rg, secs)}
     except Exception as e:
         return {'ok': False, 'error': str(e)[:300]}
+
+# ---- Media info (25 Oct 2026): duration of a stored sound or clip, which Cloudinary used to report on upload.
+class MediaInfo(BaseModel):
+    src: str
+
+@app.post('/media-info')
+def media_info(m: MediaInfo):
+    try:
+        path = '/tmp/mi_%d' % int(time.time() * 1000)
+        open(path, 'wb').write(_tf_fetch(m.src, 300))
+        r = _sp.run([_ffmpeg(), '-hide_banner', '-i', path], capture_output=True, text=True, timeout=120)
+        try: _os.remove(path)
+        except Exception: pass
+        import re as _re
+        mm = _re.search(r'Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)', r.stderr)
+        if not mm: return {'ok': False, 'error': 'no duration found'}
+        d = int(mm.group(1)) * 3600 + int(mm.group(2)) * 60 + float(mm.group(3))
+        return {'ok': True, 'duration': round(d, 3)}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)[:300]}
