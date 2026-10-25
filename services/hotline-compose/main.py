@@ -120,14 +120,22 @@ def star(d, cx, cy, r, fill):
         pts.append((cx + rr * math.cos(a), cy - rr * math.sin(a)))
     d.polygon(pts, fill=fill)
 
-def write_video(frames, w, h):
+def write_video(frames, w, h, put=None):
+    # 25 Oct 2026 (media move): h264 via ffmpeg, PUT to a Shopify staged upload address when one is given (the caller then
+    # registers it through SC - File Store). Without an address the old Cloudinary upload still runs, so nothing breaks mid-switch.
     path = '/tmp/v_%d.mp4' % int(time.time() * 1000)
-    vw = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*'mp4v'), FPS, (w, h))
-    for f in frames: vw.write(cv2.cvtColor(np.array(f), cv2.COLOR_RGB2BGR))
-    vw.release()
-    r = requests.post('https://api.cloudinary.com/v1_1/dkapdtxek/video/upload', data={'upload_preset': 'SCSMAuto', 'asset_folder': 'SCSMAuto', 'public_id': 'hotline_gfx_%d_%d' % (int(time.time() * 1000), random.randint(0, 99999))}, files={'file': ('g.mp4', open(path, 'rb').read())}, timeout=180).json()
-    u = r.get('secure_url', '')
-    return u.replace('/video/upload/', '/video/upload/vc_h264,q_auto:best/') if u else ''
+    enc = _sp.Popen([_ffmpeg(), '-y', '-v', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', '%dx%d' % (w, h), '-r', str(FPS), '-i', '-',
+                     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '18', '-movflags', '+faststart', path], stdin=_sp.PIPE)
+    for f in frames: enc.stdin.write(np.array(f.convert('RGB')).tobytes())
+    enc.stdin.close(); enc.wait()
+    data = open(path, 'rb').read()
+    try: _os.remove(path)
+    except Exception: pass
+    if put:
+        r = requests.put(put, data=data, headers={'Content-Type': 'video/mp4'}, timeout=300)
+        return 'put:%d' % r.status_code if r.status_code < 300 else ''
+    r = requests.post('https://api.cloudinary.com/v1_1/dkapdtxek/video/upload', data={'upload_preset': 'SCSMAuto', 'asset_folder': 'SCSMAuto', 'public_id': 'hotline_gfx_%d_%d' % (int(time.time() * 1000), random.randint(0, 99999))}, files={'file': ('g.mp4', data)}, timeout=180).json()
+    return r.get('secure_url', '')
 
 def strip(text_units, h, bg, fg, f, logo=None, star_r=0, gap=36, dur=DUR):
     # one long strip of repeated units, drawn once
@@ -158,14 +166,19 @@ class Gfx(BaseModel):
     box: bool = True            # Product posts need the product box; NFT posts do not
     box_url: str = ''
     box_name: str = ''
-    set_url: str = 'https://res.cloudinary.com/dkapdtxek/image/upload/v1791472129/SCSMAuto/sc_hotline_set_brick_v1.png'
+    set_url: str = 'https://cdn.shopify.com/s/files/1/0661/7428/7966/files/cl_SCSMAuto_sc_hotline_set_brick_v1.png'
+    logo_url: str = 'https://cdn.shopify.com/s/files/1/0661/7428/7966/files/cl_SCSMAuto_sc_ticker_logo_white.png'
+    ticker_put: str = ''        # Shopify staged upload addresses (SC - File Store, action targets); empty = old Cloudinary upload
+    box_put: str = ''
+    box2_url: str = ''          # second product photo: flattened onto white as a 480 x 480 square (the old Cloudinary c_fill,b_white)
+    box2_put: str = ''
 
 @app.post('/hotline-gfx')
 def hotline_gfx(g: Gfx):
     n = int(FPS * g.dur)
     # ticker: 6 px red rule, royal row (logo + name + stars, white italic), white row (shop address, navy); readable crawl
     fi = font('BarlowCondensed-BoldItalic.ttf', 72); fb = font('BarlowCondensed-Bold.ttf', 48)
-    lg = Image.open(io.BytesIO(requests.get('https://res.cloudinary.com/dkapdtxek/image/upload/v1790460791/SCSMAuto/sc_ticker_logo_white.png', timeout=60).content)).convert('RGBA')
+    lg = Image.open(io.BytesIO(requests.get(g.logo_url, timeout=60).content)).convert('RGBA')
     capH = fi.getbbox('M')[3] - fi.getbbox('M')[1]; lg = lg.resize((int(lg.width * capH / lg.height), capH))
     units = ['LOGO', g.tick.upper(), '*']
     for part in g.phrase.split('*'):
@@ -181,9 +194,17 @@ def hotline_gfx(g: Gfx):
         fr.paste(Image.new('RGB', (1080, 4), NAVY), (0, 93))
         fr.paste(bot.crop((int(SPEED_BOT * t), 0, int(SPEED_BOT * t) + 1080, 80)), (0, 97))
         tframes.append(fr)
-    ticker_url = write_video(tframes, 1080, 178)
+    ticker_url = write_video(tframes, 1080, 178, g.ticker_put or None)
+    box2 = ''
+    if g.box2_url and g.box2_put:
+        im2 = ImageOps.exif_transpose(Image.open(io.BytesIO(requests.get(g.box2_url, timeout=60).content))).convert('RGBA')
+        im2 = ImageOps.fit(im2, (480, 480), Image.LANCZOS, centering=(0.5, 0.5))
+        flat = Image.new('RGBA', (480, 480), (255, 255, 255, 255)); flat.alpha_composite(im2)
+        b2 = io.BytesIO(); flat.convert('RGB').save(b2, 'JPEG', quality=90)
+        r2 = requests.put(g.box2_put, data=b2.getvalue(), headers={'Content-Type': 'image/jpeg'}, timeout=120)
+        box2 = 'put:%d' % r2.status_code if r2.status_code < 300 else ''
     if not g.box:
-        return {'ok': bool(ticker_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': '', 'box_xywh': None}
+        return {'ok': bool(ticker_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': '', 'box_xywh': None, 'box2': box2}
     # product box over the desk front (Playbook 7.7.2, 8 Oct 2026): one fixed square box, the same size and place on every post;
     # it slides in from the left of the screen and settles on the right.
     # The product photo fills it edge to edge (cover fit); Andy's crop from the dashboard arrives already applied in box_url.
@@ -227,8 +248,8 @@ def hotline_gfx(g: Gfx):
         fr = Image.composite(Image.new('RGB', (RW, RH), (0, 0, 0)), fr, shadow)
         fr.paste(framed, (BX - 5 - RX + off, BY - 5 - RY))
         bframes.append(fr)
-    box_url = write_video(bframes, RW, RH)
-    return {'ok': bool(ticker_url and box_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': box_url, 'box_xywh': [RX, RY, RW, RH]}
+    box_url = write_video(bframes, RW, RH, g.box_put or None)
+    return {'ok': bool(ticker_url and box_url), 'ticker_url': ticker_url, 'ticker_xywh': [0, 1702, 1080, 178], 'box_url': box_url, 'box_xywh': [RX, RY, RW, RH], 'box2': box2}
 
 # ---------- Travel the World: keep the original NFT artwork pixel for pixel inside the 9:16 extension ----------
 class Merge(BaseModel):
