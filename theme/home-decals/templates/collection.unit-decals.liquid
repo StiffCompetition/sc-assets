@@ -1,0 +1,100 @@
+{%- comment -%} Unit Decals collection page (Andy, 27 Oct 2026): small product-style boxes like the Pick your character boxes. No price, no cart. Sticker boxes carry an optional newsletter tick box. Collection template suffix: unit-decals. {%- endcomment -%}
+<style>
+  .sc-dc{text-align:center;padding-top:2.4rem;padding-bottom:4rem}
+  .sc-dc h1{margin:0 0 .4rem}
+  .sc-dc .sc-dc__lead{margin:0 0 2.4rem;font-size:1.4rem;letter-spacing:.04em}
+  .sc-dc__g{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:2rem 1.6rem;align-items:stretch}
+  .sc-dc__g li{margin:0;padding:0;min-width:0}
+  .sc-dc__c{display:flex;flex-direction:column;gap:.5rem;text-align:center;height:100%}
+  .sc-dc__c img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border:3px solid rgba(var(--color-foreground),.15);background:#e9ebee}
+  .sc-dc__c a.sc-dc__img:hover img{border-color:rgba(var(--color-foreground),.6)}
+  .sc-dc__c b{font-size:1.4rem;line-height:1.25;margin-top:.4rem}
+  .sc-dc__c span.sc-dc__d{font-size:1.2rem;opacity:.8;line-height:1.3}
+  .sc-dc__opt{display:flex;gap:.6rem;align-items:flex-start;justify-content:center;font-size:1.1rem;line-height:1.3;text-align:left;margin-top:.4rem;cursor:pointer}
+  .sc-dc__opt input{margin:.1rem 0 0;flex:none}
+  .sc-dc__em{display:none;width:100%;box-sizing:border-box;padding:.8rem 1rem;font-size:1.2rem;border:1px solid rgba(var(--color-foreground),.4);background:transparent;color:rgb(var(--color-foreground))}
+  .sc-dc__em.is-on{display:block}
+  .sc-dc__btn{display:block;box-sizing:border-box;text-align:center;padding:1rem 1rem;border-radius:999px;background:#e5261b;color:#fff;font-weight:700;font-size:1.2rem;text-decoration:none;text-transform:uppercase;letter-spacing:.03em;margin-top:auto}
+  .sc-dc__btn.wa{background:#1fa855}
+  .sc-dc__btn.tg{background:#229ED9}
+  .sc-dc__btn.ec{background:#e5261b}
+  .sc-dc__btn.wl{background:#111}
+  .sc-dc__act{margin-top:auto;display:flex;flex-direction:column;gap:.5rem}
+  .sc-dc__msg{font-size:1.1rem;color:#e5261b;min-height:0}
+  @media(max-width:989px){.sc-dc__g{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:749px){.sc-dc__g{grid-template-columns:repeat(2,1fr);gap:1.6rem 1rem}.sc-dc__c b{font-size:1.3rem}}
+</style>
+<div class="sc-dc page-width">
+  <h1 class="h1">{{ collection.title }}</h1>
+  <ul class="sc-dc__g">
+    <li><div class="sc-dc__c" data-tile>
+      <a class="sc-dc__img" href="https://getstickerpack.com/s/137998?key=4jxn57"><img src="{{ 'sc-dc-pack1.jpg' | asset_url }}" alt="WhatsApp sticker pack 1" width="320" height="320" loading="eager"></a>
+      <b>WhatsApp Stickers: 1 of 2</b>
+      <span class="sc-dc__d">30 reactions. Free.</span>
+      <div class="sc-dc__act">
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also join the Roster (new drops and updates)</span></label>
+        <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
+        <a class="sc-dc__btn wa" data-go href="https://getstickerpack.com/s/137998?key=4jxn57">Add to WhatsApp</a>
+        <div class="sc-dc__msg" data-msg></div>
+      </div>
+    </div></li>
+    <li><div class="sc-dc__c" data-tile>
+      <a class="sc-dc__img" href="https://getstickerpack.com/s/138000?key=50te6m"><img src="{{ 'sc-dc-pack2.jpg' | asset_url }}" alt="WhatsApp sticker pack 2" width="320" height="320" loading="eager"></a>
+      <b>WhatsApp Stickers: 2 of 2</b>
+      <span class="sc-dc__d">25 moods. Free.</span>
+      <div class="sc-dc__act">
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also join the Roster (new drops and updates)</span></label>
+        <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
+        <a class="sc-dc__btn wa" data-go href="https://getstickerpack.com/s/138000?key=50te6m">Add to WhatsApp</a>
+        <div class="sc-dc__msg" data-msg></div>
+      </div>
+    </div></li>
+    <li><div class="sc-dc__c" data-tile>
+      <a class="sc-dc__img" href="https://t.me/addstickers/stiffcompetition"><img src="{{ 'sc-dc-telegram.jpg' | asset_url }}" alt="Telegram sticker set" width="320" height="320" loading="eager"></a>
+      <b>Telegram Stickers</b>
+      <span class="sc-dc__d">The whole cast. Free.</span>
+      <div class="sc-dc__act">
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also join the Roster (new drops and updates)</span></label>
+        <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
+        <a class="sc-dc__btn tg" data-go href="https://t.me/addstickers/stiffcompetition">Add to Telegram</a>
+        <div class="sc-dc__msg" data-msg></div>
+      </div>
+    </div></li>
+    <li><div class="sc-dc__c">
+      <a class="sc-dc__img" href="/pages/e-card"><img src="{{ 'Shopify_banner_-_cards.jpg' | file_url }}?width=480&height=480&crop=center" alt="Free birthday e-cards" width="320" height="320" loading="eager"></a>
+      <b>Free Birthday E-Cards</b>
+      <span class="sc-dc__d">Stiff and direct. Free.</span>
+      <div class="sc-dc__act"><a class="sc-dc__btn ec" href="/pages/e-card">Send an e-card</a></div>
+    </div></li>
+    <li><div class="sc-dc__c">
+      <a class="sc-dc__img" href="/pages/the-waitlist"><img src="{{ 'A_thin_ultra-wide_horizontal_banner_featuring_a_direct_top-down_flat-lay_composite_of_6_action_figures_standing_side-by-side._High-gloss_PVC_plastic_vibrant_1994_toy_aesthetic_crisp_s.png' | file_url }}?width=480&height=480&crop=center" alt="Want the figures? Join the waitlist" width="320" height="320" loading="eager"></a>
+      <b>Want Us? The Figures</b>
+      <span class="sc-dc__d">If we build it, this list gets first call.</span>
+      <div class="sc-dc__act"><a class="sc-dc__btn wl" href="/pages/the-waitlist">Enlist</a></div>
+    </div></li>
+  </ul>
+  {% form 'customer', id: 'sc-dc-form', style: 'display:none' %}
+    <input type="hidden" name="contact[tags]" value="newsletter">
+    <input type="hidden" name="contact[email]" value="" data-form-email>
+  {% endform %}
+</div>
+<script>
+(function(){
+  var form=document.getElementById('sc-dc-form');
+  document.querySelectorAll('[data-tile]').forEach(function(t){
+    var opt=t.querySelector('[data-opt]'),em=t.querySelector('[data-em]'),go=t.querySelector('[data-go]'),msg=t.querySelector('[data-msg]');
+    if(!opt||!em||!go)return;
+    opt.addEventListener('change',function(){em.classList.toggle('is-on',opt.checked);msg.textContent='';if(opt.checked)em.focus();});
+    go.addEventListener('click',function(e){
+      if(!opt.checked||!form)return;
+      var v=(em.value||'').trim();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){e.preventDefault();msg.textContent='Add your email, or untick the box.';em.focus();return;}
+      e.preventDefault();
+      form.querySelector('[data-form-email]').value=v;
+      var href=go.href,done=false,fin=function(){if(!done){done=true;window.location.href=href;}};
+      try{fetch(form.action,{method:'POST',body:new FormData(form),credentials:'same-origin'}).then(fin,fin);}catch(x){fin();}
+      setTimeout(fin,1800);
+    });
+  });
+})();
+</script>
