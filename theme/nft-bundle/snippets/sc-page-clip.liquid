@@ -1,0 +1,39 @@
+{%- comment -%}
+  Places a click-to-play Brand Lore clip inside a page's own text, at a named spot.
+  The page text is never edited: the text is split at the anchor and the clip is put between the two halves.
+  If the anchor is not found (page text changed), the clip shows after the text instead.
+  Usage: {% render 'sc-page-clip', content: page.content, handle: page.handle %}
+  27 Oct 2026 (Andy): the clip no longer shows on The Digital Mint page; The Story keeps it.
+{%- endcomment -%}
+{%- liquid
+  assign anchor = ''
+  case handle
+    when 'the-story'
+      assign poster = 'https://cdn.shopify.com/s/files/1/0661/7428/7966/files/sc-bl-crew-intro-poster.jpg?v=1791911345'
+      assign hls = 'https://cdn.shopify.com/videos/c/vp/57be58ce371347f69156e969f7f2277a/57be58ce371347f69156e969f7f2277a.m3u8'
+      assign mp4_720 = 'https://cdn.shopify.com/videos/c/vp/57be58ce371347f69156e969f7f2277a/57be58ce371347f69156e969f7f2277a.HD-720p-1.6Mbps-97344591.mp4'
+      assign mp4_480 = 'https://cdn.shopify.com/videos/c/vp/57be58ce371347f69156e969f7f2277a/57be58ce371347f69156e969f7f2277a.SD-480p-0.9Mbps-97344591.mp4'
+      assign label = 'Stiff Competition crew introduction: the six characters in turn'
+      assign anchor = '<section class="sc-st__sec">'
+  endcase
+-%}
+{%- if anchor == '' -%}
+  {{ content }}
+{%- else -%}
+  {%- capture clip -%}
+    <div class="sc-pageclip" style="margin:clamp(24px,4vw,38px) auto;width:min(100%,calc(min(86svh,760px)*0.5625));aspect-ratio:9/16;position:relative;background:#000;border-radius:10px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.45);">
+      <video controls playsinline preload="none" poster="{{ poster }}" aria-label="{{ label }}" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:contain;display:block;">
+        <source src="{{ hls }}" type="application/x-mpegURL">
+        <source src="{{ mp4_720 }}" type="video/mp4">
+        <source src="{{ mp4_480 }}" type="video/mp4">
+      </video>
+    </div>
+  {%- endcapture -%}
+  {%- if content contains anchor -%}
+    {%- assign head = content | split: anchor | first -%}
+    {%- assign tail = content | remove_first: head -%}
+    {{ head }}{{ clip }}{{ tail }}
+  {%- else -%}
+    {{ content }}{{ clip }}
+  {%- endif -%}
+{%- endif -%}
