@@ -117,6 +117,7 @@
                 {%- endif -%}
               {%- endfor -%}
 
+              {%- if cart_has_nft -%}{%- render 'sc-cart-link' -%}{%- endif -%}
               {%- if cart_has_nft or cart_has_download -%}
                 <div style="margin: 12px 0; font-size: 1em; line-height: 1.5;">
                   <input type="checkbox" id="nft-agree" style="margin-right: 8px; vertical-align: top; margin-top: 3px;">

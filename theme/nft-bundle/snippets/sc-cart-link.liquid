@@ -1,0 +1,38 @@
+{%- comment -%}
+  SC - CART LINK (27 Oct 2026, Andy's rule): a T-shirt or poster printed with an artwork belongs to that artwork.
+  On the cart page, removing an NFT also removes the T-shirt and poster lines carrying its title
+  (line properties _shirt_title / _poster_title). Removing a T-shirt or poster alone leaves the NFT.
+  Each print line shows a short note saying so. Rendered from sections/main-cart-footer.liquid when the cart holds an NFT.
+  Shopify's own checkout page is outside the theme; a T-shirt or poster that reaches an order without its NFT is caught by
+  the order check in n8n (SC - Print Without NFT) and raised on the dashboard Alerts tab.
+{%- endcomment -%}
+<script>
+(function(){
+  function go(){
+    fetch('/cart.js',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(cart){
+      var items=cart.items||[];
+      function printTitle(it){ var p=it.properties||{}; return p._shirt_title||p._poster_title||''; }
+      items.forEach(function(it,i){
+        var t=printTitle(it); if(!t){return;}
+        var row=document.getElementById('CartItem-'+(i+1)); var box=row&&row.querySelector('.cart-item__details'); if(!box||box.querySelector('.sc-cart-link')){return;}
+        var n=document.createElement('p'); n.className='sc-cart-link'; n.style.cssText='font-size:1.2rem;opacity:.75;margin:6px 0 0;';
+        n.textContent='Printed with '+t+'. Removed with it if that artwork is removed.'; box.appendChild(n);
+      });
+      window.scCartItems=items;
+    }).catch(function(){});
+  }
+  /* Before Dawn's own remove handler (document capture runs first): an NFT line takes its prints with it. */
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('cart-remove-button'); var items=window.scCartItems||[]; if(!b||!items.length){return;}
+    var idx=parseInt(b.dataset.index,10); var it=items[idx-1]; if(!it||it.product_type!=='NFT'){return;}
+    var upd={}; upd[it.key]=0; var n=0;
+    items.forEach(function(o){ var p=o.properties||{}; if(o!==it&&(p._shirt_title||p._poster_title)===it.product_title){ upd[o.key]=0; n++; } });
+    if(!n){return;}
+    e.preventDefault(); e.stopImmediatePropagation();
+    fetch('/cart/update.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({updates:upd})}).then(function(){ window.location.reload(); });
+  },true);
+  go();
+  /* Dawn redraws the cart rows after a quantity change; attach again. */
+  if(window.MutationObserver){ var busy=false; new MutationObserver(function(){ if(busy){return;} busy=true; setTimeout(function(){ go(); busy=false; },300); }).observe(document.body,{childList:true,subtree:true}); }
+})();
+</script>
