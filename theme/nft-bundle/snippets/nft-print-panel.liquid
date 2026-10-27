@@ -3,7 +3,7 @@
   Two product tiles, NFT Shirt and NFT Poster, each showing the shopper's own artwork drawn live on the T-shirt photo
   (Registered owner design) and on the poster, with YOUR NAME HERE, the bundle price for this artwork's grade and an Add button.
   Add poster: puts this NFT and the poster in the cart together (same line properties the shirt maker reads) and opens the cart.
-  Add T-shirt: opens the Build your bundle page with this NFT already chosen, for design, colour and size.
+  Add T-shirt: opens the choices under the tiles (the three designs drawn on this artwork, colour, size) and one button adds this NFT and the T-shirt together.
   Prices come from snippets/sc-bundle-data.liquid; the live drawings from snippets/sc-print-preview.liquid.
   Shows nothing while neither print product is active.
 {%- endcomment -%}
@@ -27,7 +27,7 @@
       <div class="npt__pic npt__pic--shirt"><img src="{{ 'sc-tshirt-black.jpg' | asset_url }}" alt="" loading="lazy"><div class="npt__print" id="npt-shirt-prev"></div></div>
       <p class="npt__name">Your art on a T-shirt</p>
       <p class="npt__price" id="npt-shirt-price"></p>
-      <a class="button button--secondary npt__btn" id="npt-shirt-btn" href="{{ pages['build-your-bundle'].url }}?print=shirt&nft={{ product.selected_or_first_available_variant.id }}{% if grade != blank %}&grade={{ grade | handleize }}{% endif %}">Add T-shirt</a>
+      <button type="button" class="button button--secondary npt__btn" id="npt-shirt-btn" aria-expanded="false" aria-controls="npt-shirt-opts">Add T-shirt</button>
     </div>
     {%- endif -%}
     {%- if has_poster -%}
@@ -39,6 +39,25 @@
     </div>
     {%- endif -%}
   </div>
+  {%- if has_shirt -%}
+  <div class="npt__opts" id="npt-shirt-opts" hidden>
+    <p class="npt__opts-h">Your T-shirt</p>
+    <label class="npt__lab">Design
+      <select id="npt-shirt-theme">
+        <option value="registered_owner">Registered owner</option>
+        <option value="brag_stats">Brag stats</option>
+        <option value="dog_tag">Pocket dog tag</option>
+      </select>
+    </label>
+    <div class="npt__row">
+      <label class="npt__lab">Colour <select id="npt-shirt-colour"></select></label>
+      <label class="npt__lab">Size <select id="npt-shirt-size">{%- for sz in shirt.options_by_name['Size'].values -%}<option value="{{ sz | escape }}">{{ sz | escape }}</option>{%- endfor -%}</select></label>
+    </div>
+    <p class="npt__price" id="npt-shirt-opts-price"></p>
+    <button type="button" class="button button--primary npt__btn" id="npt-shirt-add">Add T-shirt and artwork to cart</button>
+    <p class="npt__msg" id="npt-shirt-msg" hidden></p>
+  </div>
+  {%- endif -%}
   <p class="npt__foot">Printed with this artwork and your first name from your shipping address. Made to order after you buy.</p>
 </div>
 <style>
@@ -58,6 +77,13 @@
 .npt__price small{display:block;font-size:1.1rem;opacity:.75;}
 .npt__btn{margin-top:auto;min-height:40px;font-size:1.3rem;width:100%;}
 .npt__foot{font-size:1.1rem;line-height:1.4;margin:10px 0 0;opacity:.75;}
+.npt__opts{margin:14px 0 0;padding:14px;border:1px solid rgba(var(--color-foreground),.2);background:rgba(var(--color-foreground),.04);display:grid;gap:10px;}
+.npt__opts[hidden]{display:none!important;}
+.npt__opts-h{font-weight:700;font-size:1.4rem;margin:0;}
+.npt__lab{display:grid;gap:4px;font-weight:600;font-size:1.3rem;}
+.npt__lab select{padding:8px;font-size:1.4rem;font-family:inherit;border:1px solid rgba(var(--color-foreground),.3);background:rgb(var(--color-background));color:rgb(var(--color-foreground));}
+.npt__row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.npt__msg{font-size:1.2rem;margin:0;}
 @media screen and (max-width:400px){.npt__tiles{gap:8px;}.npt__tile{padding:7px;}}
 </style>
 <script>
@@ -71,18 +97,30 @@
   var pp=document.getElementById('npt-poster-prev'); if(pp&&window.scPreview){pp.innerHTML=window.scPreview('poster',art,title,extra);window.scPreviewPaint(pp);}
   if(B.shirt&&B.shirt.available){price(document.getElementById('npt-shirt-price'),B.shirt.minPrice,true);}
   if(B.poster&&B.poster.available){price(document.getElementById('npt-poster-price'),B.poster.price);}
-  var pb=document.getElementById('npt-poster-btn'); if(!pb||!B.poster||!B.poster.available){return;}
   var addBtn=document.querySelector('button[type="submit"][name="add"]'); var form=addBtn?addBtn.closest('form'):null;
   function nftItem(){ if(!form){return {id:{{ product.selected_or_first_available_variant.id }},quantity:1,properties:{}};} var fd=new FormData(form), it={id:parseInt(fd.get('id'),10),quantity:parseInt(fd.get('quantity'),10)||1,properties:{}}; fd.forEach(function(v,k){ var m=k.match(/^properties\[(.+)\]$/); if(m){it.properties[m[1]]=v;} }); return it; }
   /* Position of this artwork among the NFTs in the order (starting at 1): the NFTs already in the cart come first. Read at the moment of adding. */
   function nftPos(){ return fetch('/cart.js',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(c){var n=0;(c.items||[]).forEach(function(i){if(i.product_type==='NFT'){n+=parseInt(i.quantity,10)||0;}});return n+1;}).catch(function(){return 1;}); }
-  pb.addEventListener('click',function(){
-    pb.disabled=true; pb.textContent='Adding…';
-    nftPos().then(function(pos){ var items=[nftItem(),{id:B.poster.id,quantity:1,properties:{'_poster_nft':String(pos),'_poster_title':title}}];
-      return fetch('/cart/add.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})}); })
+  function addBoth(extraItem,btn,label){
+    btn.disabled=true; btn.textContent='Adding…';
+    nftPos().then(function(pos){ return fetch('/cart/add.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[nftItem(),extraItem(String(pos))]})}); })
       .then(function(r){ if(!r.ok){throw 0;} window.location.href='/cart'; })
-      .catch(function(){ pb.disabled=false; pb.textContent='Add poster'; });
-  });
+      .catch(function(){ btn.disabled=false; btn.textContent=label; });
+  }
+  /* Poster: one design, one click. */
+  var pb=document.getElementById('npt-poster-btn');
+  if(pb&&B.poster&&B.poster.available){ pb.addEventListener('click',function(){ addBoth(function(pos){return {id:B.poster.id,quantity:1,properties:{'_poster_nft':pos,'_poster_title':title}};},pb,'Add poster'); }); }
+  /* T-shirt: Add T-shirt opens the choices under the tiles (design on this artwork, colour, size), then one button adds the artwork and the T-shirt together. */
+  var sb=document.getElementById('npt-shirt-btn'), opts=document.getElementById('npt-shirt-opts');
+  if(!sb||!opts||!B.shirt||!B.shirt.available){return;}
+  var th=document.getElementById('npt-shirt-theme'), co=document.getElementById('npt-shirt-colour'), sz=document.getElementById('npt-shirt-size'), opr=document.getElementById('npt-shirt-opts-price'), sadd=document.getElementById('npt-shirt-add'), smsg=document.getElementById('npt-shirt-msg');
+  function fillC(){ var keep=co.value, all=B.shirt.colours||[]; var list=th.value==='dog_tag'?all:all.filter(function(c){return B.darkColours.indexOf(c)>-1;}); co.innerHTML=list.map(function(c){return '<option value="'+c.replace(/"/g,'&quot;')+'">'+c+'</option>';}).join(''); co.value=list.indexOf(keep)>-1?keep:list[0]; }
+  function variant(){ return B.shirt.variants[co.value+'|'+sz.value]; }
+  function upd(){ var v=variant(); if(!v){opr.textContent='That colour and size is not available right now.'; sadd.disabled=true; return;} price(opr,v.price); sadd.disabled=!v.ok; }
+  var picker=null;
+  sb.addEventListener('click',function(){ var open=opts.hidden; opts.hidden=!open; sb.setAttribute('aria-expanded',String(open)); sb.textContent=open?'Close':'Add T-shirt'; if(open){ if(!picker&&window.scDesignPicker){picker=window.scDesignPicker(th,art,title,extra);} fillC(); upd(); opts.scrollIntoView({block:'nearest',behavior:'smooth'}); } });
+  th.addEventListener('change',function(){fillC();upd();}); co.addEventListener('change',upd); sz.addEventListener('change',upd);
+  sadd.addEventListener('click',function(){ var v=variant(); if(!v||!v.ok){return;} smsg.hidden=true; addBoth(function(pos){return {id:v.id,quantity:1,properties:{'_shirt_theme':th.value,'_shirt_colour':co.value,'_shirt_size':sz.value,'_shirt_title':title,'_shirt_nft':pos}};},sadd,'Add T-shirt and artwork to cart'); });
 })();
 </script>
 {%- endif -%}
