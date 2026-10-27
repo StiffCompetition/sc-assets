@@ -20,7 +20,7 @@
     var art=nft.image&&nft.image.indexOf('//')===0?'https:'+nft.image:nft.image; var extra={character:nft.character||'',stats:nft.stats||[]};
     var p=it.properties||{}; var html=p._shirt_theme?window.scOnShirt(window.scPreview(KIND[p._shirt_theme]||'owner',art,nft.title,extra),SHIRT):window.scPreview('poster',art,nft.title,extra);
     var img=media.querySelector('img'); var holder=img?img.parentNode:media; var d=document.createElement('div'); d.className='sc-cart-art'; d.innerHTML=html;
-    if(img){ img.style.display='none'; } holder.appendChild(d); window.scPreviewPaint(d);
+    if(img){ img.style.display='none'; } holder.style.width='100%'; holder.appendChild(d); window.scPreviewPaint(d);
   }
   function go(){
     fetch('/cart.js',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(cart){
