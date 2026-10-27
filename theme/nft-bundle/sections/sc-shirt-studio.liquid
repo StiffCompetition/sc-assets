@@ -54,7 +54,7 @@ body.sc-studio-on .product-form__input--pill input.sc-off+label{opacity:.35;poin
     /* Dawn re-renders the price block on variant change; keep the bundle price on it. */
     var pr=document.querySelector('.price'); if(pr&&window.MutationObserver){ var busy=false; new MutationObserver(function(){ if(busy){return;} busy=true; setTimeout(function(){ price(); busy=false; },0); }).observe(pr.parentNode,{childList:true,subtree:true}); }
     /* Dawn re-renders the Colour and Size pills on variant change; mark the colours a design cannot use again. */
-    var vs=document.querySelector('variant-selects'); if(vs&&window.MutationObserver){ var busy2=false; new MutationObserver(function(){ if(busy2){return;} busy2=true; setTimeout(function(){ applyColourRules(); busy2=false; },0); }).observe(vs,{childList:true,subtree:true}); }
+    var vs=document.querySelector('variant-selects'); if(vs&&window.MutationObserver){ var busy2=false; new MutationObserver(function(){ if(busy2){return;} busy2=true; setTimeout(function(){ applyColourRules(); busy2=false; },0); }).observe(vs.parentNode,{childList:true,subtree:true}); }
   }).catch(function(){});
 })();
 </script>
