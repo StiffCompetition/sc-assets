@@ -21,6 +21,9 @@
   .sc-dc__btn.wl{background:#111}
   .sc-dc__act{margin-top:auto;display:flex;flex-direction:column;gap:.5rem}
   .sc-dc__msg{font-size:1.1rem;color:#e5261b;min-height:0}
+  .sc-dc__qr{display:none;text-align:center;font-size:1.1rem;opacity:.85;margin-top:.8rem;line-height:1.3}
+  .sc-dc__qr img{display:block;width:110px;height:110px;margin:.4rem auto 0;border:0;background:#fff;aspect-ratio:auto}
+  @media(min-width:990px){.sc-dc__qr{display:block}}
   @media(max-width:989px){.sc-dc__g{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:749px){.sc-dc__g{grid-template-columns:repeat(2,1fr);gap:1.6rem 1rem}.sc-dc__c b{font-size:1.3rem}}
 </style>
@@ -36,6 +39,7 @@
         <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
         <a class="sc-dc__btn wa" data-go href="https://getstickerpack.com/s/137998?key=4jxn57">Add to WhatsApp</a>
         <div class="sc-dc__msg" data-msg></div>
+        <div class="sc-dc__qr">On a computer? Scan with your phone<img src="{{ 'sc-stickers-qr-pack1.png' | asset_url }}" alt="QR code" width="110" height="110" loading="lazy"></div>
       </div>
     </div></li>
     <li><div class="sc-dc__c" data-tile>
@@ -47,6 +51,7 @@
         <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
         <a class="sc-dc__btn wa" data-go href="https://getstickerpack.com/s/138000?key=50te6m">Add to WhatsApp</a>
         <div class="sc-dc__msg" data-msg></div>
+        <div class="sc-dc__qr">On a computer? Scan with your phone<img src="{{ 'sc-stickers-qr-pack2.png' | asset_url }}" alt="QR code" width="110" height="110" loading="lazy"></div>
       </div>
     </div></li>
     <li><div class="sc-dc__c" data-tile>
@@ -58,6 +63,7 @@
         <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
         <a class="sc-dc__btn tg" data-go href="https://t.me/addstickers/stiffcompetition">Add to Telegram</a>
         <div class="sc-dc__msg" data-msg></div>
+        <div class="sc-dc__qr">On a computer? Scan with your phone<img src="{{ 'sc-stickers-qr-telegram.png' | asset_url }}" alt="QR code" width="110" height="110" loading="lazy"></div>
       </div>
     </div></li>
     <li><div class="sc-dc__c">
