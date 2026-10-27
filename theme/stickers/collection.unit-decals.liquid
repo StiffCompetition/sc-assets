@@ -15,7 +15,10 @@
   .sc-dc__em{display:none;width:100%;box-sizing:border-box;padding:.8rem 1rem;font-size:1.2rem;border:1px solid rgba(var(--color-foreground),.4);background:transparent;color:rgb(var(--color-foreground))}
   .sc-dc__em.is-on{display:block}
   .sc-dc__btn{display:block;box-sizing:border-box;text-align:center;padding:1rem 1rem;border-radius:999px;background:#e5261b;color:#fff;font-weight:700;font-size:1.2rem;text-decoration:none;text-transform:uppercase;letter-spacing:.03em;margin-top:auto}
+  .sc-dc__btn.wa{background:#1fa855}
   .sc-dc__btn.tg{background:#229ED9}
+  .sc-dc__btn.ec{background:#e5261b}
+  .sc-dc__btn.wl{background:#111}
   .sc-dc__act{margin-top:auto;display:flex;flex-direction:column;gap:.5rem}
   .sc-dc__msg{font-size:1.1rem;color:#e5261b;min-height:0}
   @media(max-width:989px){.sc-dc__g{grid-template-columns:repeat(3,1fr)}}
@@ -23,52 +26,51 @@
 </style>
 <div class="sc-dc page-width">
   <h1 class="h1">{{ collection.title }}</h1>
-  <p class="sc-dc__lead">Free for every chat. Tap a box on your phone.</p>
   <ul class="sc-dc__g">
     <li><div class="sc-dc__c" data-tile>
-      <a class="sc-dc__img" href="https://getstickerpack.com/s/137998?key=4jxn57"><img src="{{ 'sc-dc-pack1.jpg' | asset_url }}" alt="WhatsApp sticker pack 1" width="320" height="320" loading="lazy"></a>
-      <b>WhatsApp Stickers: Pack 1</b>
+      <a class="sc-dc__img" href="https://getstickerpack.com/s/137998?key=4jxn57"><img src="{{ 'sc-dc-pack1.jpg' | asset_url }}" alt="WhatsApp sticker pack 1" width="320" height="320" loading="eager"></a>
+      <b>WhatsApp Stickers: 1 of 2</b>
       <span class="sc-dc__d">30 reactions. Free.</span>
       <div class="sc-dc__act">
-        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also email me new sticker drops</span></label>
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also join the Roster (new drops and updates)</span></label>
         <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
-        <a class="sc-dc__btn" data-go href="https://getstickerpack.com/s/137998?key=4jxn57">Add to WhatsApp</a>
+        <a class="sc-dc__btn wa" data-go href="https://getstickerpack.com/s/137998?key=4jxn57">Add to WhatsApp</a>
         <div class="sc-dc__msg" data-msg></div>
       </div>
     </div></li>
     <li><div class="sc-dc__c" data-tile>
-      <a class="sc-dc__img" href="https://getstickerpack.com/s/138000?key=50te6m"><img src="{{ 'sc-dc-pack2.jpg' | asset_url }}" alt="WhatsApp sticker pack 2" width="320" height="320" loading="lazy"></a>
-      <b>WhatsApp Stickers: Pack 2</b>
+      <a class="sc-dc__img" href="https://getstickerpack.com/s/138000?key=50te6m"><img src="{{ 'sc-dc-pack2.jpg' | asset_url }}" alt="WhatsApp sticker pack 2" width="320" height="320" loading="eager"></a>
+      <b>WhatsApp Stickers: 2 of 2</b>
       <span class="sc-dc__d">25 moods. Free.</span>
       <div class="sc-dc__act">
-        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also email me new sticker drops</span></label>
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also join the Roster (new drops and updates)</span></label>
         <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
-        <a class="sc-dc__btn" data-go href="https://getstickerpack.com/s/138000?key=50te6m">Add to WhatsApp</a>
+        <a class="sc-dc__btn wa" data-go href="https://getstickerpack.com/s/138000?key=50te6m">Add to WhatsApp</a>
         <div class="sc-dc__msg" data-msg></div>
       </div>
     </div></li>
     <li><div class="sc-dc__c" data-tile>
-      <a class="sc-dc__img" href="https://t.me/addstickers/stiffcompetition"><img src="{{ 'sc-dc-telegram.jpg' | asset_url }}" alt="Telegram sticker set" width="320" height="320" loading="lazy"></a>
+      <a class="sc-dc__img" href="https://t.me/addstickers/stiffcompetition"><img src="{{ 'sc-dc-telegram.jpg' | asset_url }}" alt="Telegram sticker set" width="320" height="320" loading="eager"></a>
       <b>Telegram Stickers</b>
       <span class="sc-dc__d">The whole cast. Free.</span>
       <div class="sc-dc__act">
-        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also email me new sticker drops</span></label>
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Also join the Roster (new drops and updates)</span></label>
         <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
         <a class="sc-dc__btn tg" data-go href="https://t.me/addstickers/stiffcompetition">Add to Telegram</a>
         <div class="sc-dc__msg" data-msg></div>
       </div>
     </div></li>
     <li><div class="sc-dc__c">
-      <a class="sc-dc__img" href="/pages/e-card"><img src="{{ 'sc-dc-ecards.jpg' | asset_url }}" alt="Free birthday e-cards" width="320" height="320" loading="lazy"></a>
+      <a class="sc-dc__img" href="/pages/e-card"><img src="{{ 'sc-dc-ecards.jpg' | asset_url }}" alt="Free birthday e-cards" width="320" height="320" loading="eager"></a>
       <b>Free Birthday E-Cards</b>
       <span class="sc-dc__d">Stiff and direct. Free.</span>
-      <div class="sc-dc__act"><a class="sc-dc__btn" href="/pages/e-card">Send an e-card</a></div>
+      <div class="sc-dc__act"><a class="sc-dc__btn ec" href="/pages/e-card">Send an e-card</a></div>
     </div></li>
     <li><div class="sc-dc__c">
-      <a class="sc-dc__img" href="/pages/the-waitlist"><img src="{{ 'sc-dc-waitlist.jpg' | asset_url }}" alt="Want the figures? Join the waitlist" width="320" height="320" loading="lazy"></a>
+      <a class="sc-dc__img" href="/pages/the-waitlist"><img src="{{ 'sc-dc-waitlist.jpg' | asset_url }}" alt="Want the figures? Join the waitlist" width="320" height="320" loading="eager"></a>
       <b>Want Us? The Figures</b>
       <span class="sc-dc__d">If we build it, this list gets first call.</span>
-      <div class="sc-dc__act"><a class="sc-dc__btn" href="/pages/the-waitlist">Enlist</a></div>
+      <div class="sc-dc__act"><a class="sc-dc__btn wl" href="/pages/the-waitlist">Enlist</a></div>
     </div></li>
   </ul>
   {% form 'customer', id: 'sc-dc-form', style: 'display:none' %}
