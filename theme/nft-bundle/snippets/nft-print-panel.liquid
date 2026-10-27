@@ -66,10 +66,10 @@
   var art={{ product.featured_image | image_url: width: 400 | json }}, title={{ product.title | json }};
   var extra={character:{{ character | json }},stats:[{{ product.metafields.verisart.structural_rigidity | json }},{{ product.metafields.verisart.innuendo_intensity | json }},{{ product.metafields.verisart.friction_force | json }},{{ product.metafields.verisart.tactical_girth | json }}]};
   var g=window.scGradeOf([{{ grade | json }}]);
-  function price(el,cents){ if(!el){return;} if(g){el.innerHTML=money(bp(cents,g.key))+' <s>'+money(cents)+'</s><small>'+B.pct[g.key]+'% off with this artwork, applied in your cart</small>';} else {el.textContent=money(cents);} }
+  function price(el,cents,from){ if(!el){return;} var lead=from?'From ':''; if(g){el.innerHTML=lead+money(bp(cents,g.key))+' <s>'+money(cents)+'</s><small>'+B.pct[g.key]+'% off with this artwork, applied in your cart</small>';} else {el.textContent=lead+money(cents);} }
   var sp=document.getElementById('npt-shirt-prev'); if(sp&&window.scPreview){sp.innerHTML=window.scPreview('owner',art,title,extra);window.scPreviewPaint(sp);}
   var pp=document.getElementById('npt-poster-prev'); if(pp&&window.scPreview){pp.innerHTML=window.scPreview('poster',art,title,extra);window.scPreviewPaint(pp);}
-  if(B.shirt&&B.shirt.available){price(document.getElementById('npt-shirt-price'),B.shirt.minPrice);}
+  if(B.shirt&&B.shirt.available){price(document.getElementById('npt-shirt-price'),B.shirt.minPrice,true);}
   if(B.poster&&B.poster.available){price(document.getElementById('npt-poster-price'),B.poster.price);}
   var pb=document.getElementById('npt-poster-btn'); if(!pb||!B.poster||!B.poster.available){return;}
   var addBtn=document.querySelector('button[type="submit"][name="add"]'); var form=addBtn?addBtn.closest('form'):null;
