@@ -6,15 +6,32 @@
   Shopify's own checkout page is outside the theme; a T-shirt or poster that reaches an order without its NFT is caught by
   the order check in n8n (SC - Print Without NFT) and raised on the dashboard Alerts tab.
 {%- endcomment -%}
+{%- render 'sc-print-preview' -%}
+<style>.sc-cart-art{width:100%;display:block;}.sc-cart-art .scp-shirt{display:block;width:100%;}</style>
 <script>
 (function(){
+  var SHIRT={{ 'sc-tshirt-black.png' | asset_url | json }};
+  var KIND={registered_owner:'owner',brag_stats:'stats',dog_tag:'tag'};
+  var facts={};
+  function nftFacts(handle){ if(!facts[handle]){ facts[handle]=fetch('/products/'+encodeURIComponent(handle)+'?view=nft-data',{credentials:'same-origin'}).then(function(r){return r.json();}); } return facts[handle]; }
+  /* Andy, 27 Oct 2026: the cart picture of a T-shirt or poster line is the shopper's own artwork drawn on it (same drawing as the NFT page tiles), not the product's sample picture. */
+  function drawArt(row,it,nft){
+    var media=row.querySelector('.cart-item__media'); if(!media||media.querySelector('.sc-cart-art')||!window.scPreview||!nft||!nft.ok){return;}
+    var art=nft.image&&nft.image.indexOf('//')===0?'https:'+nft.image:nft.image; var extra={character:nft.character||'',stats:nft.stats||[]};
+    var p=it.properties||{}; var html=p._shirt_theme?window.scOnShirt(window.scPreview(KIND[p._shirt_theme]||'owner',art,nft.title,extra),SHIRT):window.scPreview('poster',art,nft.title,extra);
+    var img=media.querySelector('img'); var holder=img?img.parentNode:media; var d=document.createElement('div'); d.className='sc-cart-art'; d.innerHTML=html;
+    if(img){ img.style.display='none'; } holder.appendChild(d); window.scPreviewPaint(d);
+  }
   function go(){
     fetch('/cart.js',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(cart){
       var items=cart.items||[];
       function printTitle(it){ var p=it.properties||{}; return p._shirt_title||p._poster_title||''; }
       items.forEach(function(it,i){
         var t=printTitle(it); if(!t){return;}
-        var row=document.getElementById('CartItem-'+(i+1)); var box=row&&row.querySelector('.cart-item__details'); if(!box||box.querySelector('.sc-cart-link')){return;}
+        var row=document.getElementById('CartItem-'+(i+1)); var box=row&&row.querySelector('.cart-item__details'); if(!box){return;}
+        var nftItem=items.filter(function(o){ return o.product_type==='NFT'&&o.product_title===t; })[0];
+        if(nftItem){ nftFacts(nftItem.handle).then(function(nft){ drawArt(row,it,nft); }).catch(function(){}); }
+        if(box.querySelector('.sc-cart-link')){return;}
         var n=document.createElement('p'); n.className='sc-cart-link'; n.style.cssText='font-size:1.2rem;opacity:.75;margin:6px 0 0;';
         n.textContent='Printed with '+t+'. Removed with it if that artwork is removed.'; box.appendChild(n);
       });
