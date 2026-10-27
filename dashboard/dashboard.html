@@ -1617,8 +1617,8 @@ function libraryItems() {
     .forEach(r => items.push({ key: '#' + r.id, src: 'calendar', title: r.format + ' · post #' + r.id, character: r.character, format: r.format, video_url: r.video_url,
       image_url: r.image_url || '', caption_instagram: r.caption_instagram || r.text_content || '', caption_facebook: r.caption_facebook || r.text_content || '',
       caption_x: r.caption_x || r.text_content || '', made: isoDate(r.post_date), row: r }));
-  (LIB || []).filter(l => l.video_url).forEach(l => items.push({ key: 'LIB:' + l.id, src: 'library', title: l.title || ('Library ' + l.id), character: l.character || '',
-    format: l.kind === 'campaign' ? 'Campaign' : 'Intro', camp: l.kind === 'campaign' ? (l.campaign || 'Campaign') : '', video_url: l.video_url, image_url: l.image_url || '',
+  (LIB || []).filter(l => l.video_url || (l.kind === 'campaign' && l.image_url)).forEach(l => items.push({ key: 'LIB:' + l.id, src: 'library', title: l.title || ('Library ' + l.id), character: l.character || '',
+    format: l.kind === 'campaign' ? 'Campaign' : 'Intro', camp: l.kind === 'campaign' ? (l.campaign || 'Campaign') : '', video_url: l.video_url || '', image_url: l.image_url || '',
     caption_instagram: l.caption_instagram || '', caption_facebook: l.caption_facebook || '', caption_x: l.caption_x || '', made: l.added_on || '', lib: l }));
   // History: the original post itself plus every repost row made from it.
   items.forEach(it => {
@@ -1695,7 +1695,7 @@ function openRepost(it) {
     '<div class="brief-topbar"><button class="btn secondary" id="rpBack">&larr; Back</button><span style="font-family:var(--mono);font-size:12px">Repost</span><button class="btn secondary" id="rpClose">Close &times;</button></div>' +
     '<h2>Repost: ' + escapeHtml(it.title) + '</h2>' +
     '<div class="sub">' + escapeHtml(it.character || '') + ' · ' + (it.src === 'library' ? 'Library clip' : 'from post #' + it.row.id) + '</div>' +
-    '<div class="field"><video controls preload="metadata" playsinline style="display:block;max-height:50vh;max-width:100%;background:#000" src="' + it.video_url.replace(/"/g, '&quot;') + '"></video></div>' +
+    '<div class="field">' + (it.video_url ? '<video controls preload="metadata" playsinline style="display:block;max-height:50vh;max-width:100%;background:#000" src="' + it.video_url.replace(/"/g, '&quot;') + '"></video>' : '<img src="' + String(it.image_url).replace(/"/g, '&quot;') + '" alt="" style="display:block;max-height:50vh;max-width:100%">') + '</div>' +
     '<div class="field"><label>Platforms</label>' + platRow + '<div class="lib-note">TikTok stays manual (Post to TikTok on MAR).</div></div>' +
     '<div class="field" style="display:flex;gap:12px;flex-wrap:wrap"><div><label>Date (London)</label><input type="date" id="rpDate" value="' + tomorrow + '"></div><div><label>Time (London, HH:MM)</label><input type="time" id="rpTime" step="900"></div></div>' +
     (it.camp ? '<div class="lib-note" style="margin-bottom:8px">Campaign captions are filled in from the ' + escapeHtml(it.camp) + ' campaign. Edit as you like. The first comment is added by hand after posting (Copy button on the Campaigns tab).</div>' : it.src === 'library' ? '<div class="lib-note" style="margin-bottom:8px">This clip has no captions yet: write them below (hashtags per the playbook).</div>' : '<div class="lib-note" style="margin-bottom:8px">Captions are copied from post #' + it.row.id + '. Edit as you like.</div>') +
@@ -1727,7 +1727,7 @@ async function saveRepost(it) {
   const src = it.src === 'library' ? 'library clip ' + it.title : 'post #' + it.row.id;
   const body = {
     post_date: date + 'T12:00:00.000Z', post_time: time, day_of_week: weekday, character: it.character || 'SC Logo', format: it.format,
-    text_content: ig || fb || x, caption_instagram: ig, caption_facebook: fb, caption_x: x, video_url: it.video_url, image_url: it.image_url,
+    text_content: ig || fb || x, caption_instagram: ig, caption_facebook: fb, caption_x: x, video_url: it.video_url || null, image_url: it.image_url,
     platforms: plats.join(', '), status: 'draft', panel_status: 'ready', notes: 'REPOST:' + it.key,
     panel_notes: 'Repost of ' + src + ', made in the Library tab ' + new Date().toISOString().slice(0, 10) + '. Check the clip and captions, then set "approved" to schedule it.'
   };
@@ -1787,14 +1787,14 @@ function campCard(it) {
     '<details class="camp-cap"><summary>' + label + '</summary><pre>' + escapeHtml(l[k]) + '</pre><button class="btn secondary camp-copy" data-k="' + k + '">Copy</button></details>').join('');
   const thumb = it.image_url ? ' poster="' + it.image_url.replace(/"/g, '&quot;') + '"' : '';
   return '<div class="lib-card camp-card" style="border-top-color:' + FORMAT_COLOR.Campaign + '" data-key="' + it.key + '">' +
-    '<video controls preload="none" playsinline' + thumb + ' src="' + it.video_url.replace(/"/g, '&quot;') + '"></video>' +
+    (it.video_url ? '<video controls preload="none" playsinline' + thumb + ' src="' + it.video_url.replace(/"/g, '&quot;') + '"></video>' : '<img src="' + it.image_url.replace(/"/g, '&quot;') + '" alt="" style="display:block;width:100%;height:auto">') +
     '<div class="lib-body">' +
       '<div class="lib-title">' + typeDot('Campaign') + escapeHtml(it.title) + '</div>' +
       (l.notes ? '<div class="lib-sub">' + escapeHtml(l.notes) + '</div>' : '') +
       '<div class="lib-chips">' + chips + '</div>' + booked +
       '<button class="btn camp-sched">Schedule on Instagram, Facebook, X</button>' +
       '<div class="camp-tt"><strong>TikTok (by hand)</strong>' +
-        '<button class="btn secondary camp-clip">Get clip + copy caption</button>' +
+        (it.video_url ? '<button class="btn secondary camp-clip">Get clip + copy caption</button>' : '') +
         (l.tiktok_posted_on ? '<button class="btn secondary camp-tt-undo">Posted ' + shortDate(l.tiktok_posted_on) + ' (undo)</button>' : '<button class="btn secondary camp-tt-done">Mark posted on TikTok</button>') +
       '</div>' + caps +
     '</div></div>';
@@ -1904,7 +1904,7 @@ async function renderCampaigns() {
   main.querySelectorAll('.camp-card').forEach(card => {
     const it = all.find(i => i.key === card.dataset.key); if (!it) return;
     card.querySelector('.camp-sched').onclick = () => openRepost(it);
-    card.querySelector('.camp-clip').onclick = e => campGetClip(it, e.target);
+    const gc = card.querySelector('.camp-clip'); if (gc) gc.onclick = e => campGetClip(it, e.target);
     const d = card.querySelector('.camp-tt-done'); if (d) d.onclick = () => campMarkTikTok(it, true);
     const u = card.querySelector('.camp-tt-undo'); if (u) u.onclick = () => campMarkTikTok(it, false);
     card.querySelectorAll('.camp-cap').forEach(det => { const k = det.querySelector('.camp-copy').dataset.k; det.querySelector('.camp-copy').onclick = e => campCopy(it.lib[k], e.target); });
