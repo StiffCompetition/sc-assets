@@ -1,0 +1,364 @@
+{%- comment -%}
+  SC - BUILD YOUR BUNDLE (25 Oct 2026). Page section for templates/page.bundle-builder.json.
+  Step 1: pick a print (one-of-one shirt and/or poster). Step 2: pick a digital artwork (NFT) still for sale, loaded per grade
+  and character from /collections/<grade>/<character>?view=bundle-json. Step 3: one click adds the NFT first, then the print(s),
+  with the same hidden line properties the add-on blocks use, and goes to the cart.
+  Bundle prices are worked out here from the print's price in the shopper's currency and the five grade percentages in
+  Theme settings > NFT bundle discounts (via snippets/sc-bundle-data.liquid). Shopify applies the real discount in the cart.
+  Query string: ?print=shirt|poster|both, ?grade=<grade handle>, ?character=<character handle>.
+  26 Oct 2026: follows the theme fonts and colours; sample pictures of every shirt design and the poster (snippets/sc-print-preview.liquid) that show the chosen artwork and YOUR NAME HERE; how it works strip; the download tick box lives only in the cart.
+{%- endcomment -%}
+{%- render 'sc-bundle-data' -%}
+{%- render 'sc-print-preview' -%}
+{%- assign shirt = all_products['nft-shirt'] -%}
+{%- assign poster = all_products['nft-poster'] -%}
+{%- assign has_shirt = false -%}{%- if shirt != blank and shirt.available -%}{%- assign has_shirt = true -%}{%- endif -%}
+{%- assign has_poster = false -%}{%- if poster != blank and poster.available -%}{%- assign has_poster = true -%}{%- endif -%}
+
+<style>
+#sc-bb-{{ section.id }} { --bb-line: rgba(var(--color-foreground), .14); --bb-dim: rgba(var(--color-foreground), .62); --bb-tint: rgba(var(--color-foreground), .05); --bb-accent: rgb(var(--color-foreground)); max-width: var(--page-width); margin: 0 auto; padding: {{ section.settings.padding_top }}px 16px calc({{ section.settings.padding_bottom }}px + 96px); color: rgb(var(--color-foreground)); font-family: var(--font-body-family); font-size: 1.5rem; line-height: 1.55; }
+#sc-bb-{{ section.id }} * { box-sizing: border-box; }
+#sc-bb-{{ section.id }} [hidden] { display: none !important; }
+#sc-bb-{{ section.id }} .bb-head { text-align: center; margin: 0 0 24px; }
+#sc-bb-{{ section.id }} .bb-head h1 { margin: 0 0 8px; }
+#sc-bb-{{ section.id }} .bb-head p { margin: 0 auto; max-width: 60ch; font-size: 15px; }
+#sc-bb-{{ section.id }} .bb-step { margin: 0 0 32px; }
+#sc-bb-{{ section.id }} .bb-step__h { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font-family: var(--font-heading-family); font-size: 2.2rem; font-weight: var(--font-heading-weight); line-height: 1.2; }
+#sc-bb-{{ section.id }} .bb-step__n { flex: 0 0 32px; height: 32px; border-radius: 50%; background: rgb(var(--color-foreground)); color: rgb(var(--color-background)); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+#sc-bb-{{ section.id }} .bb-prints { display: grid; gap: 14px; }
+#sc-bb-{{ section.id }} .bb-print { background: var(--bb-tint); border-left: 4px solid var(--bb-accent); padding: 16px 18px; color: inherit; }
+#sc-bb-{{ section.id }} .bb-print__top { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; margin: 0; }
+#sc-bb-{{ section.id }} .bb-print__top input { margin-top: 5px; width: 18px; height: 18px; flex: 0 0 auto; }
+#sc-bb-{{ section.id }} .bb-print__top strong { font-size: 1.7rem; }
+#sc-bb-{{ section.id }} .bb-print__opts { margin-top: 14px; display: grid; gap: 10px; }
+#sc-bb-{{ section.id }} .bb-print__opts label { display: grid; gap: 4px; font-weight: 600; }
+#sc-bb-{{ section.id }} .bb-print__opts select { padding: 10px; font-size: 14px; border: 1px solid rgba(var(--color-foreground), .3); background: rgb(var(--color-background)); color: rgb(var(--color-foreground)); font-family: inherit; }
+#sc-bb-{{ section.id }} .bb-foot { font-size: 1.2rem; margin: 0 0 8px; opacity: .75; }
+#sc-bb-{{ section.id }} .bb-how { display: grid; gap: 10px; margin: 0 0 28px; padding: 0; list-style: none; counter-reset: bbh; }
+#sc-bb-{{ section.id }} .bb-how li { background: var(--bb-tint); padding: 12px 14px; font-size: 1.4rem; line-height: 1.45; }
+#sc-bb-{{ section.id }} .bb-how b { display: block; font-size: 1.5rem; }
+#sc-bb-{{ section.id }} .bb-prev { max-width: 260px; margin: 0 auto; }
+#sc-bb-{{ section.id }} #bb-shirt-opts[hidden] { display: grid !important; }
+#sc-bb-{{ section.id }} #bb-shirt-opts[hidden] > :not(:first-child) { display: none !important; }
+#sc-bb-{{ section.id }} #bb-poster-opts[hidden] { display: grid !important; }
+#sc-bb-{{ section.id }} #bb-poster-opts[hidden] .bb-price { display: none !important; }
+#sc-bb-{{ section.id }} .bb-price { margin: 0; font-weight: 700; }
+#sc-bb-{{ section.id }} .bb-price small { display: block; font-weight: 400; font-size: 12px; }
+#sc-bb-{{ section.id }} .bb-chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 8px; margin: 0 0 8px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+#sc-bb-{{ section.id }} .bb-chip { flex: 0 0 auto; border: 1px solid var(--bb-line); background: transparent; color: rgb(var(--color-foreground)); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13px; line-height: 1.2; cursor: pointer; white-space: nowrap; }
+#sc-bb-{{ section.id }} .bb-chip small { display: block; font-size: 11px; opacity: .7; }
+#sc-bb-{{ section.id }} .bb-chip[aria-pressed="true"] { background: rgb(var(--color-foreground)); color: rgb(var(--color-background)); border-color: rgb(var(--color-foreground)); }
+#sc-bb-{{ section.id }} .bb-status { margin: 6px 0 12px; font-size: 13px; color: var(--bb-dim); min-height: 1.2em; }
+#sc-bb-{{ section.id }} .bb-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+#sc-bb-{{ section.id }} .bb-card { position: relative; border: 2px solid var(--bb-line); background: rgb(var(--color-background)); padding: 0 0 10px; text-align: left; cursor: pointer; font: inherit; color: inherit; width: 100%; display: block; }
+#sc-bb-{{ section.id }} .bb-card[aria-pressed="true"] { border-color: var(--bb-accent); box-shadow: 0 0 0 2px var(--bb-accent); }
+#sc-bb-{{ section.id }} .bb-card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background: #e9ebee; }
+#sc-bb-{{ section.id }} .bb-card__noimg { display: block; width: 100%; aspect-ratio: 1 / 1; background: #e9ebee; }
+#sc-bb-{{ section.id }} .bb-card__b { padding: 8px 10px 0; display: grid; gap: 2px; }
+#sc-bb-{{ section.id }} .bb-card__t { font-weight: 700; font-size: 14px; line-height: 1.25; }
+#sc-bb-{{ section.id }} .bb-card__g { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--bb-dim); }
+#sc-bb-{{ section.id }} .bb-card__p { font-size: 14px; }
+#sc-bb-{{ section.id }} .bb-card__w { font-size: 12px; line-height: 1.35; opacity: .8; }
+#sc-bb-{{ section.id }} .bb-card__tick { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; background: rgb(var(--color-foreground)); color: rgb(var(--color-background)); display: none; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
+#sc-bb-{{ section.id }} .bb-card[aria-pressed="true"] .bb-card__tick { display: inline-flex; }
+#sc-bb-{{ section.id }} .bb-more { margin: 16px auto 0; display: block; }
+#sc-bb-{{ section.id }} .bb-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: rgb(var(--color-background)); color: rgb(var(--color-foreground)); box-shadow: 0 -2px 12px rgba(0,0,0,.18); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+#sc-bb-{{ section.id }} .bb-bar__in { max-width: var(--page-width); margin: 0 auto; display: grid; gap: 8px; }
+#sc-bb-{{ section.id }} .bb-bar__sum { font-size: 13px; line-height: 1.35; }
+#sc-bb-{{ section.id }} .bb-bar__sum b { font-size: 15px; }
+#sc-bb-{{ section.id }} .bb-bar .button { width: 100%; }
+#sc-bb-{{ section.id }} .bb-bar .button[disabled] { opacity: .45; cursor: not-allowed; }
+#sc-bb-{{ section.id }} .bb-msg { margin: 10px 0 0; font-size: 13px; }
+#sc-bb-{{ section.id }} .bb-empty { background: var(--bb-tint); border-left: 4px solid var(--bb-accent); padding: 16px 18px; }
+@media screen and (min-width: 750px) {
+  #sc-bb-{{ section.id }} { font-size: 1.6rem; padding-left: 24px; padding-right: 24px; }
+  #sc-bb-{{ section.id }} .bb-how { grid-template-columns: repeat(3, 1fr); }
+  #sc-bb-{{ section.id }} .bb-prints { grid-template-columns: 1fr 1fr; align-items: start; }
+  #sc-bb-{{ section.id }} .bb-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  #sc-bb-{{ section.id }} .bb-bar__in { grid-template-columns: 1fr auto; align-items: center; }
+  #sc-bb-{{ section.id }} .bb-bar .button { width: auto; min-width: 260px; }
+}
+@media screen and (min-width: 990px) { #sc-bb-{{ section.id }} .bb-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+</style>
+
+<div id="sc-bb-{{ section.id }}" class="sc-bb">
+  <div class="bb-head">
+    <h1 class="main-page-title">{{ section.settings.heading | default: page.title | escape }}</h1>
+    {%- if section.settings.intro != blank -%}<p>{{ section.settings.intro | escape }}</p>{%- endif -%}
+  </div>
+
+  {%- if has_shirt or has_poster -%}
+  <ol class="bb-how" aria-label="How it works">
+    <li><b>1. Pick your print</b>A one-of-one shirt, a one-of-one poster, or both. The pictures show a sample of each design.</li>
+    <li><b>2. Pick your artwork</b>Choose the digital artwork (NFT) that goes on the print. The higher its grade, the bigger your saving.</li>
+    <li><b>3. Add both to your cart</b>The NFT and your print go in together. Your first name is added from your shipping address and the print is made after you buy.</li>
+  </ol>
+  <section class="bb-step" aria-labelledby="bb-s1">
+    <h2 class="bb-step__h" id="bb-s1"><span class="bb-step__n">1</span>Pick your print</h2>
+    <div class="bb-prints">
+      {%- if has_shirt -%}
+      <div class="bb-print" id="bb-shirt">
+        <label class="bb-print__top">
+          <input type="checkbox" id="bb-shirt-on">
+          <span><strong>One-of-one shirt</strong><br>Your chosen artwork, printed on the back of a shirt made only for you.</span>
+        </label>
+        <div class="bb-print__opts" id="bb-shirt-opts" hidden>
+          <label>Design
+            <select id="bb-shirt-theme">
+              <option value="registered_owner">Registered owner</option>
+              <option value="brag_stats">Brag stats</option>
+              <option value="dog_tag">Pocket dog tag</option>
+            </select>
+          </label>
+          <label>Colour <select id="bb-shirt-colour"></select></label>
+          <label>Size
+            <select id="bb-shirt-size">
+              {%- for s in shirt.options_by_name['Size'].values -%}<option value="{{ s | escape }}">{{ s | escape }}</option>{%- endfor -%}
+            </select>
+          </label>
+          <p class="bb-price" id="bb-shirt-price"></p>
+        </div>
+      </div>
+      {%- endif -%}
+      {%- if has_poster -%}
+      <div class="bb-print" id="bb-poster">
+        <label class="bb-print__top">
+          <input type="checkbox" id="bb-poster-on">
+          <span><strong>One-of-one poster</strong><br>Your chosen artwork, printed large on archival paper and made only for you. 18 x 24 in (45 x 60 cm).</span>
+        </label>
+        <div class="bb-print__opts" id="bb-poster-opts" hidden>
+          <div class="bb-prev" id="bb-poster-prev"></div>
+          <p class="bb-price" id="bb-poster-price"></p>
+        </div>
+      </div>
+      {%- endif -%}
+    </div>
+    <p class="bb-foot" id="bb-foot" hidden>Your first name is added from your shipping address. Made to order after you buy.</p>
+  </section>
+
+  <section class="bb-step" aria-labelledby="bb-s2">
+    <h2 class="bb-step__h" id="bb-s2"><span class="bb-step__n">2</span>Pick your digital artwork</h2>
+    <div class="bb-chips" id="bb-grades" role="group" aria-label="Grade"></div>
+    <div class="bb-chips" id="bb-chars" role="group" aria-label="Character"></div>
+    <p class="bb-status" id="bb-status" aria-live="polite"></p>
+    <ul class="bb-grid" id="bb-grid"></ul>
+    <button type="button" class="button button--secondary bb-more" id="bb-more" hidden>Show more</button>
+  </section>
+
+  <div class="bb-bar" id="bb-bar">
+    <div class="bb-bar__in">
+      <div class="bb-bar__sum" id="bb-sum"><span class="bb-step__n" style="width:24px;height:24px;font-size:12px;margin-right:6px">3</span>Pick a print and an artwork to see your bundle.</div>
+      <div>
+        <button type="button" class="button button--primary" id="bb-add" disabled>Add bundle to cart</button>
+        <p class="bb-msg" id="bb-msg" hidden></p>
+      </div>
+    </div>
+  </div>
+  {%- else -%}
+  <div class="bb-empty">
+    <strong>Prints are on the way.</strong><br>The one-of-one shirt and poster open soon. Until then, <a href="/collections/training-issue">browse the digital artworks</a>.
+  </div>
+  {%- endif -%}
+</div>
+
+{%- if has_shirt or has_poster -%}
+<script>
+(function () {
+  var B = window.SC_BUNDLE, money = window.scMoney, bprice = window.scBundlePrice;
+  if (!B) { return; }
+  var root = document.getElementById('sc-bb-{{ section.id }}');
+  var q = new URLSearchParams(location.search);
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  /* ---------- step 1: prints ---------- */
+  var shirtOn = el('bb-shirt-on'), shirtOpts = el('bb-shirt-opts'), th = el('bb-shirt-theme'), co = el('bb-shirt-colour'), sz = el('bb-shirt-size'), shirtPrice = el('bb-shirt-price');
+  var posterOn = el('bb-poster-on'), posterOpts = el('bb-poster-opts'), posterPrice = el('bb-poster-price');
+  var haveShirt = !!(shirtOn && B.shirt && B.shirt.available), havePoster = !!(posterOn && B.poster && B.poster.available);
+
+  function fillColours() {
+    if (!haveShirt) { return; }
+    var keep = co.value, all = B.shirt.colours || [];
+    var list = th.value === 'dog_tag' ? all : all.filter(function (c) { return B.darkColours.indexOf(c) > -1; });
+    co.innerHTML = list.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+    co.value = list.indexOf(keep) > -1 ? keep : list[0];
+  }
+  function shirtVariant() { return haveShirt ? B.shirt.variants[co.value + '|' + sz.value] : null; }
+  function wantShirt() { return haveShirt && shirtOn.checked; }
+  function wantPoster() { return havePoster && posterOn.checked; }
+
+  /* ---------- step 2: artworks ---------- */
+  var state = { grade: B.grades[0], character: null, page: 0, pages: 1, items: [], loading: false, picked: null };
+  var gq = q.get('grade'); B.grades.forEach(function (g) { if (g.handle === gq) { state.grade = g; } });
+  var cq = q.get('character'); B.characters.forEach(function (c) { if (c.handle === cq) { state.character = c; } });
+
+  function renderChips() {
+    el('bb-grades').innerHTML = B.grades.map(function (g) {
+      return '<button type="button" class="bb-chip" data-grade="' + g.handle + '" aria-pressed="' + (state.grade === g) + '">' + esc(g.tag) + '<small>' + B.pct[g.key] + '% off prints</small></button>';
+    }).join('');
+    el('bb-chars').innerHTML = '<button type="button" class="bb-chip" data-char="" aria-pressed="' + (!state.character) + '">All characters</button>' + B.characters.map(function (c) {
+      return '<button type="button" class="bb-chip" data-char="' + c.handle + '" aria-pressed="' + (state.character === c) + '">' + esc(c.tag) + '</button>';
+    }).join('');
+  }
+  el('bb-grades').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-grade]'); if (!b) { return; }
+    B.grades.forEach(function (g) { if (g.handle === b.getAttribute('data-grade')) { state.grade = g; } });
+    reload();
+  });
+  el('bb-chars').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-char]'); if (!b) { return; }
+    var h = b.getAttribute('data-char'); state.character = null;
+    B.characters.forEach(function (c) { if (c.handle === h) { state.character = c; } });
+    reload();
+  });
+
+  function feedUrl(page) {
+    return '/collections/' + state.grade.handle + (state.character ? '/' + state.character.handle : '') + '?view=bundle-json&page=' + page;
+  }
+  function reload() { state.page = 0; state.pages = 1; state.items = []; state.picked = null; el('bb-grid').innerHTML = ''; renderChips(); loadMore(); updateBar(); }
+  function loadMore() {
+    if (state.loading || state.page >= state.pages) { return; }
+    state.loading = true; el('bb-more').hidden = true;
+    el('bb-status').textContent = 'Loading artworks…';
+    var want = feedUrl(state.page + 1), g = state.grade, c = state.character;
+    fetch(want, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+      if (g !== state.grade || c !== state.character) { return; }
+      state.page = j.page || 1; state.pages = j.pages || 1;
+      (j.items || []).forEach(function (it) { it.gradeKey = (window.scGradeOf([it.grade]) || g).key; state.items.push(it); });
+      renderCards(j.items || []);
+      el('bb-status').textContent = state.items.length ? (state.items.length + ' of ' + (j.count || state.items.length) + ' artworks shown') : 'Every artwork in this set has found its owner. Try another grade or character.';
+      el('bb-more').hidden = state.page >= state.pages;
+    }).catch(function () {
+      el('bb-status').textContent = 'The artworks did not load. Please try again.';
+    }).then(function () { state.loading = false; });
+  }
+  el('bb-more').addEventListener('click', loadMore);
+
+  function withLine(it) {
+    var parts = [];
+    if (wantShirt()) { var v = shirtVariant(); if (v) { parts.push('shirt ' + money(bprice(v.price, it.gradeKey))); } }
+    if (wantPoster()) { parts.push('poster ' + money(bprice(B.poster.price, it.gradeKey))); }
+    return parts.length ? 'with this NFT: ' + parts.join(' · ') : 'pick a print above to see bundle prices';
+  }
+  function renderCards(items) {
+    var grid = el('bb-grid');
+    items.forEach(function (it) {
+      var li = document.createElement('li');
+      li.innerHTML = '<button type="button" class="bb-card" data-id="' + it.id + '" aria-pressed="false">' +
+        (it.image ? '<img src="' + esc(it.image) + '" alt="' + esc(it.title) + '" loading="lazy">' : '<span class="bb-card__noimg"></span>') +
+        '<span class="bb-card__tick" aria-hidden="true">✓</span>' +
+        '<span class="bb-card__b"><span class="bb-card__t">' + esc(it.title) + '</span>' +
+        '<span class="bb-card__g">' + esc(it.grade || state.grade.tag) + (it.character ? ' · ' + esc(it.character) : '') + '</span>' +
+        '<span class="bb-card__p">' + esc(it.price_fmt) + '</span>' +
+        '<span class="bb-card__w" data-with>' + esc(withLine(it)) + '</span></span></button>';
+      grid.appendChild(li);
+    });
+  }
+  function refreshWithLines() {
+    var byId = {}; state.items.forEach(function (it) { byId[String(it.id)] = it; });
+    root.querySelectorAll('.bb-card').forEach(function (b) {
+      var it = byId[b.getAttribute('data-id')]; var w = b.querySelector('[data-with]');
+      if (it && w) { w.textContent = withLine(it); }
+    });
+  }
+  el('bb-grid').addEventListener('click', function (e) {
+    var b = e.target.closest('.bb-card'); if (!b) { return; }
+    var id = b.getAttribute('data-id'), it = null;
+    state.items.forEach(function (x) { if (String(x.id) === id) { it = x; } });
+    state.picked = (state.picked && String(state.picked.id) === id) ? null : it;
+    root.querySelectorAll('.bb-card').forEach(function (c) { c.setAttribute('aria-pressed', String(!!state.picked && c.getAttribute('data-id') === String(state.picked.id))); });
+    updateBar();
+  });
+
+  /* ---------- step 3: summary and add ---------- */
+  var addBtn = el('bb-add'), sum = el('bb-sum'), msg = el('bb-msg');
+  var repaint = null;
+  function updatePreviews() {
+    var a = state.picked ? state.picked.image : null, t = state.picked ? state.picked.title : null;
+    var x = state.picked ? { character: state.picked.character, stats: state.picked.stats } : {};
+    if (haveShirt && window.scDesignPicker) { if (!repaint) { repaint = window.scDesignPicker(th, a, t, x); } else { repaint(a, t, x); } }
+    if (havePoster && el('bb-poster-prev')) { el('bb-poster-prev').innerHTML = window.scPreview('poster', a, t, x) + '<span class="scp-cap">Sample</span>'; window.scPreviewPaint(el('bb-poster-prev')); }
+    el('bb-foot').hidden = !(wantShirt() || wantPoster());
+  }
+  var lastPick = undefined;
+  function updatePrintPrices() {
+    var pk = state.picked ? String(state.picked.id) : '';
+    if (pk !== lastPick) { lastPick = pk; updatePreviews(); } else { el('bb-foot').hidden = !(wantShirt() || wantPoster()); }
+    var gk = state.picked ? state.picked.gradeKey : null;
+    if (haveShirt) {
+      shirtOpts.hidden = !shirtOn.checked;
+      var v = shirtVariant();
+      if (!v) { shirtPrice.innerHTML = 'That colour and size is not available right now.'; }
+      else if (gk) { shirtPrice.innerHTML = 'With your artwork: ' + esc(money(bprice(v.price, gk))) + '<small>Full price ' + esc(money(v.price)) + ' · ' + B.pct[gk] + '% off with a ' + esc(state.picked.grade || state.grade.tag) + ' artwork</small>'; }
+      else { shirtPrice.innerHTML = 'Shirt: ' + esc(money(v.price)) + '<small>Pick an artwork below for your bundle price.</small>'; }
+    }
+    if (havePoster) {
+      posterOpts.hidden = !posterOn.checked;
+      if (gk) { posterPrice.innerHTML = 'With your artwork: ' + esc(money(bprice(B.poster.price, gk))) + '<small>Full price ' + esc(money(B.poster.price)) + ' · ' + B.pct[gk] + '% off with a ' + esc(state.picked.grade || state.grade.tag) + ' artwork</small>'; }
+      else { posterPrice.innerHTML = 'Poster: ' + esc(money(B.poster.price)) + '<small>Pick an artwork below for your bundle price.</small>'; }
+    }
+  }
+  function updateBar() {
+    updatePrintPrices(); refreshWithLines();
+    msg.hidden = true;
+    var v = shirtVariant(), lines = [], total = 0, ok = !!state.picked && (wantShirt() || wantPoster());
+    if (wantShirt()) { if (v && v.ok) { lines.push('Shirt ' + (state.picked ? money(bprice(v.price, state.picked.gradeKey)) : money(v.price))); total += state.picked ? bprice(v.price, state.picked.gradeKey) : v.price; } else { ok = false; } }
+    if (wantPoster()) { lines.push('Poster ' + (state.picked ? money(bprice(B.poster.price, state.picked.gradeKey)) : money(B.poster.price))); total += state.picked ? bprice(B.poster.price, state.picked.gradeKey) : B.poster.price; }
+    if (state.picked) { lines.unshift(esc(state.picked.title) + ' ' + esc(state.picked.price_fmt)); total += state.picked.price; }
+    var lead = '<span class="bb-step__n" style="width:24px;height:24px;font-size:12px;margin-right:6px">3</span>';
+    if (!lines.length) { sum.innerHTML = lead + 'Pick a print and an artwork to see your bundle.'; }
+    else if (!ok) { sum.innerHTML = lead + lines.join(' + ') + (state.picked ? '' : ' · now pick an artwork'); }
+    else { sum.innerHTML = lead + lines.join(' + ') + ' = <b>' + esc(money(total)) + '</b><br>The bundle saving is applied in your cart.'; }
+    addBtn.disabled = !ok;
+  }
+  if (haveShirt) {
+    th.addEventListener('change', function () { fillColours(); updateBar(); }); fillColours();
+    [shirtOn, co, sz].forEach(function (e) { e.addEventListener('change', updateBar); });
+  }
+  if (havePoster) { posterOn.addEventListener('change', updateBar); }
+  var pq = q.get('print');
+  if (haveShirt && (pq === 'shirt' || pq === 'both')) { shirtOn.checked = true; }
+  if (havePoster && (pq === 'poster' || pq === 'both')) { posterOn.checked = true; }
+
+  addBtn.addEventListener('click', function () {
+    if (addBtn.disabled || !state.picked) { return; }
+    var nft = state.picked, v = shirtVariant();
+    addBtn.disabled = true; addBtn.textContent = 'Adding…';
+    /* Position of this artwork among the NFTs in the cart (starting at 1): the NFTs already in the cart come first. */
+    fetch('/cart.js', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return { items: [] }; }).then(function (c) {
+      var n = 0; (c.items || []).forEach(function (i) { if (i.product_type === 'NFT') { n += parseInt(i.quantity, 10) || 0; } });
+      var pos = String(n + 1);
+      var items = [{ id: nft.id, quantity: 1, properties: {} }];
+      if (wantShirt() && v && v.ok) { items.push({ id: v.id, quantity: 1, properties: { '_shirt_theme': th.value, '_shirt_colour': co.value, '_shirt_size': sz.value, '_shirt_title': nft.title, '_shirt_nft': pos } }); }
+      if (wantPoster() && B.poster.ok) { items.push({ id: B.poster.id, quantity: 1, properties: { '_poster_title': nft.title, '_poster_nft': pos } }); }
+      return fetch('/cart/add.js', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: items }) });
+    }).then(function (r) {
+      if (!r.ok) { throw 0; }
+      window.location.href = '/cart';
+    }).catch(function () {
+      addBtn.disabled = false; addBtn.textContent = 'Add bundle to cart';
+      msg.textContent = 'That artwork has just found its owner. Please pick another.'; msg.hidden = false;
+      reload();
+    });
+  });
+
+  renderChips(); loadMore(); updateBar();
+})();
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "SC Build your bundle",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Build your bundle" },
+    { "type": "textarea", "id": "intro", "label": "Intro", "default": "Pick a one-of-one print, pick the digital artwork that goes on it, and add both in one click. The higher the artwork's grade, the bigger the saving on the print." },
+    { "type": "paragraph", "content": "The five grade percentages are set once in Theme settings > NFT bundle discounts." },
+    { "type": "range", "id": "padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "label": "Top padding", "default": 36 },
+    { "type": "range", "id": "padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "label": "Bottom padding", "default": 36 }
+  ],
+  "presets": [{ "name": "SC Build your bundle" }]
+}
+{% endschema %}

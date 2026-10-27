@@ -1,0 +1,85 @@
+{%- comment -%} NFT shirt add-on. Shows only when the NFT Shirt product is active. Adds the shirt to the cart together with the NFT, with hidden properties the shirt maker reads. Colours offered depend on the design (text designs only on colours where they read). Fixed 25 Oct 2026: the variant map key is now one JSON string (the old key was a JavaScript syntax error that stopped the script). Price line (25 Oct 2026): shows the bundle price for this artwork's grade when window.SC_BUNDLE is on the page (snippets/sc-bundle-data.liquid), otherwise the full price. {%- endcomment -%}
+{%- assign shirt = all_products['nft-shirt'] -%}
+{%- if shirt != blank and shirt.available -%}
+<div class="nft-shirt" id="nft-shirt-addon">
+  <label class="nft-shirt__top">
+    <input type="checkbox" id="nft-shirt-on">
+    <span><strong>One-of-one shirt</strong><br>This artwork printed on the back of a shirt made only for you.</span>
+  </label>
+  <div class="nft-shirt__opts" id="nft-shirt-opts" hidden>
+    <label>Design
+      <select id="nft-shirt-theme">
+        <option value="registered_owner">Registered owner</option>
+        <option value="brag_stats">Brag stats</option>
+        <option value="dog_tag">Pocket dog tag</option>
+      </select>
+    </label>
+    <label>Colour
+      <select id="nft-shirt-colour">
+        {%- for c in shirt.options_by_name['Colour'].values -%}<option value="{{ c | escape }}">{{ c | escape }}</option>{%- endfor -%}
+      </select>
+    </label>
+    <label>Size
+      <select id="nft-shirt-size">
+        {%- for s in shirt.options_by_name['Size'].values -%}<option value="{{ s | escape }}">{{ s | escape }}</option>{%- endfor -%}
+      </select>
+    </label>
+    <p class="nft-shirt__price" id="nft-shirt-price"></p>
+  </div>
+</div>
+<style>
+.nft-shirt{background:rgba(var(--color-foreground),.05);border-left:4px solid rgb(var(--color-foreground));padding:16px 18px;margin:0 0 16px;font-size:1.4rem;line-height:1.6;}
+.nft-shirt__top{display:flex;gap:12px;align-items:flex-start;cursor:pointer;}
+.nft-shirt__top input{margin-top:5px;}
+.nft-shirt__opts{margin-top:14px;display:grid;gap:10px;}
+.nft-shirt__opts[hidden]{display:none!important;}
+.nft-shirt__opts label{display:grid;gap:4px;font-weight:600;}
+.nft-shirt__opts select{padding:8px;font-size:1.4rem;font-family:inherit;}
+.nft-shirt__price{font-weight:700;margin:0;}
+.nft-shirt__price small{display:block;font-weight:400;font-size:12px;}
+</style>
+<script>
+(function(){
+  var map={ {%- for v in shirt.variants -%}{{ v.option1 | append: '|' | append: v.option2 | json }}:{id:{{ v.id }},price:{{ v.price | money_without_trailing_zeros | json }},c:{{ v.price }},ok:{{ v.available | json }}}{% unless forloop.last %},{% endunless %}{%- endfor -%} };
+  var DARK=['Black','Royal','Purple','Military Green','Red','Irish Green'];
+  var on=document.getElementById('nft-shirt-on'),opts=document.getElementById('nft-shirt-opts');
+  var th=document.getElementById('nft-shirt-theme'),co=document.getElementById('nft-shirt-colour'),sz=document.getElementById('nft-shirt-size'),pr=document.getElementById('nft-shirt-price');
+  var allC=[].slice.call(co.options).map(function(o){return o.value;});
+  var tags={{ product.tags | json }};
+  var grade=(window.SC_BUNDLE&&window.scGradeOf)?window.scGradeOf(tags):null;
+  function priceText(v){
+    if(grade&&window.scMoney){return 'With this artwork: '+window.scMoney(window.scBundlePrice(v.c,grade.key))+'<small>Full price '+window.scMoney(v.c)+' · '+window.SC_BUNDLE.pct[grade.key]+'% off with a '+grade.tag+' artwork, applied in your cart.</small>';}
+    return 'Shirt: '+v.price;
+  }
+  function fillC(){var keep=co.value,list=th.value==='dog_tag'?allC:allC.filter(function(c){return DARK.indexOf(c)>-1;});co.innerHTML=list.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');co.value=list.indexOf(keep)>-1?keep:list[0];}
+  function upd(){opts.hidden=!on.checked;var v=map[co.value+'|'+sz.value];pr.innerHTML=v?priceText(v):'';}
+  var artUrl={{ product.featured_image | image_url: width: 400 | json }};
+  var scExtra={character:(function(){var cs=["Major Wood","The Rear Admiral","Hammerin' Hanky","The Grip","Slick Willy","The Velvet Python"],t={{ product.tags | json }},c='';t.forEach(function(x){if(cs.indexOf(x)>-1)c=x;});return c;})(),stats:[{{ product.metafields.verisart.structural_rigidity | json }},{{ product.metafields.verisart.innuendo_intensity | json }},{{ product.metafields.verisart.friction_force | json }},{{ product.metafields.verisart.tactical_girth | json }}]};
+  if(window.scDesignPicker){window.scDesignPicker(th,artUrl,{{ product.title | json }},scExtra);}
+  th.addEventListener('change',function(){fillC();upd();});fillC();
+  [on,co,sz].forEach(function(e){e.addEventListener('change',upd);});upd();
+  // The real product form is the one holding the Add to cart button (the page also has a hidden instalments form with the same action).
+  var addBtn=document.querySelector('button[type="submit"][name="add"]'); var form=addBtn?addBtn.closest('form'):null;
+  if(!form)return;
+  // The NFT line keeps everything its form sends (variant, quantity, the download consent and any other properties).
+  function nftItem(){ var fd=new FormData(form), it={id:parseInt(fd.get('id'),10),quantity:parseInt(fd.get('quantity'),10)||1,properties:{}}; fd.forEach(function(v,k){ var m=k.match(/^properties\[(.+)\]$/); if(m)it.properties[m[1]]=v; }); return it; }
+  // Takes the Add to cart click before the theme's own cart code, so the NFT and the prints go in together.
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('button[type="submit"][name="add"]'); if(!b||b!==addBtn||b.disabled)return;
+    if(!on.checked)return;
+    var v=map[co.value+'|'+sz.value];
+    if(!v||!v.ok){return;}
+    e.preventDefault();e.stopImmediatePropagation();
+    // Position of this artwork among the NFTs in the order (starting at 1): the NFTs already in the cart come first. Read at the moment of adding.
+    fetch('/cart.js',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(c){var n=0;(c.items||[]).forEach(function(i){if(i.product_type==='NFT')n+=parseInt(i.quantity,10)||0;});return n+1;}).catch(function(){return 1;})
+    .then(function(pos){
+      var items=[nftItem(),
+        {id:v.id,quantity:1,properties:{'_shirt_theme':th.value,'_shirt_colour':co.value,'_shirt_size':sz.value,'_shirt_title':{{ product.title | json }},'_shirt_nft':String(pos)}}];
+      var px=window.scNftPoster&&window.scNftPoster(pos); if(px)items.push(px);
+      return fetch('/cart/add.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})}); })
+      .then(function(r){if(!r.ok)throw 0;window.location.href='/cart';})
+      .catch(function(){window.location.href='/cart';});
+  },true);
+})();
+</script>
+{%- endif -%}

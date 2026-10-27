@@ -1,0 +1,39 @@
+{%- comment -%}
+  SC - BUNDLE FEED (25 Oct 2026). Alternate collection template used by the Build your bundle page.
+  Returns one page of the NFTs still for sale in a grade collection as JSON, with prices in the shopper's currency.
+
+  CALLED AS
+    /collections/training-issue?view=bundle-json&page=1
+    /collections/training-issue/major-wood?view=bundle-json&page=2   (character tag filter)
+
+  RETURNS
+    { "page": 1, "pages": 3, "count": 112, "items": [ { "id": <variant id>, "handle": "...", "title": "...", "url": "...",
+      "image": "...", "price": 1000, "price_fmt": "£10.00 GBP", "grade": "Training Issue", "character": "Major Wood", "stats": [99, 94, 82, 95] } ] }
+
+  50 per page is Shopify's limit for paginate. Sold pieces drop out of the in-stock collections, so only buyable NFTs are listed.
+{%- endcomment -%}
+{%- layout none -%}
+{%- assign grades = 'Training Issue,General Issue,Field Issue,Combat Issue,Command Issue' | split: ',' -%}
+{%- assign chars = "Major Wood,The Rear Admiral,Hammerin' Hanky,The Grip,Slick Willy,The Velvet Python" | split: ',' -%}
+{%- paginate collection.products by 50 -%}
+{%- capture out -%}
+{"page": {{ paginate.current_page }}, "pages": {{ paginate.pages }}, "count": {{ paginate.items }}, "collection": {{ collection.handle | json }}, "items": [
+{%- assign first = true -%}
+{%- for product in collection.products -%}
+  {%- if product.available == false or product.type != 'NFT' -%}{%- continue -%}{%- endif -%}
+  {%- assign v = product.selected_or_first_available_variant -%}
+  {%- assign g = '' -%}{%- assign c = '' -%}
+  {%- for t in product.tags -%}
+    {%- if grades contains t -%}{%- assign g = t -%}{%- endif -%}
+    {%- if chars contains t -%}{%- assign c = t -%}{%- endif -%}
+  {%- endfor -%}
+  {%- unless first -%},{%- endunless -%}{%- assign first = false -%}
+  {"id": {{ v.id }}, "handle": {{ product.handle | json }}, "title": {{ product.title | json }}, "url": {{ product.url | json }},
+   "image": {% if product.featured_image %}{{ product.featured_image | image_url: width: 480 | json }}{% else %}null{% endif %},
+   "price": {{ v.price }}, "price_fmt": {% if settings.currency_code_enabled %}{{ v.price | money_with_currency | json }}{% else %}{{ v.price | money | json }}{% endif %}, "grade": {{ g | json }}, "character": {{ c | json }},
+   "stats": [{{ product.metafields.verisart.structural_rigidity | json }}, {{ product.metafields.verisart.innuendo_intensity | json }}, {{ product.metafields.verisart.friction_force | json }}, {{ product.metafields.verisart.tactical_girth | json }}]}
+{%- endfor -%}
+]}
+{%- endcapture -%}
+{{- out | strip -}}
+{%- endpaginate -%}

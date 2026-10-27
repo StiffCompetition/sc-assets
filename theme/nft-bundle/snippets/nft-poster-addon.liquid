@@ -1,0 +1,64 @@
+{%- comment -%} NFT poster add-on. Shows only when the NFT Poster product is active. Adds the poster to the cart together with the digital artwork, with hidden properties the poster maker reads. The price is the product's own price in the shopper's market. Price line (25 Oct 2026): shows the bundle price for this artwork's grade when window.SC_BUNDLE is on the page (snippets/sc-bundle-data.liquid), otherwise the full price. {%- endcomment -%}
+{%- assign poster = all_products['nft-poster'] -%}
+{%- if poster != blank and poster.available -%}
+{%- assign pv = poster.selected_or_first_available_variant -%}
+<div class="nft-poster" id="nft-poster-addon">
+  <label class="nft-poster__top">
+    <input type="checkbox" id="nft-poster-on">
+    <span><strong>One-of-one poster</strong><br>This artwork printed large on archival paper, made only for you. 18 x 24 in (45 x 60 cm).</span>
+  </label>
+  <div class="nft-poster__opts" id="nft-poster-opts" hidden>
+    <div class="nft-poster__prev" id="nft-poster-prev"></div>
+    <p class="nft-poster__price" id="nft-poster-price"></p>
+  </div>
+</div>
+<style>
+.nft-poster{background:rgba(var(--color-foreground),.05);border-left:4px solid rgb(var(--color-foreground));padding:16px 18px;margin:0 0 16px;font-size:1.4rem;line-height:1.6;}
+.nft-poster__top{display:flex;gap:12px;align-items:flex-start;cursor:pointer;}
+.nft-poster__top input{margin-top:5px;}
+.nft-poster__opts{margin-top:14px;display:grid;gap:10px;}
+.nft-poster__opts[hidden]{display:none!important;}
+.nft-poster__prev{max-width:240px;margin:0 auto;}
+.nft-poster__price{font-weight:700;margin:0;}
+.nft-poster__price small{display:block;font-weight:400;font-size:12px;}
+</style>
+<script>
+(function(){
+  var pv={id:{{ pv.id | json }},price:{{ pv.price | money_without_trailing_zeros | json }},c:{{ pv.price }},ok:{{ pv.available | json }}};
+  var on=document.getElementById('nft-poster-on'),opts=document.getElementById('nft-poster-opts'),pr=document.getElementById('nft-poster-price');
+  var title={{ product.title | json }};
+  var tags={{ product.tags | json }};
+  var grade=(window.SC_BUNDLE&&window.scGradeOf)?window.scGradeOf(tags):null;
+  function priceText(){
+    if(grade&&window.scMoney){return 'With this artwork: '+window.scMoney(window.scBundlePrice(pv.c,grade.key))+'<small>Full price '+window.scMoney(pv.c)+' · '+window.SC_BUNDLE.pct[grade.key]+'% off with a '+grade.tag+' artwork, applied in your cart.</small>';}
+    return pv.price?('Poster: '+pv.price):'';
+  }
+  // Position of this artwork among the NFTs in the order (starting at 1): the NFTs already in the cart come first. Read at the moment of adding.
+  function nftPos(){ return fetch('/cart.js',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(c){var n=0;(c.items||[]).forEach(function(i){if(i.product_type==='NFT')n+=parseInt(i.quantity,10)||0;});return n+1;}).catch(function(){return 1;}); }
+  function item(pos){return {id:pv.id,quantity:1,properties:{'_poster_nft':String(pos),'_poster_title':title}};}
+  var prev=document.getElementById('nft-poster-prev');
+  var scExtra={character:(function(){var cs=["Major Wood","The Rear Admiral","Hammerin' Hanky","The Grip","Slick Willy","The Velvet Python"],t={{ product.tags | json }},c='';t.forEach(function(x){if(cs.indexOf(x)>-1)c=x;});return c;})(),stats:[{{ product.metafields.verisart.structural_rigidity | json }},{{ product.metafields.verisart.innuendo_intensity | json }},{{ product.metafields.verisart.friction_force | json }},{{ product.metafields.verisart.tactical_girth | json }}]};
+  if(prev&&window.scPreview){prev.innerHTML=window.scPreview('poster',{{ product.featured_image | image_url: width: 400 | json }},{{ product.title | json }},scExtra)+'<span class="scp-cap">Sample</span>';window.scPreviewPaint(prev);}
+  function upd(){opts.hidden=!on.checked;pr.innerHTML=priceText();}
+  on.addEventListener('change',upd);upd();
+  // The shirt add-on (when ticked) adds the poster in the same cart call through this hook.
+  window.scNftPoster=function(pos){return (on.checked&&pv.ok)?item(pos):null;};
+  // The real product form is the one holding the Add to cart button (the page also has a hidden instalments form with the same action).
+  var addBtn=document.querySelector('button[type="submit"][name="add"]'); var form=addBtn?addBtn.closest('form'):null;
+  if(!form)return;
+  // The NFT line keeps everything its form sends (variant, quantity, the download consent and any other properties).
+  function nftItem(){ var fd=new FormData(form), it={id:parseInt(fd.get('id'),10),quantity:parseInt(fd.get('quantity'),10)||1,properties:{}}; fd.forEach(function(v,k){ var m=k.match(/^properties\[(.+)\]$/); if(m)it.properties[m[1]]=v; }); return it; }
+  // Takes the Add to cart click before the theme's own cart code (the shirt add-on, when ticked, runs first and adds the poster through the hook above).
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('button[type="submit"][name="add"]'); if(!b||b!==addBtn||b.disabled)return;
+    if(!on.checked||!pv.ok)return;
+    var s=document.getElementById('nft-shirt-on'); if(s&&s.checked)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    nftPos().then(function(pos){ var items=[nftItem(),item(pos)];
+      return fetch('/cart/add.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})}); })
+      .then(function(r){if(!r.ok)throw 0;window.location.href='/cart';})
+      .catch(function(){window.location.href='/cart';});
+  },true);
+})();
+</script>
+{%- endif -%}
