@@ -49,6 +49,8 @@ body.sc-studio-on .product-form__input--pill input.sc-off+label{opacity:.35;poin
     if(!d||!d.ok){return;} n=d; document.body.classList.add('sc-studio-on');
     buildDesignPicker(); applyColourRules(); price(); paintAll(); hookAdd(); ready=true;
     document.addEventListener('change',function(e){ if(e.target.matches&&e.target.matches('variant-selects input[type=radio]')){ setTimeout(function(){ price(); if(e.target.name.indexOf('Colour')===0){ paintAll(); } },50); } });
+    /* Dawn rewrites the address on a variant change; keep the artwork in it so a reload or a shared link still works. */
+    setInterval(function(){ if(location.search.indexOf('nft=')<0){ history.replaceState(null,'',location.pathname+(location.search?location.search+'&':'?')+'nft='+encodeURIComponent(h)); } },500);
     /* Dawn re-renders the price block on variant change; keep the bundle price on it. */
     var pr=document.querySelector('.price'); if(pr&&window.MutationObserver){ var busy=false; new MutationObserver(function(){ if(busy){return;} busy=true; setTimeout(function(){ price(); busy=false; },0); }).observe(pr.parentNode,{childList:true,subtree:true}); }
   }).catch(function(){});
