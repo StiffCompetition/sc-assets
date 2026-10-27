@@ -25,7 +25,8 @@ body.sc-studio-on .product-form__buttons{display:block!important;}
   var B=window.SC_BUNDLE, money=window.scMoney, bp=window.scBundlePrice; if(!B||!B.shirt||!B.shirt.available){return;}
   var HOOK='https://n8n-production-afc2.up.railway.app/webhook/sc-shirt-preview';
   var GARMENT={{ 'sc-tshirt-black.png' | asset_url | json }};
-  var THEMES=[['registered_owner','Registered owner'],['brag_stats','Brag stats'],['dog_tag','Pocket dog tag']];
+  /* Pocket dog tag hidden (Andy, 27 Oct 2026) until it moves to a left-chest print template; add ['dog_tag','Pocket dog tag'] back here to offer it. */
+  var THEMES=[['registered_owner','Registered owner'],['brag_stats','Brag stats']];
   /* Print box on Gelato's 2048 px garment photo (same scene for every colour). */
   var PX={x:709/2048,y:532/2048,w:643/2048};
   function garmentUrl(colour){ return GARMENT.replace('sc-tshirt-black.png','sc-tshirt-'+String(colour||'black').toLowerCase().replace(/\s+/g,'-')+'.png'); }
@@ -39,7 +40,9 @@ body.sc-studio-on .product-form__buttons{display:block!important;}
   function setMedia(i,dataUrl,alt){ var items=document.querySelectorAll('.product__media-item'); var it=items[i]; if(!it){return;} it.querySelectorAll('img').forEach(function(im){ im.removeAttribute('srcset'); im.removeAttribute('sizes'); im.src=dataUrl; im.alt=alt; }); var mid=it.getAttribute('data-media-id'); document.querySelectorAll('product-modal img[data-media-id]').forEach(function(im){ var k=im.getAttribute('data-media-id'); if(k&&mid&&mid.slice(-k.length)===k){ im.removeAttribute('srcset'); im.removeAttribute('sizes'); im.removeAttribute('loading'); im.src=dataUrl; im.alt=alt; } }); }
   /* The chosen design is always picture 1 (the one in view); the other two follow. */
   function ordered(){ return THEMES.filter(function(t){ return t[0]===design; }).concat(THEMES.filter(function(t){ return t[0]!==design; })); }
-  function paintAll(){ var colour=colourNow(); ordered().forEach(function(t,i){ compose(t[0],colour).then(function(d){ setMedia(i,d,n.title+' on a '+colour+' T-shirt, '+t[1]+' design'); }).catch(function(){}); }); }
+  function paintAll(){ var colour=colourNow(); ordered().forEach(function(t,i){ compose(t[0],colour).then(function(d){ setMedia(i,d,n.title+' on a '+colour+' T-shirt, '+t[1]+' design'); }).catch(function(){}); });
+    /* Gallery pictures beyond the designs on offer stay hidden. */
+    ['.product__media-item','.thumbnail-list__item'].forEach(function(sel){ document.querySelectorAll(sel).forEach(function(el,i){ if(i>=THEMES.length){ el.style.display='none'; } }); }); }
   function showDesign(){ paintAll(); var it=document.querySelector('.product__media-item'); var sl=it&&it.closest('slider-component'); if(sl&&sl.slider){ sl.slider.scrollTo({left:0,behavior:'smooth'}); } }
   /* Andy, 26 Oct 2026: the NFT T-shirt is Black only (the designs read clearly on black alone). The Colour pills are hidden and Black is set. */
   function applyColourRules(){ var first=document.querySelector('variant-selects input[type=radio][name^="Colour"]'); var fs=first&&first.closest('fieldset'); if(fs){ fs.style.display='none'; } if(colourNow()!=='Black'){ var b=document.querySelector('variant-selects input[type=radio][name^="Colour"][value="Black"]'); if(b){ b.click(); } } }
