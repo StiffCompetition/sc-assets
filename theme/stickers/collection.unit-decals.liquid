@@ -6,7 +6,7 @@
   .sc-dc__g{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:2rem 1.6rem;align-items:stretch}
   .sc-dc__g li{margin:0;padding:0;min-width:0}
   .sc-dc__c{display:flex;flex-direction:column;gap:.5rem;text-align:center;height:100%}
-  .sc-dc__c img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border:3px solid rgba(var(--color-foreground),.15);background:#e9ebee}
+  .sc-dc__c img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;object-position:center top;border:3px solid rgba(var(--color-foreground),.15);background:#e9ebee}
   .sc-dc__c a.sc-dc__img:hover img{border-color:rgba(var(--color-foreground),.6)}
   .sc-dc__c b{font-size:1.4rem;line-height:1.25;margin-top:.4rem}
   .sc-dc__c span.sc-dc__d{font-size:1.2rem;opacity:.8;line-height:1.3}
@@ -61,13 +61,13 @@
       </div>
     </div></li>
     <li><div class="sc-dc__c">
-      <a class="sc-dc__img" href="/pages/e-card"><img src="{{ 'sc-dc-ecards.jpg' | asset_url }}" alt="Free birthday e-cards" width="320" height="320" loading="eager"></a>
+      <a class="sc-dc__img" href="/pages/e-card"><img src="{{ 'Shopify_banner_-_cards.jpg' | file_url }}" alt="Free birthday e-cards" width="320" height="320" loading="eager"></a>
       <b>Free Birthday E-Cards</b>
       <span class="sc-dc__d">Stiff and direct. Free.</span>
       <div class="sc-dc__act"><a class="sc-dc__btn ec" href="/pages/e-card">Send an e-card</a></div>
     </div></li>
     <li><div class="sc-dc__c">
-      <a class="sc-dc__img" href="/pages/the-waitlist"><img src="{{ 'sc-dc-waitlist.jpg' | asset_url }}" alt="Want the figures? Join the waitlist" width="320" height="320" loading="eager"></a>
+      <a class="sc-dc__img" href="/pages/the-waitlist"><img src="{{ 'portrait-mw.jpg' | file_url }}" alt="Want the figures? Join the waitlist" width="320" height="320" loading="eager"></a>
       <b>Want Us? The Figures</b>
       <span class="sc-dc__d">If we build it, this list gets first call.</span>
       <div class="sc-dc__act"><a class="sc-dc__btn wl" href="/pages/the-waitlist">Enlist</a></div>
