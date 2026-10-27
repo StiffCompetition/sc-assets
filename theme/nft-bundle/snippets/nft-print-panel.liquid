@@ -1,0 +1,88 @@
+{%- comment -%}
+  NFT print panel (26 Oct 2026, redesigned to Andy's tiles). Sits under Add to cart on NFT product pages.
+  Two product tiles, NFT Shirt and NFT Poster, each showing the shopper's own artwork drawn live on the T-shirt photo
+  (Registered owner design) and on the poster, with YOUR NAME HERE, the bundle price for this artwork's grade and an Add button.
+  Add poster: puts this NFT and the poster in the cart together (same line properties the shirt maker reads) and opens the cart.
+  Add T-shirt: opens the Build your bundle page with this NFT already chosen, for design, colour and size.
+  Prices come from snippets/sc-bundle-data.liquid; the live drawings from snippets/sc-print-preview.liquid.
+  Shows nothing while neither print product is active.
+{%- endcomment -%}
+{%- assign shirt = all_products['nft-shirt'] -%}
+{%- assign poster = all_products['nft-poster'] -%}
+{%- assign has_shirt = false -%}{%- if shirt != blank and shirt.available -%}{%- assign has_shirt = true -%}{%- endif -%}
+{%- assign has_poster = false -%}{%- if poster != blank and poster.available -%}{%- assign has_poster = true -%}{%- endif -%}
+{%- if has_shirt or has_poster -%}
+{%- render 'sc-bundle-data' -%}
+{%- render 'sc-print-preview' -%}
+{%- assign grades = 'Training Issue,General Issue,Field Issue,Combat Issue,Command Issue' | split: ',' -%}
+{%- assign chars = "Major Wood,The Rear Admiral,Hammerin' Hanky,The Grip,Slick Willy,The Velvet Python" | split: ',' -%}
+{%- assign grade = '' -%}{%- assign character = '' -%}
+{%- for t in product.tags -%}{%- if grades contains t -%}{%- assign grade = t -%}{%- endif -%}{%- if chars contains t -%}{%- assign character = t -%}{%- endif -%}{%- endfor -%}
+{%- assign pv = poster.selected_or_first_available_variant -%}
+<div class="npt" id="nft-print-panel" data-grade="{{ grade | escape }}">
+  <p class="npt__h">Your digital art on a T-shirt or poster</p>
+  <div class="npt__tiles">
+    {%- if has_shirt -%}
+    <div class="npt__tile">
+      <div class="npt__pic npt__pic--shirt"><img src="{{ 'sc-tshirt-black.jpg' | asset_url }}" alt="" loading="lazy"><div class="npt__print" id="npt-shirt-prev"></div></div>
+      <p class="npt__name">Your art on a T-shirt</p>
+      <p class="npt__price" id="npt-shirt-price"></p>
+      <a class="button button--secondary npt__btn" id="npt-shirt-btn" href="{{ pages['build-your-bundle'].url }}?print=shirt&nft={{ product.selected_or_first_available_variant.id }}{% if grade != blank %}&grade={{ grade | handleize }}{% endif %}">Add T-shirt</a>
+    </div>
+    {%- endif -%}
+    {%- if has_poster -%}
+    <div class="npt__tile">
+      <div class="npt__pic npt__pic--poster"><div id="npt-poster-prev"></div></div>
+      <p class="npt__name">Your art on a poster</p>
+      <p class="npt__price" id="npt-poster-price"></p>
+      <button type="button" class="button button--secondary npt__btn" id="npt-poster-btn"{% unless pv.available %} disabled{% endunless %}>Add poster</button>
+    </div>
+    {%- endif -%}
+  </div>
+  <p class="npt__foot">Printed with this artwork and your first name from your shipping address. Made to order after you buy.</p>
+</div>
+<style>
+.npt{margin:0 0 24px;}
+.npt__h{font-weight:700;font-size:1.3rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px;}
+.npt__tiles{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.npt__tile{border:1px solid rgba(var(--color-foreground),.2);padding:10px;display:flex;flex-direction:column;gap:6px;}
+.npt__pic{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:rgba(var(--color-foreground),.04);}
+.npt__pic>img{display:block;width:100%;height:100%;object-fit:cover;}
+.npt__print{position:absolute;left:34.6%;top:26%;width:31.4%;}
+.npt__print .scp--shirt{background:transparent;border-radius:0;}
+.npt__pic--poster{display:flex;align-items:center;justify-content:center;}
+.npt__pic--poster>div{width:75%;}
+.npt__name{font-weight:700;font-size:1.4rem;margin:4px 0 0;}
+.npt__price{font-size:1.3rem;line-height:1.4;margin:0;}
+.npt__price s{opacity:.6;}
+.npt__price small{display:block;font-size:1.1rem;opacity:.75;}
+.npt__btn{margin-top:auto;min-height:40px;font-size:1.3rem;width:100%;}
+.npt__foot{font-size:1.1rem;line-height:1.4;margin:10px 0 0;opacity:.75;}
+@media screen and (max-width:400px){.npt__tiles{gap:8px;}.npt__tile{padding:7px;}}
+</style>
+<script>
+(function(){
+  var B=window.SC_BUNDLE, money=window.scMoney, bp=window.scBundlePrice; if(!B){return;}
+  var art={{ product.featured_image | image_url: width: 400 | json }}, title={{ product.title | json }};
+  var extra={character:{{ character | json }},stats:[{{ product.metafields.verisart.structural_rigidity | json }},{{ product.metafields.verisart.innuendo_intensity | json }},{{ product.metafields.verisart.friction_force | json }},{{ product.metafields.verisart.tactical_girth | json }}]};
+  var g=window.scGradeOf([{{ grade | json }}]);
+  function price(el,cents){ if(!el){return;} if(g){el.innerHTML=money(bp(cents,g.key))+' <s>'+money(cents)+'</s><small>'+B.pct[g.key]+'% off with this artwork, applied in your cart</small>';} else {el.textContent=money(cents);} }
+  var sp=document.getElementById('npt-shirt-prev'); if(sp&&window.scPreview){sp.innerHTML=window.scPreview('owner',art,title,extra);window.scPreviewPaint(sp);}
+  var pp=document.getElementById('npt-poster-prev'); if(pp&&window.scPreview){pp.innerHTML=window.scPreview('poster',art,title,extra);window.scPreviewPaint(pp);}
+  if(B.shirt&&B.shirt.available){price(document.getElementById('npt-shirt-price'),B.shirt.minPrice);}
+  if(B.poster&&B.poster.available){price(document.getElementById('npt-poster-price'),B.poster.price);}
+  var pb=document.getElementById('npt-poster-btn'); if(!pb||!B.poster||!B.poster.available){return;}
+  var addBtn=document.querySelector('button[type="submit"][name="add"]'); var form=addBtn?addBtn.closest('form'):null;
+  function nftItem(){ if(!form){return {id:{{ product.selected_or_first_available_variant.id }},quantity:1,properties:{}};} var fd=new FormData(form), it={id:parseInt(fd.get('id'),10),quantity:parseInt(fd.get('quantity'),10)||1,properties:{}}; fd.forEach(function(v,k){ var m=k.match(/^properties\[(.+)\]$/); if(m){it.properties[m[1]]=v;} }); return it; }
+  /* Position of this artwork among the NFTs in the order (starting at 1): the NFTs already in the cart come first. Read at the moment of adding. */
+  function nftPos(){ return fetch('/cart.js',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(c){var n=0;(c.items||[]).forEach(function(i){if(i.product_type==='NFT'){n+=parseInt(i.quantity,10)||0;}});return n+1;}).catch(function(){return 1;}); }
+  pb.addEventListener('click',function(){
+    pb.disabled=true; pb.textContent='Adding…';
+    nftPos().then(function(pos){ var items=[nftItem(),{id:B.poster.id,quantity:1,properties:{'_poster_nft':String(pos),'_poster_title':title}}];
+      return fetch('/cart/add.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})}); })
+      .then(function(r){ if(!r.ok){throw 0;} window.location.href='/cart'; })
+      .catch(function(){ pb.disabled=false; pb.textContent='Add poster'; });
+  });
+})();
+</script>
+{%- endif -%}

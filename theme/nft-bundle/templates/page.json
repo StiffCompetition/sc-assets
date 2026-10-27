@@ -1,0 +1,31 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-page",
+      "settings": {}
+    },
+    "sc_quotes": {
+      "type": "custom-liquid",
+      "name": "Collectors say on the Digital Mint and character pages (22 Oct 2026)",
+      "settings": {
+        "custom_liquid": "{%- assign show = 'the-digital-mint,major-wood,the-rear-admiral,hammerin-hanky,slick-willy,the-velvet-python,the-grip' | split: ',' -%}\n{%- if show contains page.handle -%}<div class=\"page-width\">{% render 'sc-collectors-say', mode: 'all' %}</div>{%- endif -%}",
+        "color_scheme": "",
+        "padding_top": 0,
+        "padding_bottom": 16
+      }
+    }
+  },
+  "order": [
+    "main",
+    "sc_quotes"
+  ]
+}
