@@ -1,0 +1,19 @@
+{%- comment -%}
+  SC - NFT DATA (26 Oct 2026). Alternate product template: /products/<nft handle>?view=nft-data
+  Returns the facts the T-shirt studio needs to draw a shopper's artwork: title, picture, character, grade, the four stats
+  and the variant to add. Used by sections/sc-shirt-studio.liquid on the NFT Shirt page.
+{%- endcomment -%}
+{%- layout none -%}
+{%- assign grades = 'Training Issue,General Issue,Field Issue,Combat Issue,Command Issue' | split: ',' -%}
+{%- assign chars = "Major Wood,The Rear Admiral,Hammerin' Hanky,The Grip,Slick Willy,The Velvet Python" | split: ',' -%}
+{%- assign g = '' -%}{%- assign c = '' -%}
+{%- for t in product.tags -%}
+  {%- if grades contains t -%}{%- assign g = t -%}{%- endif -%}
+  {%- if chars contains t -%}{%- assign c = t -%}{%- endif -%}
+{%- endfor -%}
+{%- assign v = product.selected_or_first_available_variant -%}
+{"ok": {% if product.type == 'NFT' %}true{% else %}false{% endif %}, "id": {{ v.id }}, "handle": {{ product.handle | json }}, "title": {{ product.title | json }}, "url": {{ product.url | json }},
+ "image": {% if product.featured_image %}{{ product.featured_image | image_url: width: 600 | json }}{% else %}null{% endif %},
+ "available": {{ product.available | json }}, "price": {{ v.price }}, "price_fmt": {% if settings.currency_code_enabled %}{{ v.price | money_with_currency | json }}{% else %}{{ v.price | money | json }}{% endif %},
+ "grade": {{ g | json }}, "character": {{ c | json }},
+ "stats": [{{ product.metafields.verisart.structural_rigidity | json }}, {{ product.metafields.verisart.innuendo_intensity | json }}, {{ product.metafields.verisart.friction_force | json }}, {{ product.metafields.verisart.tactical_girth | json }}]}

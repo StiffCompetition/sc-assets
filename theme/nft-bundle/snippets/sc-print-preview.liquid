@@ -46,6 +46,10 @@
 .scp--poster .scp__n2{position:absolute;left:0;right:0;top:101.8cqw;font-size:1.8cqw;letter-spacing:.12em;}
 .scp--poster .scp__logo{left:6.89cqw;width:86.22cqw;top:106cqw;filter:brightness(0);}
 .scp--poster .scp__fn{position:absolute;left:0;right:0;top:129.4cqw;font-size:1.69cqw;letter-spacing:.04em;text-transform:none;font-weight:600;}
+.scp-shirt{position:relative;display:block;width:100%;aspect-ratio:1/1;overflow:hidden;background:rgba(var(--color-foreground),.04);}
+.scp-shirt>img{display:block;width:100%;height:100%;object-fit:cover;}
+.scp-shirt>.scp-shirt__p{position:absolute;left:34.6%;top:26%;width:31.4%;}
+.scp-shirt .scp--shirt{background:transparent;border-radius:0;}
 .scp-cap{display:block;font-size:12px;line-height:1.3;margin:6px 0 0;opacity:.8;text-align:center;}
 .scp-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 4px;}
 .scp-card{display:block;padding:0;margin:0;border:2px solid rgba(var(--color-foreground),.2);background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:center;}
@@ -105,7 +109,9 @@
   window.addEventListener('load',function(){fitAll();});
   var KIND={registered_owner:'owner',brag_stats:'stats',dog_tag:'tag'};
   var NAMES={registered_owner:'Registered owner',brag_stats:'Brag stats',dog_tag:'Pocket dog tag'};
-  window.scDesignPicker=function(sel,a,title,extra){
+  /* A print drawn on the black T-shirt photo (Gelato's Classic crewneck, back view stand-in). */
+  window.scOnShirt=function(previewHtml,shirtUrl){return '<span class="scp-shirt"><img src="'+esc(shirtUrl)+'" alt="" loading="lazy"><span class="scp-shirt__p">'+previewHtml+'</span></span>';};
+  window.scDesignPicker=function(sel,a,title,extra,opts){opts=opts||{};
     if(!sel){return null;}
     var box=sel.parentNode.querySelector('.scp-cards');
     if(!box){box=document.createElement('div');box.className='scp-cards';sel.parentNode.insertBefore(box,sel);
@@ -114,7 +120,7 @@
       sel.addEventListener('change',mark);}
     var cur={a:a,t:title,x:extra};
     function mark(){box.querySelectorAll('.scp-card').forEach(function(b){b.setAttribute('aria-pressed',String(sel.value===b.getAttribute('data-v')));});}
-    function paint(){box.innerHTML=[].map.call(sel.options,function(o){var k=KIND[o.value]||'owner';return '<button type="button" class="scp-card" data-v="'+esc(o.value)+'" aria-pressed="'+(sel.value===o.value)+'">'+window.scPreview(k,cur.a,cur.t,cur.x)+'<span class="scp-nm">'+esc(NAMES[o.value]||o.text)+'</span></button>';}).join('');window.scPreviewPaint(box);}
+    function paint(){box.innerHTML=[].map.call(sel.options,function(o){var k=KIND[o.value]||'owner';var pv=window.scPreview(k,cur.a,cur.t,cur.x); if(opts.shirt){pv=window.scOnShirt(pv,opts.shirt);} return '<button type="button" class="scp-card" data-v="'+esc(o.value)+'" aria-pressed="'+(sel.value===o.value)+'">'+pv+'<span class="scp-nm">'+esc(NAMES[o.value]||o.text)+'</span></button>';}).join('');window.scPreviewPaint(box);}
     paint();
     return function(na,nt,nx){cur.a=na;cur.t=nt;cur.x=nx;paint();};
   };
