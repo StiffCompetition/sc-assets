@@ -6,7 +6,7 @@
     The print pictures are the real designs from the shirt maker (n8n webhook sc-shirt-preview, SC - Shirt Preview), with YOUR NAME HERE.
   - "Choose your design" is a pill picker above Colour and Size, in the same style.
   - Price shows the bundle price for the NFT's grade; the standard Add to cart adds the NFT and the T-shirt together.
-  Garment photos: assets/sc-tshirt-<colour>.jpg (Gelato's photo per colour). Prices: snippets/sc-bundle-data.liquid.
+  Garment photos: assets/sc-tshirt-<colour>.png (Gelato's photo per colour, transparent background, drawn on white). Prices: snippets/sc-bundle-data.liquid.
   Without ?nft= the page is the normal NFT Shirt page.
 {%- endcomment -%}
 {%- if product.handle == 'nft-shirt' -%}
@@ -24,18 +24,18 @@ body.sc-studio-on .product-form__input--pill input.sc-off+label{opacity:.35;poin
   var q=new URLSearchParams(location.search), h=q.get('nft'); if(!h){return;}
   var B=window.SC_BUNDLE, money=window.scMoney, bp=window.scBundlePrice; if(!B||!B.shirt||!B.shirt.available){return;}
   var HOOK='https://n8n-production-afc2.up.railway.app/webhook/sc-shirt-preview';
-  var GARMENT={{ 'sc-tshirt-black.jpg' | asset_url | json }};
+  var GARMENT={{ 'sc-tshirt-black.png' | asset_url | json }};
   var THEMES=[['registered_owner','Registered owner'],['brag_stats','Brag stats'],['dog_tag','Pocket dog tag']];
   /* Print box on Gelato's 2048 px garment photo (same scene for every colour). */
   var PX={x:709/2048,y:532/2048,w:643/2048};
-  function garmentUrl(colour){ return GARMENT.replace('sc-tshirt-black.jpg','sc-tshirt-'+String(colour||'black').toLowerCase().replace(/\s+/g,'-')+'.jpg'); }
+  function garmentUrl(colour){ return GARMENT.replace('sc-tshirt-black.png','sc-tshirt-'+String(colour||'black').toLowerCase().replace(/\s+/g,'-')+'.png'); }
   function load(src){ return new Promise(function(res,rej){ var im=new Image(); im.crossOrigin='anonymous'; im.onload=function(){res(im);}; im.onerror=function(){rej(src);}; im.src=src; }); }
   var prints={}, garments={}, n=null, design='registered_owner', ready=false;
   function colourNow(){ var r=document.querySelector('variant-selects input[type=radio][name^="Colour"]:checked'); return r?r.value:'Black'; }
   function sizeNow(){ var r=document.querySelector('variant-selects input[type=radio][name^="Size"]:checked'); return r?r.value:''; }
   function getGarment(colour){ var k=colour.toLowerCase(); if(!garments[k]){ garments[k]=load(garmentUrl(colour)).catch(function(){ return load(GARMENT); }); } return garments[k]; }
   function getPrint(theme){ if(!prints[theme]){ prints[theme]=fetch(HOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({theme:theme,image_url:(n.image&&n.image.indexOf('//')===0?'https:'+n.image:n.image),title:n.title,character:n.character,stats:n.stats,width:900})}).then(function(r){return r.json();}).then(function(j){ if(!j.url){throw 0;} return load(j.url); }); } return prints[theme]; }
-  function compose(theme,colour){ return Promise.all([getGarment(colour),getPrint(theme)]).then(function(a){ var g=a[0],p=a[1]; var S=1600; var c=document.createElement('canvas'); c.width=S; c.height=S; var x=c.getContext('2d'); x.drawImage(g,0,0,S,S); var w=PX.w*S; x.drawImage(p,PX.x*S,PX.y*S,w,w*p.height/p.width); return c.toDataURL('image/jpeg',.86); }); }
+  function compose(theme,colour){ return Promise.all([getGarment(colour),getPrint(theme)]).then(function(a){ var g=a[0],p=a[1]; var S=1600; var c=document.createElement('canvas'); c.width=S; c.height=S; var x=c.getContext('2d'); x.fillStyle='#ffffff'; x.fillRect(0,0,S,S); x.drawImage(g,0,0,S,S); var w=PX.w*S; x.drawImage(p,PX.x*S,PX.y*S,w,w*p.height/p.width); return c.toDataURL('image/jpeg',.86); }); }
   function setMedia(i,dataUrl,alt){ var items=document.querySelectorAll('.product__media-item'); var it=items[i]; if(!it){return;} it.querySelectorAll('img').forEach(function(im){ im.removeAttribute('srcset'); im.removeAttribute('sizes'); im.src=dataUrl; im.alt=alt; }); var mid=it.getAttribute('data-media-id'); document.querySelectorAll('product-modal img[data-media-id]').forEach(function(im){ var k=im.getAttribute('data-media-id'); if(k&&mid&&mid.slice(-k.length)===k){ im.removeAttribute('srcset'); im.removeAttribute('sizes'); im.removeAttribute('loading'); im.src=dataUrl; im.alt=alt; } }); }
   function paintAll(){ var colour=colourNow(); THEMES.forEach(function(t,i){ compose(t[0],colour).then(function(d){ setMedia(i,d,n.title+' on a '+colour+' T-shirt, '+t[1]+' design'); }).catch(function(){}); }); }
   function showDesign(){ var i=0; THEMES.forEach(function(t,k){ if(t[0]===design){i=k;} }); var it=document.querySelectorAll('.product__media-item')[i]; if(it){ it.scrollIntoView({block:'nearest',behavior:'smooth'}); } }
