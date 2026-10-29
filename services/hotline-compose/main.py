@@ -653,6 +653,87 @@ def transform(t: Transform):
         out['ok'] = False; out['error'] = str(e)[:300]
     return out
 
+# ---- Dare to Buy pictures (29 Oct 2026): replaces the pictures Cloudinary used to draw on the fly.
+# Fixed art lives in the GitHub repo (sc-assets/dtb); the text font is Anton. kind: s3 (title slide: black canvas, character, three or four text
+# lines, GET YOURS bar), s2 (framed photo filling a 1080 x 1350 slide), r (framed photo filling the 1080 x 1920 Reel), x (X image 1080 x 1440:
+# hook band on top, framed photo under it). The photo may be a Product boxes crop link (a Cloudinary fetch link): it is worked out here from the
+# shop picture itself, nothing is requested from Cloudinary.
+import re as _re
+_DTB_RAW = 'https://raw.githubusercontent.com/StiffCompetition/sc-assets/main/dtb/'
+_ANTON = 'https://raw.githubusercontent.com/google/fonts/main/ofl/anton/Anton-Regular.ttf'
+
+def _dtb_file(name, url):
+    path = '/tmp/dtb_' + name
+    try:
+        open(path, 'rb').close()
+    except Exception:
+        open(path, 'wb').write(_tf_fetch(url, 120))
+    return path
+
+def _dtb_asset(name):
+    return Image.open(_dtb_file(name, _DTB_RAW + name))
+
+_CLD_CROP = _re.compile(r'^https://res\.cloudinary\.com/dkapdtxek/image/fetch/c_crop,g_xy_center,x_(-?[0-9.]+),y_(-?[0-9.]+),w_([0-9.]+),h_([0-9.]+),fl_relative/(.+)$')
+
+def _dtb_photo(url):
+    m = _CLD_CROP.match(url)
+    if not m:
+        return ImageOps.exif_transpose(Image.open(io.BytesIO(_tf_fetch(url)))).convert('RGB')
+    x, y, w, h = [float(m.group(i)) for i in (1, 2, 3, 4)]
+    src = ImageOps.exif_transpose(Image.open(io.BytesIO(_tf_fetch(_up.unquote(m.group(5)))))).convert('RGB')
+    cw, ch = max(1, round(w * src.width)), max(1, round(h * src.height))
+    left = int(-(-(x * src.width - cw / 2) // 1)); top = int(-(-(y * src.height - ch / 2) // 1))
+    left = max(0, min(left, src.width - cw)); top = max(0, min(top, src.height - ch))
+    return src.crop((left, top, left + cw, top + ch))
+
+class Dtb(BaseModel):
+    kind: str                # s3 | s2 | r | x
+    photo: str = ''          # s2, r, x: the framed photo (link)
+    char: str = ''           # s3: mw ra hh tg sw vp
+    gw: int = 1000           # s3: character width in pixels
+    gy: int = 45             # s3: character top
+    size: int = 112          # s3: text size
+    lines: list = []         # s3: [{t: text, c: 'FFFFFF', y: top of the letters}]
+    hook: int = 1            # x: hook band number 1 to 8
+    put: str = ''            # staged upload address; empty = return sizes only (test)
+
+@app.post('/dtb')
+def dtb(t: Dtb):
+    out = {'ok': True, 'kind': t.kind}
+    try:
+        if t.kind == 's3':
+            im = _dtb_asset('canvas_black.jpg').convert('RGB')
+            ch = _dtb_asset('char_%s.png' % t.char).convert('RGBA')
+            ch = ch.resize((t.gw, max(1, round(ch.height * t.gw / ch.width))), Image.LANCZOS)
+            im.paste(ch, ((im.width - ch.width) // 2, t.gy), ch)
+            f = ImageFont.truetype(_dtb_file('Anton-Regular.ttf', _ANTON), t.size)
+            d = ImageDraw.Draw(im)
+            for ln in t.lines:
+                l, tp, r, b = f.getbbox(ln['t'])
+                col = tuple(int(ln['c'][i:i + 2], 16) for i in (0, 2, 4))
+                d.text((540 - (l + r) / 2, ln['y'] - tp), ln['t'], font=f, fill=col)
+            im.paste(_dtb_asset('bar.png').convert('RGB'), (60, 1200))
+        elif t.kind in ('s2', 'r'):
+            im = ImageOps.fit(_dtb_photo(t.photo), (1080, 1350 if t.kind == 's2' else 1920), Image.LANCZOS, centering=(0.5, 0.5))
+        elif t.kind == 'x':
+            p = _dtb_photo(t.photo)
+            sw = max(1, round(p.width * 0.012))
+            left = p.crop((0, 0, sw, p.height)).resize((1080, 1050), Image.LANCZOS)
+            right = p.crop((p.width - sw, 0, p.width, p.height)).resize((540, 1050), Image.LANCZOS)
+            base = left.copy(); base.paste(right, (540, 0)); base.paste(p.resize((1050, 1050), Image.LANCZOS), (15, 0))
+            im = Image.new('RGB', (1080, 1440), (10, 10, 10)); im.paste(base, (0, 390))
+            band = _dtb_asset('xband_%d.png' % t.hook).convert('RGBA'); im.paste(band, (0, 0), band)
+        else:
+            return {'ok': False, 'error': 'kind must be s3, s2, r or x'}
+        data, ctype = _tf_encode(im, 'jpg')
+        out.update({'width': im.width, 'height': im.height, 'bytes': len(data), 'content_type': ctype})
+        if t.put:
+            r = requests.put(t.put, data=data, headers={'Content-Type': ctype}, timeout=300)
+            out['put_status'] = r.status_code
+    except Exception as e:
+        out['ok'] = False; out['error'] = str(e)[:300]
+    return out
+
 # ---- Bucket store (25 Oct 2026): files over Shopify's 20 MB limit live in the Railway bucket.
 # bucket-put copies a file from one of our own addresses (Cloudinary account or the shop's CDN) into the bucket;
 # bucket-link gives a fresh signed read link (max 90 days) for a key already in the bucket. The bucket keys reach
