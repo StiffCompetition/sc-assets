@@ -564,6 +564,7 @@ class Transform(BaseModel):
     y: int = 0               # crop only: top edge in pixels
     w: int = 0               # crop only: width in pixels
     h: int = 0               # crop only: height in pixels
+    dur: float = 2.5         # pingpong only: seconds of the clip taken from 'at'
     fmt: str = 'jpg'         # jpg | png
     put: str = ''            # staged upload address; empty = return sizes only (test)
 
@@ -600,6 +601,22 @@ def transform(t: Transform):
                 r = requests.put(t.put, data=data, headers={'Content-Type': ctype}, timeout=600)
                 out['put_status'] = r.status_code
             return out
+        if t.op == 'pingpong':
+            # 29 Oct 2026: forward-then-reversed loop of a clip segment (replaces Cloudinary's fl_splice + e_reverse used by the quiz poster).
+            # Result = clip[at .. at+dur] followed by the same segment backwards; silent, re-encoded h264.
+            src = '/tmp/tf_%d_src' % int(time.time() * 1000); dst = src + '_pp.mp4'
+            open(src, 'wb').write(_tf_fetch(t.src, 600))
+            fc = '[0:v]trim=start=%s:duration=%s,setpts=PTS-STARTPTS,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0[v]' % (t.at, t.dur)
+            _sp.run([_ffmpeg(), '-y', '-v', 'error', '-i', src, '-filter_complex', fc, '-map', '[v]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '18', '-movflags', '+faststart', dst], check=True, timeout=600)
+            data = open(dst, 'rb').read(); ctype = 'video/mp4'
+            for p_ in (src, dst):
+                try: _os.remove(p_)
+                except Exception: pass
+            out.update({'bytes': len(data), 'content_type': ctype})
+            if t.put:
+                r = requests.put(t.put, data=data, headers={'Content-Type': ctype}, timeout=600)
+                out['put_status'] = r.status_code
+            return out
         if t.op == 'frame':
             src = '/tmp/tf_%d_src' % int(time.time() * 1000); dst = src + '.png'
             open(src, 'wb').write(_tf_fetch(t.src, 300))
@@ -626,7 +643,7 @@ def transform(t: Transform):
                 if t.width and t.width != 1000:
                     img = img.resize((t.width, max(1, round(img.height * t.width / img.width))), Image.LANCZOS)
             else:
-                return {'ok': False, 'error': 'op must be resize, fill, frame, crop or silent'}
+                return {'ok': False, 'error': 'op must be resize, fill, frame, crop, silent or pingpong'}
         data, ctype = _tf_encode(img, 'png' if t.fmt == 'png' else 'jpg')
         out.update({'width': img.width, 'height': img.height, 'bytes': len(data), 'content_type': ctype})
         if t.put:

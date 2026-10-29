@@ -37,5 +37,5 @@ The service uses `sc_hotline_set_locked_v2.png` (Cloudinary `SCSMAuto`), which i
 
 ## Cloudinary retired in this service (29 Oct 2026)
 - Nothing here uploads to Cloudinary any more. `/hotline-gfx` needs `ticker_put`/`box_put`/`box2_put` (Shopify upload addresses from SC - Upload Targets); `/nft-template` needs `put` the same way and returns `template_url` as `put:<status>` for the caller to register with SC - Store File; `/cutout` returns `png_b64`.
-- Still reading Cloudinary on purpose: `/cutout-test`-style endpoints are not used. `/transform` and `/bucket-put` may READ from res.cloudinary.com (old files) but write nowhere on Cloudinary.
+- `/transform` (ops resize, fill, frame, crop, silent, pingpong) and `/bucket-put` may READ from res.cloudinary.com (old files) but write nowhere on Cloudinary.
 - Rollback: `backups/main_2026-10-29_before_cloudinary_retired.py`.
