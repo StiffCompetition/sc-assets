@@ -680,7 +680,11 @@ def _dtb_photo(url):
     if not m:
         return ImageOps.exif_transpose(Image.open(io.BytesIO(_tf_fetch(url)))).convert('RGB')
     x, y, w, h = [float(m.group(i)) for i in (1, 2, 3, 4)]
-    src = ImageOps.exif_transpose(Image.open(io.BytesIO(_tf_fetch(_up.unquote(m.group(5)))))).convert('RGB')
+    try:
+        src = ImageOps.exif_transpose(Image.open(io.BytesIO(_tf_fetch(_up.unquote(m.group(5)))))).convert('RGB')
+    except Exception:
+        # 29 Oct 2026: some Product Box framings point at Shopify files that were later replaced; Cloudinary still holds the framed copy.
+        return ImageOps.exif_transpose(Image.open(io.BytesIO(_tf_fetch(url)))).convert('RGB')
     cw, ch = max(1, round(w * src.width)), max(1, round(h * src.height))
     left = int(-(-(x * src.width - cw / 2) // 1)); top = int(-(-(y * src.height - ch / 2) // 1))
     left = max(0, min(left, src.width - cw)); top = max(0, min(top, src.height - ch))
