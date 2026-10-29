@@ -612,6 +612,15 @@ def transform(t: Transform):
                 r = requests.put(t.put, data=data, headers={'Content-Type': ctype}, timeout=600)
                 out['put_status'] = r.status_code
             return out
+        if t.op == 'postheld':
+            # send a cut kept by webcut hold (file name in 'key') to a Shopify video staged upload (post_url + post_params)
+            if not _re.match(r'^[a-z0-9]{24}\.mp4$', t.key) or not _os.path.exists('/tmp/hold/' + t.key):
+                return {'ok': False, 'error': 'held file not found'}
+            data = open('/tmp/hold/' + t.key, 'rb').read()
+            r = requests.post(t.post_url, data={x['name']: x['value'] for x in t.post_params}, files={'file': ('cut.mp4', data, 'video/mp4')}, timeout=900)
+            out['put_status'] = r.status_code; out['bytes'] = len(data)
+            if r.status_code >= 300: out['ok'] = False; out['post_body'] = r.text[:300]
+            return out
         if t.op == 'webcut':
             # 29 Oct 2026: web version of a clip for the shop's Site clip list (replaces Cloudinary w_720,h_1280,c_limit,q_auto):
             # fits inside 720 x 1280 without enlarging, h264 + aac, fast start.
