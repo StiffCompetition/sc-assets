@@ -555,10 +555,14 @@ def bucket_test(b: BucketTest):
 # Shopify upload address from SC - File Store (action targets), so no key is held here and no bytes pass through n8n.
 class Transform(BaseModel):
     src: str                 # public link of the picture or clip
-    op: str                  # resize | fill | frame
+    op: str                  # resize | fill | frame | crop | silent
     width: int = 1000
     height: int = 0          # fill only; 0 = same as width
     at: float = 0.0          # frame only: seconds into the clip
+    x: int = 0               # crop only: left edge in pixels
+    y: int = 0               # crop only: top edge in pixels
+    w: int = 0               # crop only: width in pixels
+    h: int = 0               # crop only: height in pixels
     fmt: str = 'jpg'         # jpg | png
     put: str = ''            # staged upload address; empty = return sizes only (test)
 
@@ -581,6 +585,20 @@ def _tf_encode(img, fmt):
 def transform(t: Transform):
     out = {'ok': True, 'op': t.op}
     try:
+        if t.op == 'silent':
+            # 29 Oct 2026: copy of a clip with the sound track removed (replaces Cloudinary's ac_none); video is not re-encoded.
+            src = '/tmp/tf_%d_src' % int(time.time() * 1000); dst = src + '_mute.mp4'
+            open(src, 'wb').write(_tf_fetch(t.src, 600))
+            _sp.run([_ffmpeg(), '-y', '-v', 'error', '-i', src, '-c:v', 'copy', '-an', '-movflags', '+faststart', dst], check=True, timeout=600)
+            data = open(dst, 'rb').read(); ctype = 'video/mp4'
+            for p_ in (src, dst):
+                try: _os.remove(p_)
+                except Exception: pass
+            out.update({'bytes': len(data), 'content_type': ctype})
+            if t.put:
+                r = requests.put(t.put, data=data, headers={'Content-Type': ctype}, timeout=600)
+                out['put_status'] = r.status_code
+            return out
         if t.op == 'frame':
             src = '/tmp/tf_%d_src' % int(time.time() * 1000); dst = src + '.png'
             open(src, 'wb').write(_tf_fetch(t.src, 300))
@@ -599,8 +617,15 @@ def transform(t: Transform):
                 w = max(1, int(t.width)); h = max(1, int(t.height or t.width))
                 img = img.convert('RGBA'); img = ImageOps.fit(img, (w, h), Image.LANCZOS, centering=(0.5, 0.5))
                 bg = Image.new('RGBA', (w, h), (255, 255, 255, 255)); bg.alpha_composite(img); img = bg
+            elif t.op == 'crop':
+                # 29 Oct 2026: pixel crop (x, y, w, h) of the picture as stored (replaces Cloudinary c_crop).
+                if t.w <= 0 or t.h <= 0:
+                    return {'ok': False, 'error': 'crop needs w and h'}
+                img = img.convert('RGBA' if img.mode in ('RGBA', 'LA', 'P') else 'RGB').crop((t.x, t.y, t.x + t.w, t.y + t.h))
+                if t.width and t.width != 1000:
+                    img = img.resize((t.width, max(1, round(img.height * t.width / img.width))), Image.LANCZOS)
             else:
-                return {'ok': False, 'error': 'op must be resize, fill or frame'}
+                return {'ok': False, 'error': 'op must be resize, fill, frame, crop or silent'}
         data, ctype = _tf_encode(img, 'png' if t.fmt == 'png' else 'jpg')
         out.update({'width': img.width, 'height': img.height, 'bytes': len(data), 'content_type': ctype})
         if t.put:
