@@ -91,8 +91,8 @@ def cutout(c: Cut):
     if len(ys) == 0: return {'ok': False, 'reason': 'nothing left after cut-out'}
     rgba = np.dstack([a, alpha])[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
     buf = io.BytesIO(); Image.fromarray(rgba, 'RGBA').save(buf, 'PNG')
-    r = requests.post('https://api.cloudinary.com/v1_1/dkapdtxek/image/upload', data={'upload_preset': 'SCSMAuto', 'asset_folder': 'SCSMAuto', 'public_id': 'box_%d_%d' % (int(time.time() * 1000), random.randint(0, 99999))}, files={'file': ('box.png', buf.getvalue())}, timeout=120).json()
-    return {'ok': bool(r.get('secure_url')), 'url': r.get('secure_url'), 'removed_background': round(float(bg.mean()), 3)}
+    # 29 Oct 2026 (media move): no Cloudinary upload any more. The transparent PNG is returned as base64 (small); the caller stores it with SC - Store File.
+    return {'ok': True, 'png_b64': base64.b64encode(buf.getvalue()).decode(), 'removed_background': round(float(bg.mean()), 3)}
 
 # ---------- SC Shop Hotline graphics rendered as real video (smooth motion at 25 fps) ----------
 from PIL import ImageDraw, ImageFont
@@ -134,8 +134,8 @@ def write_video(frames, w, h, put=None):
     if put:
         r = requests.put(put, data=data, headers={'Content-Type': 'video/mp4'}, timeout=300)
         return 'put:%d' % r.status_code if r.status_code < 300 else ''
-    r = requests.post('https://api.cloudinary.com/v1_1/dkapdtxek/video/upload', data={'upload_preset': 'SCSMAuto', 'asset_folder': 'SCSMAuto', 'public_id': 'hotline_gfx_%d_%d' % (int(time.time() * 1000), random.randint(0, 99999))}, files={'file': ('g.mp4', data)}, timeout=180).json()
-    return r.get('secure_url', '')
+    # 29 Oct 2026: the old Cloudinary fallback is retired; a caller must give an upload address (SC - Upload Targets).
+    return ''
 
 def strip(text_units, h, bg, fg, f, logo=None, star_r=0, gap=36, dur=DUR):
     # one long strip of repeated units, drawn once
@@ -330,6 +330,7 @@ class NftTpl(BaseModel):
     duration: float = 8.0
     fps: int = 25
     name: str = 'nft_template'
+    put: str = ''                      # Shopify staged upload address (SC - Upload Targets); required since 29 Oct 2026 (Cloudinary retired)
     enc_preset: str = 'veryfast'       # x264 speed/memory trade-off
     enc_threads: int = 0               # 0 = automatic
 
@@ -430,9 +431,9 @@ def nft_template(r: NftTpl):
             o = out.astype(np.int16); green_worst = max(green_worst, int(((o[..., 1] - np.maximum(o[..., 0], o[..., 2])) > 40).sum()))
         enc.stdin.write(out.tobytes())
     enc.stdin.close(); enc.wait(); cap.release()
-    up = requests.post('https://api.cloudinary.com/v1_1/dkapdtxek/video/upload',
-                       data={'upload_preset': 'SCSMAuto', 'asset_folder': 'SCSMAuto', 'public_id': '%s_%d' % (r.name, int(time.time()))},
-                       files={'file': ('t.mp4', open(out_path, 'rb').read())}, timeout=300).json()
+    if not r.put: return {'ok': False, 'reason': 'put (Shopify upload address from SC - Upload Targets) is required; Cloudinary retired 29 Oct 2026'}
+    _pr = requests.put(r.put, data=open(out_path, 'rb').read(), headers={'Content-Type': 'video/mp4'}, timeout=300)
+    up = {'secure_url': 'put:%d' % _pr.status_code} if _pr.status_code < 300 else {}
     for pth in (clip_path, out_path):
         try: import os; os.remove(pth)
         except Exception: pass
