@@ -566,6 +566,7 @@ class Transform(BaseModel):
     h: int = 0               # crop only: height in pixels
     dur: float = 2.5         # pingpong only: seconds of the clip taken from 'at'
     fmt: str = 'jpg'         # jpg | png
+    key: str = ''            # webcut only: bucket path; the cut is stored in the Railway bucket and a 1-day signed link is returned in 'url'
     put: str = ''            # staged upload address; empty = return sizes only (test)
 
 def _tf_fetch(url, timeout=120):
@@ -613,7 +614,14 @@ def transform(t: Transform):
                 try: _os.remove(p_)
                 except Exception: pass
             out.update({'bytes': len(data), 'content_type': ctype})
-            if t.put:
+            if t.key:
+                if t.key.startswith('/') or '..' in t.key:
+                    return {'ok': False, 'error': 'bad key'}
+                host, ak, sk, rg = _bucket()
+                r = requests.put(s3_presign('PUT', host, t.key, ak, sk, rg, 900), data=data, headers={'Content-Type': ctype}, timeout=900)
+                out['put_status'] = r.status_code
+                out['url'] = s3_presign('GET', host, t.key, ak, sk, rg, 86400)
+            elif t.put:
                 r = requests.put(t.put, data=data, headers={'Content-Type': ctype}, timeout=600)
                 out['put_status'] = r.status_code
             return out
