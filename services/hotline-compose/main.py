@@ -566,6 +566,7 @@ class Transform(BaseModel):
     h: int = 0               # crop only: height in pixels
     dur: float = 2.5         # pingpong only: seconds of the clip taken from 'at'
     fmt: str = 'jpg'         # jpg | png
+    hold: bool = False       # webcut only: keep the cut for 2 hours at /hold/<random>.mp4 and return that link
     key: str = ''            # webcut only: bucket path; the cut is stored in the Railway bucket and a 1-day signed link is returned in 'url'
     put: str = ''            # staged upload address; empty = return sizes only (test)
 
@@ -583,6 +584,13 @@ def _tf_encode(img, fmt):
         bg.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
         img = bg
     img.save(buf, 'JPEG', quality=90, optimize=True); return buf.getvalue(), 'image/jpeg'
+
+from fastapi.responses import FileResponse as _FR
+@app.get('/hold/{name}')
+def hold_get(name: str):
+    if not _re.match(r'^[a-z0-9]{24}\.mp4$', name) or not _os.path.exists('/tmp/hold/' + name):
+        return {'ok': False, 'error': 'not found'}
+    return _FR('/tmp/hold/' + name, media_type='video/mp4')
 
 @app.post('/transform')
 def transform(t: Transform):
@@ -614,7 +622,17 @@ def transform(t: Transform):
                 try: _os.remove(p_)
                 except Exception: pass
             out.update({'bytes': len(data), 'content_type': ctype})
-            if t.key:
+            if t.hold:
+                # Shopify registers a Video only from a plain link ending .mp4: keep the cut here for a short while and serve it at /hold/<name>.mp4
+                _os.makedirs('/tmp/hold', exist_ok=True)
+                for f_ in _os.listdir('/tmp/hold'):
+                    try:
+                        if time.time() - _os.path.getmtime('/tmp/hold/' + f_) > 7200: _os.remove('/tmp/hold/' + f_)
+                    except Exception: pass
+                nm = ''.join(random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for _ in range(24)) + '.mp4'
+                open('/tmp/hold/' + nm, 'wb').write(data)
+                out['put_status'] = 200; out['url'] = 'https://sc-hotline-compose-production.up.railway.app/hold/' + nm
+            elif t.key:
                 if t.key.startswith('/') or '..' in t.key:
                     return {'ok': False, 'error': 'bad key'}
                 host, ak, sk, rg = _bucket()
