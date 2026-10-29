@@ -566,6 +566,8 @@ class Transform(BaseModel):
     h: int = 0               # crop only: height in pixels
     dur: float = 2.5         # pingpong only: seconds of the clip taken from 'at'
     fmt: str = 'jpg'         # jpg | png
+    post_url: str = ''       # webcut only: Shopify video staged upload address (multipart POST)
+    post_params: list = []   # webcut only: [{name, value}] from stagedUploadsCreate
     hold: bool = False       # webcut only: keep the cut for 2 hours at /hold/<random>.mp4 and return that link
     key: str = ''            # webcut only: bucket path; the cut is stored in the Railway bucket and a 1-day signed link is returned in 'url'
     put: str = ''            # staged upload address; empty = return sizes only (test)
@@ -622,7 +624,12 @@ def transform(t: Transform):
                 try: _os.remove(p_)
                 except Exception: pass
             out.update({'bytes': len(data), 'content_type': ctype})
-            if t.hold:
+            if t.post_url:
+                # Shopify staged upload for a Video (stagedUploadsCreate resource VIDEO): multipart POST with Shopify's own parameters, file field last
+                r = requests.post(t.post_url, data={x['name']: x['value'] for x in t.post_params}, files={'file': ('cut.mp4', data, ctype)}, timeout=900)
+                out['put_status'] = r.status_code
+                if r.status_code >= 300: out['ok'] = False; out['post_body'] = r.text[:300]
+            elif t.hold:
                 # Shopify registers a Video only from a plain link ending .mp4: keep the cut here for a short while and serve it at /hold/<name>.mp4
                 _os.makedirs('/tmp/hold', exist_ok=True)
                 for f_ in _os.listdir('/tmp/hold'):
