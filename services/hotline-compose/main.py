@@ -556,7 +556,7 @@ def bucket_test(b: BucketTest):
 # Shopify upload address from SC - File Store (action targets), so no key is held here and no bytes pass through n8n.
 class Transform(BaseModel):
     src: str                 # public link of the picture or clip
-    op: str                  # resize | fill | frame | crop | silent
+    op: str                  # resize | fill | frame | crop | silent | pingpong | webcut
     width: int = 1000
     height: int = 0          # fill only; 0 = same as width
     at: float = 0.0          # frame only: seconds into the clip
@@ -592,6 +592,22 @@ def transform(t: Transform):
             src = '/tmp/tf_%d_src' % int(time.time() * 1000); dst = src + '_mute.mp4'
             open(src, 'wb').write(_tf_fetch(t.src, 600))
             _sp.run([_ffmpeg(), '-y', '-v', 'error', '-i', src, '-c:v', 'copy', '-an', '-movflags', '+faststart', dst], check=True, timeout=600)
+            data = open(dst, 'rb').read(); ctype = 'video/mp4'
+            for p_ in (src, dst):
+                try: _os.remove(p_)
+                except Exception: pass
+            out.update({'bytes': len(data), 'content_type': ctype})
+            if t.put:
+                r = requests.put(t.put, data=data, headers={'Content-Type': ctype}, timeout=600)
+                out['put_status'] = r.status_code
+            return out
+        if t.op == 'webcut':
+            # 29 Oct 2026: web version of a clip for the shop's Site clip list (replaces Cloudinary w_720,h_1280,c_limit,q_auto):
+            # fits inside 720 x 1280 without enlarging, h264 + aac, fast start.
+            src = '/tmp/tf_%d_src' % int(time.time() * 1000); dst = src + '_web.mp4'
+            open(src, 'wb').write(_tf_fetch(t.src, 600))
+            vf = "scale='min(720,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2"
+            _sp.run([_ffmpeg(), '-y', '-v', 'error', '-i', src, '-vf', vf, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '26', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', dst], check=True, timeout=900)
             data = open(dst, 'rb').read(); ctype = 'video/mp4'
             for p_ in (src, dst):
                 try: _os.remove(p_)
