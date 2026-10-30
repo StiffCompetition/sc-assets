@@ -478,6 +478,7 @@ const UPDATE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calend
 const DELETE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-calendar-delete';
 const CONCEPT_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-concept-creator';
 const PLAN_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-content';
+const SALUTES_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-salutes-list';   // 30 Oct 2026: Major Wood Salutes calendar (SC Salutes table)
 const OPTIONS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-plan-options';
 const IDEAS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-ideas-list';   // 23 Oct 2026: approved Ideas-tab lines for the Recreate panel (SC - Ideas List Feed)
 const BOX_LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-product-box';
@@ -529,7 +530,7 @@ function fmtDate(raw) {
   return d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 // Colour coding (9 Oct 2026): each post type has its own colour on the card edge; each character his Roll Call colour.
-const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60', 'Campaign': '#F5B800' };
+const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60', 'Salute': '#5E35B1', 'Campaign': '#F5B800' };
 const CHAR_COLOR = { 'Major Wood': '#556B2F', 'The Rear Admiral': '#1E3A8A', "Hammerin' Hanky": '#FF7A00', 'The Grip': '#1E5BD8', 'Slick Willy': '#111111', 'The Velvet Python': '#6B2FA0', 'SC Logo': '#555555' };
 // Brand posts are filed under "SC Logo" for the pipeline; on screen they read "All 6" (Roll Call) or "Brand".
 function charLabel(c, r) { return c === 'SC Logo' ? (r && isRollCall(r.notes) ? 'All 6' : 'Brand') : (c || ''); }
@@ -779,10 +780,12 @@ function fromBox(r) {
   else if (shop) rows.push('<b>FROM</b> Shop product: <a href="https://stiffcompetition.shop/products/' + shop[1] + '" target="_blank">' + escapeHtml(shop[1]) + '</a>');
   else if (/Promo:/i.test(n)) rows.push('<b>FROM</b> Promotable item: ' + escapeHtml((n.match(/Promo:\s*([^.|]+)/i) || [, ''])[1].trim()));
   else if (id) rows.push('<b>FROM</b> ' + escapeHtml(id) + ' &middot; <a href="' + sheet + '" target="_blank">Content spreadsheet</a>');
+  else if (r.format === 'Salute' && n) rows.push('<b>FROM</b> Major Wood Salutes calendar: ' + escapeHtml(n));
   else if (r.format === 'NFT' && n) rows.push('<b>FROM</b> ' + escapeHtml(n));
   else rows.push('<b>FROM</b> Not made yet - the brief is still being written.');
   let clip = '';
   if (r.format === 'Dare to Buy') clip = 'Three slides and an X image made from the product photo.';
+  else if (r.format === 'Salute') clip = 'The Major Wood salute master clip over the salute\'s theme background, with the announcer voice, name and shop hooks.';
   else if (r.format === 'NFT') clip = 'The character\'s NFT template clip, with the shop NFT and its ticker.';
   else if (r.format === 'Brand Lore') clip = clipName(r);
   else if (isRollCall(n)) clip = clipName(r);
@@ -1117,6 +1120,8 @@ function openDrawer(r) {
     '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + escapeHtml(charLabel(r.character, r)) + ' · ' + r.format + ' · <span class="postno">post #' + r.id + '</span></div>' +
     fromBox(r) +
     (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' :
+    // Salute posts are built whole by SC - Salute Post Builder (master clip + theme background + voice + hooks): no brief boxes to edit.
+    r.format === 'Salute' ? panelBox(r) + (r.notes ? '<div class="field"><label>Salute (from the Salutes calendar)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
     // NFT posts are built whole by SC - NFT Post Builder (character template + NFT + ticker): no brief boxes to edit.
     r.format === 'NFT' ? panelBox(r) + (r.notes ? '<div class="field"><label>NFT (from the shop)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
     // Roll Call (Playbook 7.12): a locked master clip; the announcer voice-over is the only part made per post.
@@ -1267,6 +1272,7 @@ function flowOf(r) {
   if (!r) return 'standard';
   if (/REPOST:/.test(String(r.notes || ''))) return 'repost';   // Library repost: the clip is already made
   if (r.format === 'Dare to Buy') return 'dtb';          // SC - Dare to Buy Builder makes the slides; no video
+  if (r.format === 'Salute') return 'salute';            // SC - Salute Post Builder makes the whole clip
   if (r.format === 'NFT') return 'nft';                  // SC - NFT Post Builder makes the whole clip
   if (isRollCall(r.notes)) return 'rollcall';            // fixed Roll Call clip + voice-over, no start image
   if (r.format === 'Travel the World') return 'travel';  // the NFT artwork extended to 9:16 is the start image
@@ -1284,6 +1290,8 @@ const FLOW = {
     help: 'Roll Call: "text approved" makes the video straight away from the fixed Roll Call clip and the announcer voice-over (about 5-15 min, no start image), back as "clip ready for your approval". "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
   nft: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'NFT: the clip is made whole when the post is planned (the character\'s NFT template, the NFT and its ticker). "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' },
+  salute: { opts: ['draft', 'approved', 'posted', 'paused'],
+    help: 'Major Wood Salute: the clip is made whole when the post is planned (master clip, theme background, voice, name and the follow, visit and buy hooks). Check the clip and the captions, then "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' },
   repost: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'Repost (Library tab): the clip is already made, so nothing is generated. Check the captions and platforms, then "approved" schedules it for its date and time. "draft" holds it back.' },
   dtb: { opts: ['draft', 'approved', 'posted', 'paused'],
@@ -1350,7 +1358,7 @@ async function postNow(r) {
 
 // Remake (12 Oct 2026, Andy): marks the post rejected, then sends the same slot to the planner, which reuses a rejected post in place and
 // runs SC Concept Creator on it again. The product, promotable item and poster clip are read back from the post itself.
-const REMAKE_COST = { 'Day Greeting': '$0.57', 'Wisdom': '$0.57', 'Character Lore': '$0.57', 'Brand Lore': '$0.58', 'Product': '$0.50', 'Travel the World': '$0.47', 'NFT': '$0.06' };
+const REMAKE_COST = { 'Day Greeting': '$0.57', 'Wisdom': '$0.57', 'Character Lore': '$0.57', 'Brand Lore': '$0.58', 'Product': '$0.50', 'Travel the World': '$0.47', 'NFT': '$0.06', 'Salute': '$0.06' };
 async function remakeRow(r) {
   const statusEl = document.getElementById('saveStatus');
   const notes = String(r.notes || ''), pnotes = String(r.panel_notes || '');
@@ -1503,6 +1511,7 @@ async function submitRecreate(r, ctx) {
       if (!rj.ok) throw new Error('HTTP ' + rj.status);
       const item = { date: date, format: f, character: character || (r.character === 'SC Logo' ? '' : r.character) || '' };
       if (time) item.time = time;
+      if (f === 'Salute') item.salute_key = ((String(r.notes || '').match(/Salute:\s*([a-z0-9-]+)/i)) || [])[1] || '';   // 30 Oct 2026: the planner remakes the rejected salute in place
       if (f === 'Product' || f === 'Dare to Buy') {
         const notes = String(r.notes || ''), pnotes = String(r.panel_notes || '');
         let handle = prodVal || ctx.curHandle, promo = '';
@@ -1557,7 +1566,7 @@ async function saveRow(r) {
     platforms: document.getElementById('f_platforms').value,
     status: (s => s === 'approved' ? 'scheduled' : s)((document.querySelector('.status-btn.active') || {}).dataset ? document.querySelector('.status-btn.active').dataset.value : 'draft'),
     // NFT posts carry the NFT Post Builder's record (Source, NFT title, template, shop link), not a brief: kept exactly as written.
-    notes: r.format === 'NFT' ? (r.notes || '') : composeNotes(r.notes || ''),
+    notes: (r.format === 'NFT' || r.format === 'Salute') ? (r.notes || '') : composeNotes(r.notes || ''),
     caption_instagram: (document.getElementById('f_caption_instagram') || {}).value,
     caption_x: (document.getElementById('f_caption_x') || {}).value,
     caption_facebook: (document.getElementById('f_caption_facebook') || {}).value
@@ -2359,7 +2368,8 @@ async function openAdhoc() {
     '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
     '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
-    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Character Lore (Poster Wall)</option><option>Travel the World</option><option>Brand Lore (Movie Poster)</option><option>Brand Lore (Roll Call)</option><option>Brand Lore (Roll Call cartoon flick)</option><option>Product</option><option>NFT</option><option>Dare to Buy</option></select></div>' +
+    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Character Lore (Poster Wall)</option><option>Travel the World</option><option>Brand Lore (Movie Poster)</option><option>Brand Lore (Roll Call)</option><option>Brand Lore (Roll Call cartoon flick)</option><option>Product</option><option>NFT</option><option>Dare to Buy</option><option>Salute</option></select></div>' +
+    '<div class="field" id="adSaluteBox" style="display:none"><label>Major Wood Salute</label><select id="adSalute"></select><div class="brief-part" id="adSaluteInfo" style="margin-top:8px"></div><button class="btn secondary" id="adSaluteAll" style="margin-top:8px">Add all upcoming salutes not yet on the calendar</button></div>' +
     '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('') + '</select></div>' +
     '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
     '<div class="drawer-actions"><button class="btn" id="adGo">Create brief</button><button class="btn secondary" id="adClose">Close</button></div>' +
@@ -2371,7 +2381,9 @@ async function openAdhoc() {
   const refresh = () => {
     const f = document.getElementById('adFormat').value;
     const dow = new Date(document.getElementById('adDate').value + 'T12:00:00Z').getUTCDay();
-    document.getElementById('adProductBox').style.display = (f !== 'Day Greeting' && f.indexOf('Brand Lore') !== 0) ? 'block' : 'none';
+    document.getElementById('adProductBox').style.display = (f !== 'Day Greeting' && f.indexOf('Brand Lore') !== 0 && f !== 'Salute') ? 'block' : 'none';
+    document.getElementById('adSaluteBox').style.display = f === 'Salute' ? 'block' : 'none';
+    if (f === 'Salute') saluteRefresh();
     const cur = document.getElementById('adChar').value;
     const prodPost = f === 'Product' || f === 'Dare to Buy';   // 19 Oct 2026 (Andy): a product post may use the day's character
     document.getElementById('adChar').innerHTML = charOptions(cur === DAY_CHAR[dow] && !prodPost ? '' : cur, prodPost ? '' : DAY_CHAR[dow]);
@@ -2379,7 +2391,7 @@ async function openAdhoc() {
     { const ap = document.getElementById('adProduct'); const av = ap.value; ap.innerHTML = productOptions(f === 'Dare to Buy' && av.indexOf('promo:') === 0 ? '' : av, f === 'Dare to Buy'); }
     if (f === 'Dare to Buy' && document.getElementById('adTime').value === '18:00') document.getElementById('adTime').value = '19:00';
     const n = (f === 'Day Greeting' || f.indexOf('Brand Lore') === 0 || dow === 0) ? leftFor(f === 'Day Greeting' && dow !== 0 ? DAY_CHAR[dow] : 'SC Logo', f) : leftOther(DAY_CHAR[dow], f);
-    const info = f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (any of the six, the day\'s character included). As many a day as you like, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Salute' ? 'Major Wood, at the time set for the salute (London). The finished clip appears for review in about 2 minutes.' : f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (any of the six, the day\'s character included). As many a day as you like, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
@@ -2387,10 +2399,38 @@ async function openAdhoc() {
     const p = (PRODUCTS || []).find(x => x.handle === document.getElementById('adProduct').value);
     document.getElementById('adChar').value = (p && p.character) ? p.character : '';
   });
+  // 30 Oct 2026 (Major Wood Salutes): the salute list comes from the SC Salutes table; a salute already on the calendar (not rejected or failed) is marked and cannot be added twice.
+  let SALUTES = [];
+  const onCal = k => ROWS.some(x => x.format === 'Salute' && String(x.notes || '').indexOf('Salute: ' + k + '.') === 0 && x.panel_status !== 'rejected' && x.panel_status !== 'failed');
+  const saluteRefresh = () => {
+    const sel = document.getElementById('adSalute');
+    const cur = sel.value;
+    sel.innerHTML = SALUTES.map(x => '<option value="' + escapeHtml(x.salute_key) + '"' + (onCal(x.salute_key) ? ' disabled' : '') + '>' + escapeHtml(x.post_date + ' ' + x.post_time + ' - ' + x.subject) + (onCal(x.salute_key) ? ' (on the calendar)' : '') + '</option>').join('') || '<option value="">No salutes loaded</option>';
+    if (cur && SALUTES.some(x => x.salute_key === cur && !onCal(cur))) sel.value = cur;
+    else { const f1 = SALUTES.find(x => !onCal(x.salute_key)); if (f1) sel.value = f1.salute_key; }
+    const x = SALUTES.find(y => y.salute_key === sel.value);
+    if (x) { document.getElementById('adDate').value = x.post_date; document.getElementById('adTime').value = x.post_time; document.getElementById('adSaluteInfo').innerHTML = '<b>' + escapeHtml(x.kind) + ' salute, ' + escapeHtml(x.market) + '.</b> ' + escapeHtml(x.voice_line) + '<br>' + escapeHtml(x.link_line); }
+    const left = SALUTES.filter(y => !onCal(y.salute_key)).length;
+    document.getElementById('adSaluteAll').textContent = 'Add all ' + left + ' upcoming salutes not yet on the calendar';
+    document.getElementById('adSaluteAll').disabled = !left;
+  };
+  try { const sr = await fetch(SALUTES_URL).then(x => x.json()); SALUTES = ((sr && sr.salutes) || []).slice().sort((a, b) => (a.post_date + a.post_time).localeCompare(b.post_date + b.post_time)); } catch (e) { SALUTES = []; }
+  document.getElementById('adSalute').addEventListener('change', saluteRefresh);
+  document.getElementById('adSaluteAll').addEventListener('click', () => {
+    const plan = SALUTES.filter(y => !onCal(y.salute_key)).map(y => ({ date: y.post_date, time: y.post_time, format: 'Salute', salute_key: y.salute_key }));
+    sendPlan(plan, document.getElementById('adStatus'));
+  });
   refresh();
   document.getElementById('adGo').addEventListener('click', () => {
     const f = document.getElementById('adFormat').value;
     const item = { date: document.getElementById('adDate').value, time: document.getElementById('adTime').value, format: f };
+    if (f === 'Salute') {
+      const k = document.getElementById('adSalute').value;
+      const x = SALUTES.find(y => y.salute_key === k);
+      if (!x || onCal(k)) { document.getElementById('adStatus').textContent = 'Pick a salute that is not on the calendar yet.'; return; }
+      sendPlan([{ date: x.post_date, time: x.post_time, format: 'Salute', salute_key: k }], document.getElementById('adStatus'));
+      return;
+    }
     if (f === 'Dare to Buy') {
       const h = document.getElementById('adProduct').value;
       if (!h || h.indexOf('promo:') === 0) { document.getElementById('adStatus').textContent = 'Pick a shop product.'; return; }
