@@ -1,0 +1,53 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "sc_title": {
+          "type": "custom_liquid",
+          "name": "Title",
+          "settings": {
+            "custom_liquid": "{%- assign t = product.title | escape -%}{%- assign name = t -%}{%- assign tag = '' -%}{%- if t contains '(' -%}{%- assign parts = t | split: '(' -%}{%- assign name = parts[0] | strip -%}{%- assign tag = parts[1] | remove: ')' | strip -%}{%- endif -%}<style>.sc-title h1{font-size:2.2rem;line-height:1.15;margin:0 0 .4rem;letter-spacing:.02em}.sc-title .sc-tagline{margin:0 0 1rem;font-size:1.25rem;letter-spacing:.14em;text-transform:uppercase;opacity:.75}@media(min-width:750px){.sc-title h1{font-size:3rem}}</style><div class=\"product__title sc-title\"><h1>{{ name }}</h1>{%- if tag != '' -%}<p class=\"sc-tagline\">{{ tag }}</p>{%- endif -%}</div>"
+          }
+        },
+        "sc_pack": {
+          "type": "custom_liquid",
+          "name": "Add button",
+          "settings": {
+            "custom_liquid": "<style>.sc-pk{margin:1.6rem 0}.sc-pk a{display:block;text-align:center;padding:1.4rem 1rem;border-radius:999px;color:#fff;font-weight:700;font-size:1.4rem;text-decoration:none;text-transform:uppercase;letter-spacing:.03em}.sc-pk .wa{background:#1fa855}.sc-pk .tg{background:#229ED9}.sc-pk p{font-size:1.2rem;opacity:.8;text-align:center}</style>{%- if product.handle contains 'after-dark' -%}<div class=\"sc-pk\"><a class=\"tg\" style=\"background:#a21caf\" href=\"https://t.me/addstickers/stiffafterdark_by_StiffCompAutomationBot\">Add to Telegram</a><p>Free. 18+. Opens Telegram and adds the whole set in one tap.</p></div>{%- elsif product.handle contains 'telegram' -%}<div class=\"sc-pk\"><a class=\"tg\" href=\"https://t.me/addstickers/stiffstickers_by_StiffCompAutomationBot\">Add to Telegram</a><p>Free. Opens Telegram and adds the whole set in one tap.</p></div>{%- else -%}<div class=\"sc-pk\"><a class=\"wa\" href=\"https://getstickerpack.com/s/137998?key=4jxn57\">Add to WhatsApp</a><p>Free. Opens the Sticker Maker app, which adds the pack to WhatsApp.</p></div>{%- endif -%}"
+          }
+        },
+        "sc_details": {
+          "type": "custom_liquid",
+          "name": "Details",
+          "settings": {
+            "custom_liquid": "{%- if product.description != blank -%}<div class=\"rte\">{{ product.description }}</div>{%- endif -%}"
+          }
+        }
+      },
+      "block_order": [
+        "sc_title",
+        "sc_pack",
+        "sc_details"
+      ],
+      "settings": {
+        "enable_sticky_info": true,
+        "color_scheme": "scheme-2",
+        "media_size": "large",
+        "constrain_to_viewport": true,
+        "media_fit": "contain",
+        "gallery_layout": "stacked",
+        "mobile_thumbnails": "hide",
+        "media_position": "left",
+        "image_zoom": "lightbox",
+        "hide_variants": true,
+        "enable_video_looping": false,
+        "padding_top": 36,
+        "padding_bottom": 12
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}
