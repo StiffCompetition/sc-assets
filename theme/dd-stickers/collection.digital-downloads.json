@@ -1,0 +1,58 @@
+{
+  "sections": {
+    "banner": {
+      "type": "main-collection-banner",
+      "settings": {
+        "show_collection_description": true,
+        "show_collection_image": false,
+        "color_scheme": "scheme-1"
+      }
+    },
+    "sc_dd_stickers": {
+      "type": "custom-liquid",
+      "name": "Free sticker packs",
+      "settings": {
+        "custom_liquid": "<style>.sc-ddst{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem 1.6rem;padding-bottom:1rem}.sc-ddst a.c{display:flex;flex-direction:column;gap:.5rem;text-align:center;text-decoration:none;color:inherit}.sc-ddst img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border:3px solid rgba(var(--color-foreground),.15)}.sc-ddst a.c:hover img{border-color:rgba(var(--color-foreground),.6)}.sc-ddst b{font-size:1.4rem;margin-top:.4rem}.sc-ddst span{font-size:1.2rem;opacity:.8}.sc-ddst em{font-style:normal;display:block;padding:1rem;border-radius:999px;color:#fff;font-weight:700;font-size:1.2rem;text-transform:uppercase;letter-spacing:.03em}.sc-ddst .wa em{background:#1fa855}.sc-ddst .tg em{background:#229ED9}@media(max-width:989px){.sc-ddst{grid-template-columns:repeat(2,1fr);gap:1.6rem 1rem}}</style><div class=\"page-width\"><div class=\"sc-ddst\"><a class=\"c wa\" href=\"https://getstickerpack.com/s/137998?key=4jxn57\"><img src=\"{{ 'sc-dc-pack-one.jpg' | asset_url }}\" alt=\"WhatsApp sticker pack\" width=\"320\" height=\"320\" loading=\"eager\"><b>WhatsApp Stickers</b><span>30 stickers. Free.</span><em>Add to WhatsApp</em></a><a class=\"c tg\" href=\"https://t.me/addstickers/stiffstickers_by_StiffCompAutomationBot\"><img src=\"{{ 'sc-dc-telegram-new.jpg' | asset_url }}\" alt=\"Telegram sticker set\" width=\"320\" height=\"320\" loading=\"eager\"><b>Telegram Stickers</b><span>The whole cast. Free.</span><em>Add to Telegram</em></a></div></div>",
+        "color_scheme": "",
+        "padding_top": 8,
+        "padding_bottom": 0
+      }
+    },
+    "product-grid": {
+      "type": "main-collection-product-grid",
+      "settings": {
+        "products_per_page": 16,
+        "columns_desktop": 4,
+        "columns_mobile": "1",
+        "color_scheme": "scheme-1",
+        "image_ratio": "adapt",
+        "image_shape": "default",
+        "show_secondary_image": true,
+        "show_vendor": false,
+        "show_rating": false,
+        "quick_add": "standard",
+        "enable_filtering": true,
+        "filter_type": "horizontal",
+        "enable_sorting": true,
+        "padding_top": 8,
+        "padding_bottom": 8
+      }
+    },
+    "sc_collection_text": {
+      "type": "custom-liquid",
+      "name": "Collection text below products",
+      "settings": {
+        "custom_liquid": "{%- if collection.description != blank -%}{%- unless collection.description contains 'sc-cx' -%}<div class=\"page-width\"><div class=\"rte collection-hero__description\" style=\"max-width:72rem\">{{ collection.description }}</div></div>{%- endunless -%}{%- endif -%}",
+        "color_scheme": "",
+        "padding_top": 20,
+        "padding_bottom": 40
+      }
+    }
+  },
+  "order": [
+    "banner",
+    "sc_dd_stickers",
+    "product-grid",
+    "sc_collection_text"
+  ]
+}
