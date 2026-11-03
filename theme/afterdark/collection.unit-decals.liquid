@@ -20,6 +20,7 @@
   .sc-dc__msg{font-size:1.1rem;color:#e5261b;min-height:0}
   .sc-dc__qr{display:none;text-align:center;font-size:1.1rem;opacity:.85;margin-top:.8rem;line-height:1.3}
   .sc-dc__qr img{display:block;width:110px;height:110px;margin:.4rem auto 0;border:0;background:#fff;aspect-ratio:auto}
+  .sc-dc__q2{display:flex;gap:.8rem;justify-content:center}.sc-dc__q2 span{flex:1;font-size:1rem}.sc-dc__q2 img{width:100%;max-width:90px;height:auto;margin:.4rem auto 0;display:block;border:0;background:#fff;aspect-ratio:auto}
   @media(min-width:990px){.sc-dc__qr{display:block}.sc-dc__g li{display:contents}}
   @media(max-width:989px){.sc-dc__g{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:749px){.sc-dc__g{grid-template-columns:repeat(2,1fr);gap:1.6rem 1rem}.sc-dc__c b{font-size:1.3rem}}
@@ -52,22 +53,24 @@
     </div>
     <div class="sc-dc__qr" style="grid-column:2;grid-row:2">On a computer? Scan with your phone<img src="{{ 'sc-stickers-qr-telegram-2.png' | asset_url }}" alt="QR code" width="110" height="110" loading="lazy"></div></li>
     <li><div class="sc-dc__c" style="grid-column:3;grid-row:1">
-      <a class="sc-dc__img" href="https://t.me/addstickers/stiffafterdark_by_StiffCompAutomationBot"><img src="{{ 'sc-dc-after-dark.jpg' | asset_url }}" alt="Stiff After Dark sticker pack" width="320" height="320" loading="eager"></a>
+      <a class="sc-dc__img" href="https://getstickerpack.com/s/143880?key=qh3z3z"><img src="{{ 'sc-dc-after-dark.jpg' | asset_url }}" alt="Stiff After Dark sticker pack" width="320" height="320" loading="eager"></a>
       <b>Stiff After Dark</b>
       <span class="sc-dc__d">30 cheeky stickers. 18+. Free.</span>
-      <div class="sc-dc__act"><a class="sc-dc__btn ad" href="https://t.me/addstickers/stiffafterdark_by_StiffCompAutomationBot">Add to Telegram</a></div>
-    </div></li>
+      <div class="sc-dc__act"><a class="sc-dc__btn" href="https://getstickerpack.com/s/143880?key=qh3z3z">Add to WhatsApp</a><a class="sc-dc__btn" href="https://t.me/addstickers/stiffafterdark_by_StiffCompAutomationBot">Add to Telegram</a></div>
+    </div>
+    <div class="sc-dc__qr" style="grid-column:3;grid-row:2">On a computer? Scan with your phone<span class="sc-dc__q2"><span>WhatsApp<img src="{{ 'sc-stickers-qr-afterdark.png' | asset_url }}" alt="QR code, Stiff After Dark on WhatsApp" width="110" height="110" loading="lazy"></span><span>Telegram<img src="{{ 'sc-stickers-qr-afterdark-tg.png' | asset_url }}" alt="QR code, Stiff After Dark on Telegram" width="110" height="110" loading="lazy"></span></span></div></li>
     <li><div class="sc-dc__c" style="grid-column:4;grid-row:1">
-      <a class="sc-dc__img" href="/pages/e-card"><img src="{{ 'Shopify_banner_-_cards.jpg' | file_url }}?width=480&height=480&crop=center" alt="Free birthday e-cards" width="320" height="320" loading="eager"></a>
-      <b>Free Birthday E-Cards</b>
-      <span class="sc-dc__d">Stiff and direct. Free.</span>
-      <div class="sc-dc__act"><a class="sc-dc__btn ec" href="/pages/e-card">Send an e-card</a></div>
-    </div></li>
-    <li><div class="sc-dc__c" style="grid-column:1;grid-row:3">
       <a class="sc-dc__img" href="https://t.me/addstickers/stiffmoves_by_StiffCompAutomationBot"><img src="{{ 'sc-dc-stiff-moves.webp' | asset_url }}" alt="Stiff Moves animated stickers" width="320" height="320" loading="eager"></a>
       <b>Stiff Moves</b>
       <span class="sc-dc__d">6 animated stickers. Free.</span>
       <div class="sc-dc__act"><a class="sc-dc__btn" href="https://t.me/addstickers/stiffmoves_by_StiffCompAutomationBot">Add to Telegram</a></div>
+    </div>
+    <div class="sc-dc__qr" style="grid-column:4;grid-row:2">On a computer? Scan with your phone<img src="{{ 'sc-stickers-qr-moves-tg.png' | asset_url }}" alt="QR code, Stiff Moves on Telegram" width="110" height="110" loading="lazy"></div></li>
+    <li><div class="sc-dc__c" style="grid-column:1;grid-row:3">
+      <a class="sc-dc__img" href="/pages/e-card"><img src="{{ 'Shopify_banner_-_cards.jpg' | file_url }}?width=480&height=480&crop=center" alt="Free birthday e-cards" width="320" height="320" loading="eager"></a>
+      <b>Free Birthday E-Cards</b>
+      <span class="sc-dc__d">Stiff and direct. Free.</span>
+      <div class="sc-dc__act"><a class="sc-dc__btn ec" href="/pages/e-card">Send an e-card</a></div>
     </div></li>
   </ul>
   {% form 'customer', id: 'sc-dc-form', style: 'display:none' %}
