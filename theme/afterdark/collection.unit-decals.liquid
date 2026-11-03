@@ -97,7 +97,7 @@
         e.preventDefault();
         form.querySelector('[data-form-email]').value=v;
         var href=go.href,done=false,fin=function(){if(!done){done=true;window.location.href=href;}};
-        try{fetch(form.action,{method:'POST',body:new FormData(form),credentials:'same-origin'}).then(fin,fin);}catch(x){fin();}
+        try{fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-roster-signup',{method:'POST',body:new URLSearchParams({email:v})}).then(fin,fin);}catch(x){fin();}
         setTimeout(fin,1800);
       });
     });
