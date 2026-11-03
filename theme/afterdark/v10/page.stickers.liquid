@@ -1,0 +1,110 @@
+{%- comment -%} Stickers page (Andy, 27 Oct 2026). One page, three one-tap buttons. Assigned to the page /pages/stickers with template suffix "stickers". {%- endcomment -%}
+<style>
+  .sc-stk{width:100%;box-sizing:border-box;max-width:1100px;margin:0 auto;padding:40px 20px 60px}
+  .sc-stk .hero{display:block;width:100%;max-width:720px;height:auto;margin:0 auto 28px}
+  .sc-stk h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .sc-stk .lead{font-size:1.15em;text-align:center;margin:0 auto 36px;max-width:640px;opacity:.9}
+  .sc-stk .packs{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:0 0 36px}
+  .sc-stk .pack{border:1px solid rgba(var(--color-foreground),.2);border-radius:16px;padding:24px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px}
+  .sc-stk .pack h2{font-size:1.25em;margin:0;text-transform:uppercase;letter-spacing:.02em}
+  .sc-stk .pack p{margin:0;opacity:.8}
+  .sc-stk .btn{display:block;width:100%;box-sizing:border-box;text-align:center;padding:16px 20px;border-radius:999px;background:#e5261b;color:#fff;font-weight:700;font-size:1.1em;text-decoration:none;text-transform:uppercase;letter-spacing:.03em}
+  .sc-stk .pack img.pk{width:100%;max-width:240px;height:auto;border-radius:12px}
+  .sc-stk .qr{display:none;font-size:.85em;opacity:.8}
+  .sc-stk .q2{display:flex;gap:12px;justify-content:center;margin-top:8px}
+  .sc-stk .q2 span{display:block;font-size:.8em;width:96px}
+  .sc-stk .q2 img{display:block;width:100%;height:auto;margin:0 auto 4px;background:#fff;border-radius:6px}
+  .sc-stk .how{text-align:center;opacity:.8;margin:0 auto 36px;max-width:640px}
+  .sc-stk .shop{text-align:center;margin:0 0 36px}
+  .sc-stk .shop .btn{display:inline-block;width:auto;padding:16px 36px;background:transparent;color:rgb(var(--color-foreground));border:2px solid currentColor}
+  .sc-stk .more{text-align:center;margin:0 0 28px}
+  .sc-stk .more a,.sc-stk .share a{text-decoration:underline}
+  .sc-stk .share{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:center;font-size:.95em}
+  @media(min-width:900px){.sc-stk .qr{display:block}.sc-stk .pack p{min-height:5.6em}}
+  @media(max-width:899px){.sc-stk .packs{grid-template-columns:1fr}}
+  .sc-stk .gifs{margin:0 0 36px;scroll-margin-top:90px}
+  .sc-stk .gifs h2{text-align:center;text-transform:uppercase;font-size:1.4em;margin:0 0 8px}
+  .sc-stk .gifs .sub{text-align:center;opacity:.8;margin:0 auto 22px;max-width:640px}
+  .sc-stk .gg{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:0 0 24px}
+  .sc-stk .g{border:1px solid rgba(var(--color-foreground),.2);border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+  .sc-stk .g img{width:100%;height:auto;border-radius:10px;background:#fff}
+  .sc-stk .g .btn{padding:12px 16px;font-size:1em}
+  .sc-stk .gall{text-align:center}.sc-stk .gall .btn{display:inline-block;width:auto;padding:16px 36px}
+  @media(max-width:899px){.sc-stk .gg{grid-template-columns:repeat(2,1fr)}}
+</style>
+<div class="sc-stk">
+  <img class="hero" src="{{ 'sc-stickers-phone-new.png' | asset_url }}" alt="Stiff Competition stickers in a WhatsApp chat" width="720" height="720" loading="eager">
+  <h1>Drop them in any chat</h1>
+  <p class="lead">Stickers and GIFs for any chat. Free on WhatsApp and Telegram, Android and iPhone.</p>
+
+  <div class="packs">
+    <div class="pack">
+      <h2>Stiff Stickers</h2>
+      <img class="pk" src="{{ 'sc-dc-pack-one.jpg' | asset_url }}" alt="Stiff Stickers sticker pack" width="240" height="240" loading="lazy">
+      <p>30 stickers: five moods for each of the six characters.</p>
+      <a class="btn" href="https://getstickerpack.com/s/137998?key=4jxn57">Add to WhatsApp</a>
+      <a class="btn" href="https://t.me/addstickers/stiffstickers_by_StiffCompAutomationBot">Add to Telegram</a>
+      <div class="qr">On a computer? Scan with your phone<span class="q2"><span><img src="{{ 'sc-stickers-qr-pack1.png' | asset_url }}" alt="QR code for Stiff Stickers on WhatsApp" width="100" height="100" loading="lazy">WhatsApp</span><span><img src="{{ 'sc-stickers-qr-telegram-2.png' | asset_url }}" alt="QR code for Stiff Stickers on Telegram" width="100" height="100" loading="lazy">Telegram</span></span></div>
+    </div>
+    <div class="pack">
+      <h2>Stiff After Dark</h2>
+      <img class="pk" src="{{ 'sc-dc-after-dark.jpg' | asset_url }}" alt="Stiff After Dark sticker pack" width="240" height="240" loading="lazy">
+      <p>A second pack for after hours. Same six, a bit cheekier. 30 stickers, 18+.</p>
+      <a class="btn" href="https://getstickerpack.com/s/143880?key=qh3z3z">Add to WhatsApp</a>
+      <a class="btn" href="https://t.me/addstickers/stiffafterdark_by_StiffCompAutomationBot">Add to Telegram</a>
+      <div class="qr">On a computer? Scan with your phone<span class="q2"><span><img src="{{ 'sc-stickers-qr-afterdark.png' | asset_url }}" alt="QR code for Stiff After Dark on WhatsApp" width="100" height="100" loading="lazy">WhatsApp</span><span><img src="{{ 'sc-stickers-qr-afterdark-tg.png' | asset_url }}" alt="QR code for Stiff After Dark on Telegram" width="100" height="100" loading="lazy">Telegram</span></span></div>
+    </div>
+    <div class="pack">
+      <h2>Stiff Moves</h2>
+      <img class="pk" src="{{ 'sc-dc-stiff-moves.webp' | asset_url }}" alt="Stiff Moves GIFs" width="240" height="240" loading="lazy">
+      <p>12 free GIFs for any chat. Save them to your phone, or open them on GIPHY.</p>
+      <a class="btn" href="#gifs">Download the GIFs</a>
+      <a class="btn" href="https://giphy.com/channel/StiffComp">Get the GIFs on GIPHY</a>
+      <div class="qr">On a computer? Scan with your phone<span class="q2"><span><img src="{{ 'sc-stickers-qr-giphy.png' | asset_url }}" alt="QR code for the GIFs on GIPHY" width="100" height="100" loading="lazy">GIFs</span></span></div>
+    </div>
+  </div>
+
+  <p class="how">On your phone, tap a button. The sticker packs add to WhatsApp or Telegram, and the GIFs save to your phone or open on GIPHY.</p>
+
+  <div class="gifs" id="gifs">
+    <h2>Stiff Moves GIFs</h2>
+    <p class="sub">Tap Save and the GIF goes straight to your phone. Then add it to any chat from your Gallery or Photos.</p>
+    <div class="gg">
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-velvet-python.gif?v=1793743851&width=240" alt="The Velvet Python GIF" width="240" height="240" loading="lazy"><b>The Velvet Python</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-velvet-python.gif?v=1793743851" data-gif data-name="stiff-moves-the-velvet-python.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-major-wood.gif?v=1793743851&width=240" alt="Major Wood GIF" width="240" height="240" loading="lazy"><b>Major Wood</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-major-wood.gif?v=1793743851" data-gif data-name="stiff-moves-major-wood.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-slick-willy.gif?v=1793743851&width=240" alt="Slick Willy GIF" width="240" height="240" loading="lazy"><b>Slick Willy</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-slick-willy.gif?v=1793743851" data-gif data-name="stiff-moves-slick-willy.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-grip.gif?v=1793743851&width=240" alt="The Grip GIF" width="240" height="240" loading="lazy"><b>The Grip</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-grip.gif?v=1793743851" data-gif data-name="stiff-moves-the-grip.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-rear-admiral.gif?v=1793743851&width=240" alt="The Rear Admiral GIF" width="240" height="240" loading="lazy"><b>The Rear Admiral</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-rear-admiral.gif?v=1793743851" data-gif data-name="stiff-moves-the-rear-admiral.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-hammerin-hanky.gif?v=1793743851&width=240" alt="Hammerin&#39; Hanky GIF" width="240" height="240" loading="lazy"><b>Hammerin&#39; Hanky</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-hammerin-hanky.gif?v=1793743851" data-gif data-name="stiff-moves-hammerin-hanky.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-sc-logo.gif?v=1793743851&width=240" alt="SC GIF" width="240" height="240" loading="lazy"><b>SC</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-sc-logo.gif?v=1793743851" data-gif data-name="stiff-moves-sc-logo.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-stiff-competition-logo.gif?v=1793743851&width=240" alt="Stiff Competition GIF" width="240" height="240" loading="lazy"><b>Stiff Competition</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-stiff-competition-logo.gif?v=1793743851" data-gif data-name="stiff-moves-stiff-competition-logo.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-locked-and-loaded.gif?v=1793743851&width=240" alt="Locked and Loaded GIF" width="240" height="240" loading="lazy"><b>Locked and Loaded</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-locked-and-loaded.gif?v=1793743851" data-gif data-name="stiff-moves-locked-and-loaded.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-ready-to-blow.gif?v=1793743851&width=240" alt="Ready to Blow GIF" width="240" height="240" loading="lazy"><b>Ready to Blow</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-ready-to-blow.gif?v=1793743851" data-gif data-name="stiff-moves-ready-to-blow.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-maximum-extension.gif?v=1793743851&width=240" alt="Maximum Extension GIF" width="240" height="240" loading="lazy"><b>Maximum Extension</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-maximum-extension.gif?v=1793743851" data-gif data-name="stiff-moves-maximum-extension.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-big-one.gif?v=1793743851&width=240" alt="Big One GIF" width="240" height="240" loading="lazy"><b>Big One</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-big-one.gif?v=1793743851" data-gif data-name="stiff-moves-big-one.gif">Save</a></div>
+    </div>
+    <p class="gall"><a class="btn" href="#gifs" id="sc-gif-all">Save all 12 GIFs</a></p>
+  </div>
+
+  <p class="shop"><a class="btn" href="/">Visit the Stiff Competition shop</a></p>
+
+  <div class="share">
+    <span>Send this page to someone who needs it:</span>
+    <a href="https://wa.me/?text=Free%20Stiff%20Competition%20stickers%3A%20https%3A%2F%2Fstiffcompetition.shop%2Fpages%2Fstickers">WhatsApp</a>
+    <a href="https://t.me/share/url?url=https%3A%2F%2Fstiffcompetition.shop%2Fpages%2Fstickers&text=Free%20Stiff%20Competition%20stickers">Telegram</a>
+    <a href="https://www.instagram.com/stiffcompetition_hq/">Instagram</a>
+  </div>
+</div>
+<script>
+(function(){
+  function save(a){var url=a.getAttribute('href'),name=a.getAttribute('data-name');
+    return fetch(url).then(function(r){if(!r.ok)throw 0;return r.blob()}).then(function(b){
+      var l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=name;document.body.appendChild(l);l.click();
+      setTimeout(function(){URL.revokeObjectURL(l.href);l.remove()},4000);
+    }).catch(function(){window.open(url,'_blank')});}
+  document.querySelectorAll('a[data-gif]').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();save(a)})});
+  var all=document.getElementById('sc-gif-all');
+  if(all)all.addEventListener('click',function(e){e.preventDefault();var list=[].slice.call(document.querySelectorAll('a[data-gif]')),i=0;
+    (function next(){if(i>=list.length)return;save(list[i++]).then(function(){setTimeout(next,900)})})();});
+})();
+</script>
