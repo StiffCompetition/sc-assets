@@ -1,0 +1,147 @@
+{%- comment -%} Unit Decals collection page (Andy, 27 Oct 2026): small product-style boxes like the Pick your character boxes. No price, no cart. Sticker boxes carry an optional newsletter tick box. Collection template suffix: unit-decals. {%- endcomment -%}
+<style>
+  .sc-dc{text-align:center;padding-top:2.4rem;padding-bottom:4rem}
+  .sc-dc h1{margin:0 0 .4rem}
+  .sc-dc .sc-dc__lead{margin:0 0 2.4rem;font-size:1.4rem;letter-spacing:.04em}
+  .sc-dc__g{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:2rem 1.6rem;align-items:stretch}
+  .sc-dc__g li{margin:0;padding:0;min-width:0}
+  .sc-dc__c{display:flex;flex-direction:column;gap:.5rem;text-align:center;height:100%}
+  .sc-dc__c img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border:3px solid rgba(var(--color-foreground),.15);background:#e9ebee}
+  .sc-dc__c a.sc-dc__img:hover img{border-color:rgba(var(--color-foreground),.6)}
+  .sc-dc__c b{font-size:1.4rem;line-height:1.25;margin-top:.4rem}
+  .sc-dc__c span.sc-dc__d{font-size:1.2rem;opacity:.8;line-height:1.3}
+  .sc-dc__opt{display:flex;gap:.6rem;align-items:flex-start;justify-content:center;font-size:1.1rem;line-height:1.3;text-align:left;margin-top:.4rem;cursor:pointer}
+  .sc-dc__opt input{margin:.1rem 0 0;flex:none}
+  .sc-dc__em{display:none;width:100%;box-sizing:border-box;padding:.8rem 1rem;font-size:1.2rem;border:1px solid rgba(var(--color-foreground),.4);background:transparent;color:rgb(var(--color-foreground))}
+  .sc-dc__em.is-on{display:block}
+  .sc-dc__btn{display:block;box-sizing:border-box;text-align:center;padding:1rem 1rem;border-radius:999px;background:#e5261b;color:#fff;font-weight:700;font-size:1.2rem;text-decoration:none;text-transform:uppercase;letter-spacing:.03em;margin-top:auto}
+  .sc-dc__btn.ec{background:#e5261b}
+  .sc-dc__act{margin-top:auto;display:flex;flex-direction:column;gap:.5rem}
+  .sc-dc__msg{font-size:1.1rem;color:#e5261b;min-height:0}
+  .sc-dc__qr{display:none;text-align:center;font-size:1.1rem;opacity:.85;margin-top:.8rem;line-height:1.3}
+  .sc-dc__q2{display:flex;gap:.8rem;justify-content:center;margin-top:.6rem}
+  .sc-dc__q2 span{display:block;font-size:1rem;flex:1;max-width:100px}
+  .sc-dc__q2 img{display:block;width:100%;height:auto;margin:0 auto .2rem;border:0;background:#fff;aspect-ratio:auto}
+  .sc-dc__btn.soon{opacity:.45;cursor:default}
+  .sc-dc__two{display:flex;gap:.6rem}.sc-dc__two .sc-dc__btn{flex:1;margin-top:0;padding:1rem .4rem}
+  @media(min-width:990px){.sc-dc__qr{display:block}.sc-dc__g li{display:contents}}
+  @media(max-width:989px){.sc-dc__g{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:749px){.sc-dc__g{grid-template-columns:repeat(2,1fr);gap:1.6rem 1rem}.sc-dc__c b{font-size:1.3rem}}
+.sc-gf{margin:2.4rem 0 3rem;scroll-margin-top:90px}
+  .sc-gf h2{text-align:center;text-transform:uppercase;font-size:1.6rem;margin:0 0 .8rem}
+  .sc-gf .sub{text-align:center;opacity:.8;margin:0 auto 2.2rem;max-width:64rem}
+  .sc-gf .gg{display:grid;grid-template-columns:repeat(4,1fr);gap:1.6rem;margin:0 0 2.4rem}
+  .sc-gf .g{border:1px solid rgba(var(--color-foreground),.2);border-radius:14px;padding:1.2rem;display:flex;flex-direction:column;align-items:center;gap:1rem;text-align:center}
+  .sc-gf .g img{width:100%;height:auto;border-radius:10px;background:#fff}
+  .sc-gf .btn{display:block;box-sizing:border-box;width:100%;text-align:center;padding:1.2rem 1.6rem;border-radius:999px;background:#e5261b;color:#fff;font-weight:700;font-size:1.2rem;text-decoration:none;text-transform:uppercase;letter-spacing:.03em}
+  .sc-gf .gall{text-align:center}.sc-gf .gall .btn{display:inline-block;width:auto;padding:1.6rem 3.6rem}
+  @media(max-width:749px){.sc-gf .gg{grid-template-columns:repeat(2,1fr);gap:1rem}}
+</style>
+<div class="sc-dc page-width">
+  <h1 class="h1">{{ collection.title }}</h1>
+  <ul class="sc-dc__g">
+    <li><div class="sc-dc__c" data-tile style="grid-column:1;grid-row:1">
+      <span class="sc-dc__img" style="display:block"><img src="{{ 'sc-dc-pack-one.jpg' | asset_url }}" alt="Stiff Stickers sticker pack" width="320" height="320" loading="eager"></span>
+      <b>Stiff Stickers</b>
+      <span class="sc-dc__d">30 stickers. Free.</span>
+      <div class="sc-dc__act">
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Enlist for more</span></label>
+        <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
+        <a class="sc-dc__btn" data-go href="https://getstickerpack.com/s/137998?key=4jxn57">Add to WhatsApp</a>
+        <a class="sc-dc__btn" data-go href="https://t.me/addstickers/stiffstickers_by_StiffCompAutomationBot">Add to Telegram</a>
+        <div class="sc-dc__msg" data-msg></div>
+      </div>
+    </div>
+    <div class="sc-dc__qr" style="grid-column:1;grid-row:2">On a computer? Scan with your phone<span class="sc-dc__q2"><span><img src="{{ 'sc-stickers-qr-pack1.png' | asset_url }}" alt="QR code, Stiff Stickers on WhatsApp" width="100" height="100" loading="lazy">WhatsApp</span><span><img src="{{ 'sc-stickers-qr-telegram-2.png' | asset_url }}" alt="QR code, Stiff Stickers on Telegram" width="100" height="100" loading="lazy">Telegram</span></span></div></li>
+    <li><div class="sc-dc__c" data-tile style="grid-column:2;grid-row:1">
+      <span class="sc-dc__img" style="display:block"><img src="{{ 'sc-dc-after-dark.jpg' | asset_url }}" alt="Stiff After Dark sticker pack" width="320" height="320" loading="eager"></span>
+      <b>Stiff After Dark</b>
+      <span class="sc-dc__d">30 cheeky stickers. 18+. Free.</span>
+      <div class="sc-dc__act">
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Enlist for more</span></label>
+        <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
+        <a class="sc-dc__btn" data-go href="https://getstickerpack.com/s/143880?key=qh3z3z">Add to WhatsApp</a>
+        <a class="sc-dc__btn" data-go href="https://t.me/addstickers/stiffafterdark_by_StiffCompAutomationBot">Add to Telegram</a>
+        <div class="sc-dc__msg" data-msg></div>
+      </div>
+    </div>
+    <div class="sc-dc__qr" style="grid-column:2;grid-row:2">On a computer? Scan with your phone<span class="sc-dc__q2"><span><img src="{{ 'sc-stickers-qr-afterdark.png' | asset_url }}" alt="QR code, Stiff After Dark on WhatsApp" width="100" height="100" loading="lazy">WhatsApp</span><span><img src="{{ 'sc-stickers-qr-afterdark-tg.png' | asset_url }}" alt="QR code, Stiff After Dark on Telegram" width="100" height="100" loading="lazy">Telegram</span></span></div></li>
+    <li><div class="sc-dc__c" data-tile style="grid-column:3;grid-row:1">
+      <span class="sc-dc__img" style="display:block"><img src="{{ 'sc-dc-stiff-moves-v2.webp' | asset_url }}" alt="Stiff Moves GIFs" width="320" height="320" loading="eager"></span>
+      <b>Stiff Moves</b>
+      <span class="sc-dc__d">Free GIFs for any chat.</span>
+      <div class="sc-dc__act">
+        <label class="sc-dc__opt"><input type="checkbox" data-opt> <span>Enlist for more</span></label>
+        <input class="sc-dc__em" type="email" placeholder="Your email" autocomplete="email" data-em>
+        <a class="sc-dc__btn" data-go href="https://giphy.com/channel/StiffComp">Get the GIFs</a>
+        <a class="sc-dc__btn" href="#gifs">Download the GIFs</a>
+        <div class="sc-dc__msg" data-msg></div>
+      </div>
+    </div>
+    <div class="sc-dc__qr" style="grid-column:3;grid-row:2">On a computer? Scan with your phone<span class="sc-dc__q2"><span><img src="{{ 'sc-stickers-qr-giphy.png' | asset_url }}" alt="QR code, Stiff Moves GIFs on GIPHY" width="100" height="100" loading="lazy">GIFs</span></span></div></li>
+    <li><div class="sc-dc__c" style="grid-column:4;grid-row:1">
+      <a class="sc-dc__img" href="/pages/e-card"><img src="{{ 'Shopify_banner_-_cards.jpg' | file_url }}?width=480&height=480&crop=center" alt="Free birthday e-cards" width="320" height="320" loading="eager"></a>
+      <b>Free Birthday E-Cards</b>
+      <span class="sc-dc__d">Stiff and direct. Free.</span>
+      <div class="sc-dc__act"><a class="sc-dc__btn ec" href="/pages/e-card">Send an e-card</a></div>
+    </div></li>
+  </ul>
+  <div class="sc-gf" id="gifs">
+    <h2>Stiff Moves GIFs</h2>
+    <p class="sub">Tap Save and the GIF goes straight to your phone. Then add it to any chat from your Gallery or Photos.</p>
+    <div class="gg">
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-velvet-python.gif?v=1793743851&width=240" alt="The Velvet Python GIF" width="240" height="240" loading="lazy"><b>The Velvet Python</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-velvet-python.gif?v=1793743851" data-gif data-name="stiff-moves-the-velvet-python.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-major-wood.gif?v=1793743851&width=240" alt="Major Wood GIF" width="240" height="240" loading="lazy"><b>Major Wood</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-major-wood.gif?v=1793743851" data-gif data-name="stiff-moves-major-wood.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-slick-willy.gif?v=1793743851&width=240" alt="Slick Willy GIF" width="240" height="240" loading="lazy"><b>Slick Willy</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-slick-willy.gif?v=1793743851" data-gif data-name="stiff-moves-slick-willy.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-grip.gif?v=1793743851&width=240" alt="The Grip GIF" width="240" height="240" loading="lazy"><b>The Grip</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-grip.gif?v=1793743851" data-gif data-name="stiff-moves-the-grip.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-rear-admiral.gif?v=1793743851&width=240" alt="The Rear Admiral GIF" width="240" height="240" loading="lazy"><b>The Rear Admiral</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-the-rear-admiral.gif?v=1793743851" data-gif data-name="stiff-moves-the-rear-admiral.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-hammerin-hanky.gif?v=1793743851&width=240" alt="Hammerin&#39; Hanky GIF" width="240" height="240" loading="lazy"><b>Hammerin&#39; Hanky</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-hammerin-hanky.gif?v=1793743851" data-gif data-name="stiff-moves-hammerin-hanky.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-sc-logo.gif?v=1793743851&width=240" alt="SC GIF" width="240" height="240" loading="lazy"><b>SC</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-sc-logo.gif?v=1793743851" data-gif data-name="stiff-moves-sc-logo.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-stiff-competition-logo.gif?v=1793743851&width=240" alt="Stiff Competition GIF" width="240" height="240" loading="lazy"><b>Stiff Competition</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-stiff-competition-logo.gif?v=1793743851" data-gif data-name="stiff-moves-stiff-competition-logo.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-locked-and-loaded.gif?v=1793743851&width=240" alt="Locked and Loaded GIF" width="240" height="240" loading="lazy"><b>Locked and Loaded</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-locked-and-loaded.gif?v=1793743851" data-gif data-name="stiff-moves-locked-and-loaded.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-ready-to-blow.gif?v=1793743851&width=240" alt="Ready to Blow GIF" width="240" height="240" loading="lazy"><b>Ready to Blow</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-ready-to-blow.gif?v=1793743851" data-gif data-name="stiff-moves-ready-to-blow.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-maximum-extension.gif?v=1793743851&width=240" alt="Maximum Extension GIF" width="240" height="240" loading="lazy"><b>Maximum Extension</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-maximum-extension.gif?v=1793743851" data-gif data-name="stiff-moves-maximum-extension.gif">Save</a></div>
+    <div class="g"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-big-one.gif?v=1793743851&width=240" alt="Big One GIF" width="240" height="240" loading="lazy"><b>Big One</b><a class="btn" href="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/stiff-moves-big-one.gif?v=1793743851" data-gif data-name="stiff-moves-big-one.gif">Save</a></div>
+    </div>
+    <p class="gall"><a class="btn" href="#gifs" id="sc-gif-all">Save all 12 GIFs</a></p>
+  </div>
+  {% form 'customer', id: 'sc-dc-form', style: 'display:none' %}
+    <input type="hidden" name="contact[tags]" value="newsletter">
+    <input type="hidden" name="contact[email]" value="" data-form-email>
+  {% endform %}
+</div>
+<script>
+(function(){
+  var form=document.getElementById('sc-dc-form');
+  document.querySelectorAll('[data-tile]').forEach(function(t){
+    var opt=t.querySelector('[data-opt]'),em=t.querySelector('[data-em]'),msg=t.querySelector('[data-msg]');
+    if(!opt||!em)return;
+    opt.addEventListener('change',function(){em.classList.toggle('is-on',opt.checked);msg.textContent='';if(opt.checked)em.focus();});
+    t.querySelectorAll('[data-go]').forEach(function(go){
+      go.addEventListener('click',function(e){
+        if(!opt.checked||!form)return;
+        var v=(em.value||'').trim();
+        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){e.preventDefault();msg.textContent='Add your email, or untick the box.';em.focus();return;}
+        e.preventDefault();
+        form.querySelector('[data-form-email]').value=v;
+        var href=go.href,done=false,fin=function(){if(!done){done=true;window.location.href=href;}};
+        try{fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-roster-signup',{method:'POST',body:new URLSearchParams({email:v})}).then(fin,fin);}catch(x){fin();}
+        setTimeout(fin,1800);
+      });
+    });
+  });
+})();
+</script>
+<script>
+(function(){
+  function save(a){var url=a.getAttribute('href'),name=a.getAttribute('data-name');
+    return fetch(url).then(function(r){if(!r.ok)throw 0;return r.blob()}).then(function(b){
+      var l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=name;document.body.appendChild(l);l.click();
+      setTimeout(function(){URL.revokeObjectURL(l.href);l.remove()},4000);
+    }).catch(function(){window.open(url,'_blank')});}
+  document.querySelectorAll('a[data-gif]').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();save(a)})});
+  var all=document.getElementById('sc-gif-all');
+  if(all)all.addEventListener('click',function(e){e.preventDefault();var list=[].slice.call(document.querySelectorAll('a[data-gif]')),i=0;
+    (function next(){if(i>=list.length)return;save(list[i++]).then(function(){setTimeout(next,900)})})();});
+})();
+</script>
