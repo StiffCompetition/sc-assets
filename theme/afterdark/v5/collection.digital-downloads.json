@@ -1,0 +1,58 @@
+{
+  "sections": {
+    "banner": {
+      "type": "main-collection-banner",
+      "settings": {
+        "show_collection_description": true,
+        "show_collection_image": false,
+        "color_scheme": "scheme-1"
+      }
+    },
+    "product-grid": {
+      "type": "main-collection-product-grid",
+      "settings": {
+        "products_per_page": 16,
+        "columns_desktop": 4,
+        "columns_mobile": "1",
+        "color_scheme": "scheme-1",
+        "image_ratio": "adapt",
+        "image_shape": "default",
+        "show_secondary_image": true,
+        "show_vendor": false,
+        "show_rating": false,
+        "quick_add": "standard",
+        "enable_filtering": true,
+        "filter_type": "horizontal",
+        "enable_sorting": true,
+        "padding_top": 8,
+        "padding_bottom": 8
+      }
+    },
+    "sc_collection_text": {
+      "type": "custom-liquid",
+      "name": "Collection text below products",
+      "settings": {
+        "custom_liquid": "{%- if collection.description != blank -%}{%- unless collection.description contains 'sc-cx' -%}<div class=\"page-width\"><div class=\"rte collection-hero__description\" style=\"max-width:72rem\">{{ collection.description }}</div></div>{%- endunless -%}{%- endif -%}",
+        "color_scheme": "",
+        "padding_top": 20,
+        "padding_bottom": 40
+      }
+    },
+    "sc_dd_hide": {
+      "type": "custom-liquid",
+      "name": "Hide cart on sticker cards",
+      "settings": {
+        "custom_liquid": "<style>.card-wrapper:has(a[href*='-stickers']) .price,.card-wrapper:has(a[href*='-stickers']) quick-add-component,.card-wrapper:has(a[href*='-stickers']) .quick-add,.card-wrapper:has(a[href*='-gifs']) .price,.card-wrapper:has(a[href*='-gifs']) quick-add-component,.card-wrapper:has(a[href*='-gifs']) .quick-add{display:none!important}</style>",
+        "color_scheme": "",
+        "padding_top": 0,
+        "padding_bottom": 0
+      }
+    }
+  },
+  "order": [
+    "banner",
+    "sc_dd_hide",
+    "product-grid",
+    "sc_collection_text"
+  ]
+}

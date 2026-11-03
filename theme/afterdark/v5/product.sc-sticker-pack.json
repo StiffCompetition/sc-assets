@@ -1,0 +1,53 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "sc_title": {
+          "type": "custom_liquid",
+          "name": "Title",
+          "settings": {
+            "custom_liquid": "{%- assign t = product.title | escape -%}{%- assign name = t -%}{%- assign tag = '' -%}{%- if t contains '(' -%}{%- assign parts = t | split: '(' -%}{%- assign name = parts[0] | strip -%}{%- assign tag = parts[1] | remove: ')' | strip -%}{%- endif -%}<style>.sc-title h1{font-size:2.2rem;line-height:1.15;margin:0 0 .4rem;letter-spacing:.02em}.sc-title .sc-tagline{margin:0 0 1rem;font-size:1.25rem;letter-spacing:.14em;text-transform:uppercase;opacity:.75}@media(min-width:750px){.sc-title h1{font-size:3rem}}</style><div class=\"product__title sc-title\"><h1>{{ name }}</h1>{%- if tag != '' -%}<p class=\"sc-tagline\">{{ tag }}</p>{%- endif -%}</div>"
+          }
+        },
+        "sc_pack": {
+          "type": "custom_liquid",
+          "name": "Add button",
+          "settings": {
+            "custom_liquid": "{%- assign h = product.handle -%}\n{%- assign gif = false -%}\n{%- if h contains 'after-dark' -%}\n{%- assign wa = 'https://getstickerpack.com/s/143880?key=qh3z3z' -%}{%- assign tg = 'https://t.me/addstickers/stiffafterdark_by_StiffCompAutomationBot' -%}{%- assign qwa = 'sc-stickers-qr-afterdark.png' -%}{%- assign qtg = 'sc-stickers-qr-afterdark-tg.png' -%}{%- assign note = 'Free. 18+. Tap a button on your phone and the whole pack adds in one go.' -%}\n{%- elsif h contains 'moves' -%}\n{%- assign gif = true -%}{%- assign note = 'Free. Opens GIPHY: pick a GIF and send it to any chat.' -%}\n{%- else -%}\n{%- assign wa = 'https://getstickerpack.com/s/137998?key=4jxn57' -%}{%- assign tg = 'https://t.me/addstickers/stiffstickers_by_StiffCompAutomationBot' -%}{%- assign qwa = 'sc-stickers-qr-pack1.png' -%}{%- assign qtg = 'sc-stickers-qr-telegram-2.png' -%}{%- assign note = 'Free. Tap a button on your phone and the whole pack adds in one go.' -%}\n{%- endif -%}\n<style>.sc-pk{margin:1.6rem 0;display:flex;flex-direction:column;gap:.6rem}.sc-pk a.b{display:block;text-align:center;padding:1.4rem 1rem;border-radius:999px;background:#e5261b;color:#fff;font-weight:700;font-size:1.4rem;text-decoration:none;text-transform:uppercase;letter-spacing:.03em}.sc-pk p{font-size:1.2rem;opacity:.8;text-align:center;margin:.4rem 0 0}.sc-pk .q{display:none;text-align:center;font-size:1.2rem;opacity:.85;margin-top:.8rem}.sc-pk .q2{display:flex;gap:1.2rem;justify-content:center;margin-top:.6rem}.sc-pk .q2 span{display:block;font-size:1.1rem;width:100px}.sc-pk .q2 img{display:block;width:100%;height:auto;background:#fff;margin:0 auto .2rem}@media(min-width:990px){.sc-pk .q{display:block}}</style>\n<div class=\"sc-pk\">{%- if gif -%}<a class=\"b\" href=\"https://giphy.com/channel/StiffComp\">Get the GIFs</a>{%- else -%}<a class=\"b\" href=\"{{ wa }}\">Add to WhatsApp</a><a class=\"b\" href=\"{{ tg }}\">Add to Telegram</a>{%- endif -%}<p>{{ note }}</p>\n<div class=\"q\">On a computer? Scan with your phone<span class=\"q2\">{%- if gif -%}<span><img src=\"{{ 'sc-stickers-qr-giphy.png' | asset_url }}\" alt=\"QR code, GIFs on GIPHY\" width=\"100\" height=\"100\" loading=\"lazy\">GIFs</span>{%- else -%}<span><img src=\"{{ qwa | asset_url }}\" alt=\"QR code, WhatsApp\" width=\"100\" height=\"100\" loading=\"lazy\">WhatsApp</span><span><img src=\"{{ qtg | asset_url }}\" alt=\"QR code, Telegram\" width=\"100\" height=\"100\" loading=\"lazy\">Telegram</span>{%- endif -%}</span></div></div>"
+          }
+        },
+        "sc_details": {
+          "type": "custom_liquid",
+          "name": "Details",
+          "settings": {
+            "custom_liquid": "{%- if product.description != blank -%}<div class=\"rte\">{{ product.description }}</div>{%- endif -%}"
+          }
+        }
+      },
+      "block_order": [
+        "sc_title",
+        "sc_pack",
+        "sc_details"
+      ],
+      "settings": {
+        "enable_sticky_info": true,
+        "color_scheme": "scheme-2",
+        "media_size": "large",
+        "constrain_to_viewport": true,
+        "media_fit": "contain",
+        "gallery_layout": "stacked",
+        "mobile_thumbnails": "hide",
+        "media_position": "left",
+        "image_zoom": "lightbox",
+        "hide_variants": true,
+        "enable_video_looping": false,
+        "padding_top": 36,
+        "padding_bottom": 12
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

@@ -1,0 +1,67 @@
+{%- comment -%} Stickers page (Andy, 27 Oct 2026). One page, three one-tap buttons. Assigned to the page /pages/stickers with template suffix "stickers". {%- endcomment -%}
+<style>
+  .sc-stk{width:100%;box-sizing:border-box;max-width:1100px;margin:0 auto;padding:0 20px 60px}
+  .sc-stk .hero{display:block;width:100%;max-width:720px;height:auto;margin:0 auto 28px}
+  .sc-stk h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .sc-stk .lead{font-size:1.15em;text-align:center;margin:0 auto 36px;max-width:640px;opacity:.9}
+  .sc-stk .packs{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:0 0 36px}
+  .sc-stk .pack{border:1px solid rgba(var(--color-foreground),.2);border-radius:16px;padding:24px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px}
+  .sc-stk .pack h2{font-size:1.25em;margin:0;text-transform:uppercase;letter-spacing:.02em}
+  .sc-stk .pack p{margin:0;opacity:.8}
+  .sc-stk .btn{display:block;width:100%;box-sizing:border-box;text-align:center;padding:16px 20px;border-radius:999px;background:#e5261b;color:#fff;font-weight:700;font-size:1.1em;text-decoration:none;text-transform:uppercase;letter-spacing:.03em}
+  .sc-stk .pack img.pk{width:100%;max-width:240px;height:auto;border-radius:12px}
+  .sc-stk .qr{display:none;font-size:.85em;opacity:.8}
+  .sc-stk .q2{display:flex;gap:12px;justify-content:center;margin-top:8px}
+  .sc-stk .q2 span{display:block;font-size:.8em;width:96px}
+  .sc-stk .q2 img{display:block;width:100%;height:auto;margin:0 auto 4px;background:#fff;border-radius:6px}
+  .sc-stk .how{text-align:center;opacity:.8;margin:0 auto 36px;max-width:640px}
+  .sc-stk .shop{text-align:center;margin:0 0 36px}
+  .sc-stk .shop .btn{display:inline-block;width:auto;padding:16px 36px;background:transparent;color:rgb(var(--color-foreground));border:2px solid currentColor}
+  .sc-stk .more{text-align:center;margin:0 0 28px}
+  .sc-stk .more a,.sc-stk .share a{text-decoration:underline}
+  .sc-stk .share{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:center;font-size:.95em}
+  @media(min-width:900px){.sc-stk .qr{display:block}.sc-stk .pack p{min-height:5.6em}}
+  @media(max-width:899px){.sc-stk .packs{grid-template-columns:1fr}}
+</style>
+<div class="sc-stk">
+  <img class="hero" src="{{ 'sc-stickers-phone-new.png' | asset_url }}" alt="Stiff Competition stickers in a WhatsApp chat" width="720" height="720" loading="eager">
+  <h1>Drop them in any chat</h1>
+  <p class="lead">Stickers and GIFs for any chat. Free on WhatsApp and Telegram, Android and iPhone.</p>
+
+  <div class="packs">
+    <div class="pack">
+      <h2>Stiff Stickers</h2>
+      <img class="pk" src="{{ 'sc-dc-pack-one.jpg' | asset_url }}" alt="Stiff Stickers sticker pack" width="240" height="240" loading="lazy">
+      <p>30 stickers: five moods for each of the six characters.</p>
+      <a class="btn" href="https://getstickerpack.com/s/137998?key=4jxn57">Add to WhatsApp</a>
+      <a class="btn" href="https://t.me/addstickers/stiffstickers_by_StiffCompAutomationBot">Add to Telegram</a>
+      <div class="qr">On a computer? Scan with your phone<span class="q2"><span><img src="{{ 'sc-stickers-qr-pack1.png' | asset_url }}" alt="QR code for Stiff Stickers on WhatsApp" width="100" height="100" loading="lazy">WhatsApp</span><span><img src="{{ 'sc-stickers-qr-telegram-2.png' | asset_url }}" alt="QR code for Stiff Stickers on Telegram" width="100" height="100" loading="lazy">Telegram</span></span></div>
+    </div>
+    <div class="pack">
+      <h2>Stiff After Dark</h2>
+      <img class="pk" src="{{ 'sc-dc-after-dark.jpg' | asset_url }}" alt="Stiff After Dark sticker pack" width="240" height="240" loading="lazy">
+      <p>A second pack for after hours. Same six, a bit cheekier. 30 stickers, 18+.</p>
+      <a class="btn" href="https://getstickerpack.com/s/143880?key=qh3z3z">Add to WhatsApp</a>
+      <a class="btn" href="https://t.me/addstickers/stiffafterdark_by_StiffCompAutomationBot">Add to Telegram</a>
+      <div class="qr">On a computer? Scan with your phone<span class="q2"><span><img src="{{ 'sc-stickers-qr-afterdark.png' | asset_url }}" alt="QR code for Stiff After Dark on WhatsApp" width="100" height="100" loading="lazy">WhatsApp</span><span><img src="{{ 'sc-stickers-qr-afterdark-tg.png' | asset_url }}" alt="QR code for Stiff After Dark on Telegram" width="100" height="100" loading="lazy">Telegram</span></span></div>
+    </div>
+    <div class="pack">
+      <h2>Stiff Moves</h2>
+      <img class="pk" src="{{ 'sc-dc-stiff-moves.webp' | asset_url }}" alt="Stiff Moves GIFs" width="240" height="240" loading="lazy">
+      <p>12 free GIFs for any chat. Tap a button on your phone and they open on GIPHY.</p>
+      <a class="btn" href="https://giphy.com/channel/StiffComp">Get the GIFs</a>
+      <div class="qr">On a computer? Scan with your phone<span class="q2"><span><img src="{{ 'sc-stickers-qr-giphy.png' | asset_url }}" alt="QR code for the GIFs on GIPHY" width="100" height="100" loading="lazy">GIFs</span></span></div>
+    </div>
+  </div>
+
+  <p class="how">On your phone, tap a button. The sticker packs add to WhatsApp or Telegram, and the GIFs open on GIPHY.</p>
+
+  <p class="shop"><a class="btn" href="/">Visit the Stiff Competition shop</a></p>
+
+  <div class="share">
+    <span>Send this page to someone who needs it:</span>
+    <a href="https://wa.me/?text=Free%20Stiff%20Competition%20stickers%3A%20https%3A%2F%2Fstiffcompetition.shop%2Fpages%2Fstickers">WhatsApp</a>
+    <a href="https://t.me/share/url?url=https%3A%2F%2Fstiffcompetition.shop%2Fpages%2Fstickers&text=Free%20Stiff%20Competition%20stickers">Telegram</a>
+    <a href="https://www.instagram.com/stiffcompetition_hq/">Instagram</a>
+  </div>
+</div>
