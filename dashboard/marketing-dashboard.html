@@ -430,7 +430,6 @@ function flatShown(r) {
 function tabCount(v) {
   if (v === 'Pages') return '';
   if (v === 'NFT Drops') return '';
-  if (v === 'Budgets') return '';
   if (v === 'Migration') return migKids().filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length || '';
   if (v === 'Journal') return jr.loaded && jr.book ? (jr.book.changed || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
@@ -447,7 +446,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', 'Migration', ...CATEGORIES, 'Products', 'Pricing', 'Budgets', 'Journal', 'NFT Drops', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', 'Migration', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -616,17 +615,16 @@ function pagesHtml() {
   return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px">' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>';
 }
 
-// Migration tab (4 Nov 2026, Andy): one high-level view of the move to OpenSea and the end of the old setup before 10 Nov.
-// Rows live in SC Marketing Actions under mission #234, so they are edited like any other task.
-const MIGRATION_ID = '234';
+// Migration tab (4 Nov 2026, Andy): one view of the move to OpenSea in four streams, each a mission in SC Marketing Actions.
+const MIGRATION_IDS = ['234', '247', '248', '249'];
 const MIGRATION_DEADLINE = '2026-11-10';
-const migMission = () => rows.find(r => String(r.id) === MIGRATION_ID) || null;
-const migKids = () => rows.filter(r => String(r.parent) === MIGRATION_ID && r.type !== 'MISSION' && whoOk(r));
-function migStream(r) { const t = String(r.title || ''); return /^thirdweb/i.test(t) ? 2 : /^shop/i.test(t) ? 1 : 0; }
-function migSort(a, b) { return migStream(a) - migStream(b) || rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id); }
-function migGroup(title, note, list) {
+const migMissions = () => MIGRATION_IDS.map(id => rows.find(r => String(r.id) === id)).filter(Boolean);
+const migKidsOf = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && whoOk(r));
+const migKids = () => [].concat(...migMissions().map(migKidsOf));
+function migSort(a, b) { return rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id); }
+function migGroup(title, list) {
   if (!list.length) return '';
-  return '<div class="typehead BUILD">' + esc(title) + '<span class="cnt">' + list.length + (note ? ' · ' + esc(note) : '') + '</span></div>' + list.sort(migSort).map(migCard).join('');
+  return '<div class="typehead BUILD">' + esc(title) + '<span class="cnt">' + list.length + '</span></div>' + list.sort(migSort).map(migCard).join('');
 }
 // One short line per step: who, what to do next, and the buttons. Edit opens the full row.
 function migCard(r) {
@@ -648,31 +646,39 @@ function migCard(r) {
     + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">Ask Claude</a>'
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
-function migrationHtml() {
-  const m = migMission();
-  if (!m) return '<div class="empty">The migration mission is missing from the table.</div>';
-  const ks = migKids();
+function migStream(m, n) {
+  const ks = migKidsOf(m);
   const done = ks.filter(r => r.status === 'Done').length;
   const pct = ks.length ? Math.round(done * 100 / ks.length) : 0;
-  const days = Math.ceil((new Date(MIGRATION_DEADLINE + 'T12:00:00') - new Date(today() + 'T12:00:00')) / 86400000);
-  const when = days > 1 ? days + ' days to 10 Nov' : days === 1 ? '1 day to 10 Nov' : days === 0 ? 'Today is 10 Nov' : '10 Nov has passed';
   const yours = ks.filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next'));
   const claude = ks.filter(r => r.owner !== 'Andy' && (r.status === 'Today' || r.status === 'Next'));
   const waiting = ks.filter(r => r.status === 'Waiting');
   const later = ks.filter(r => r.status === 'Idea');
   const finished = ks.filter(r => r.status === 'Done');
+  const lead = yours.length ? 'Today' : claude.length ? 'Next' : waiting.length ? 'Waiting' : 'Idea';
   const link = safeUrl(m.link);
-  return '<div class="mission s-Today" data-mid="' + esc(m.id) + '">'
-    + '<div class="mhead"><h2>' + esc(m.title) + '</h2><span class="chip due' + (days <= 3 ? ' late' : '') + '">' + esc(when) + '</span>'
+  return '<div class="mission s-' + lead + '" data-mid="' + esc(m.id) + '">'
+    + '<div class="mhead"><h2>' + (n + 1) + '. ' + esc(m.title) + '</h2>'
     + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Playbook</a>' : '')
     + '<button class="btn small ghost" data-mact="addstep">+ Step</button><button class="btn small ghost" data-mact="edit">Edit</button></div>'
     + '<div class="prog"><div class="bar"><i style="width:' + pct + '%"></i></div>' + done + ' of ' + ks.length + ' done</div>'
-    + '</div>'
-    + migGroup('Your actions', '', yours)
-    + migGroup('Claude', 'press Go Claude to start', claude)
-    + migGroup('Waiting', '', waiting)
-    + migGroup('Later', '', later)
-    + migGroup('Done', '', finished);
+    + migGroup('Your actions', yours)
+    + migGroup('Claude', claude)
+    + migGroup('Waiting', waiting)
+    + migGroup('Later', later)
+    + (finished.length ? '<details class="steps"><summary>Done (' + finished.length + ')</summary>' + finished.sort(migSort).map(migCard).join('') + '</details>' : '')
+    + '</div>';
+}
+function migrationHtml() {
+  const ms = migMissions();
+  if (!ms.length) return '<div class="empty">The migration missions are missing from the table.</div>';
+  const all = migKids();
+  const done = all.filter(r => r.status === 'Done').length;
+  const days = Math.ceil((new Date(MIGRATION_DEADLINE + 'T12:00:00') - new Date(today() + 'T12:00:00')) / 86400000);
+  const when = days > 1 ? days + ' days to 10 Nov' : days === 1 ? '1 day to 10 Nov' : days === 0 ? 'Today is 10 Nov' : '10 Nov has passed';
+  const yours = all.filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length;
+  return '<div class="nextbox"><div class="lbl">Move to OpenSea</div><div class="action" style="margin-top:2px"><span class="chip due' + (days <= 3 ? ' late' : '') + '">' + esc(when) + '</span> <span class="chip">' + done + ' of ' + all.length + ' steps done</span> <span class="chip wait">' + yours + ' for you</span></div></div>'
+    + ms.map(migStream).join('');
 }
 
 function render() {
@@ -682,7 +688,6 @@ function render() {
   if (view === 'NFT Drops') { $('list').innerHTML = '<iframe src="https://n8n-production-afc2.up.railway.app/webhook/sc-drop-tool" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;border-radius:8px;background:#111"></iframe>'; return; }
   if (view === 'Products') { renderProducts(); return; }
   if (view === 'Pricing') { renderPricing(); return; }
-  if (view === 'Budgets') { renderBudgets(); return; }
   if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
@@ -2483,29 +2488,6 @@ function renderPricing() {
       pr.floors[i.dataset.m] = Number(i.value); toast('Floor saved'); renderPricing();
     } catch (e) { toast('Not saved: ' + e.message); }
   });
-}
-
-// ----- Job budgets (4 Nov 2026): read-only. Andy says yes in chat and the chat opens the budget; nothing is typed here. -----
-const BUDGET_URL = BASE + 'sc-job-budget';
-const bd = { rows: null, err: '' };
-async function loadBudgets() {
-  try {
-    const r = await fetch(BUDGET_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) });
-    if (!r.ok) throw new Error('answered ' + r.status);
-    const d = await r.json(); if (!d.ok) throw new Error(d.error || 'no answer');
-    bd.rows = d.budgets; bd.err = '';
-  } catch (e) { bd.err = e.message; }
-  if (view === 'Budgets') renderBudgets();
-}
-function renderBudgets() {
-  renderTabs();
-  if (bd.err) { $('list').innerHTML = '<div class="error-state">Could not load budgets (' + esc(bd.err) + '). Check the workflow SC - Job Budget Save is active. <button class="btn" id="bd_retry">Try again</button></div>'; $('bd_retry').onclick = () => { bd.err = ''; bd.rows = null; renderBudgets(); }; return; }
-  if (bd.rows === null) { $('list').innerHTML = '<div class="empty">Loading budgets…</div>'; loadBudgets(); return; }
-  const m = n => '$' + Number(n).toFixed(2);
-  const rows = bd.rows.slice().sort((a, b) => (a.status === b.status ? 0 : a.status === 'open' ? -1 : 1) || String(b.approved_on).localeCompare(String(a.approved_on)));
-  $('list').innerHTML = rows.length ? rows.map(r => '<div class="pbox"><div class="prow" style="justify-content:space-between"><b>' + esc(r.job) + '</b><span>' + esc(r.status) + '</span></div>'
-    + '<div>Approved ' + m(r.approved_usd) + ' · Spent ' + m(r.spent_usd) + ' · Left <b style="color:' + (r.left_usd < 0 ? '#c62828' : 'inherit') + '">' + m(r.left_usd) + '</b></div>'
-    + '<div style="color:var(--grey);font-size:13px">' + esc(r.approved_on) + (r.note ? ' · ' + esc(r.note) : '') + '</div></div>').join('') : '<div class="empty">No budgets yet.</div>';
 }
 </script>
 </body>
