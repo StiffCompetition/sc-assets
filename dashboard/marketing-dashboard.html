@@ -430,6 +430,7 @@ function flatShown(r) {
 function tabCount(v) {
   if (v === 'Pages') return '';
   if (v === 'NFT Drops') return '';
+  if (v === 'Migration') return migKids().filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length || '';
   if (v === 'Journal') return jr.loaded && jr.book ? (jr.book.changed || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
@@ -445,7 +446,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', 'Migration', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -614,6 +615,46 @@ function pagesHtml() {
   return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px">' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>';
 }
 
+// Migration tab (4 Nov 2026, Andy): one high-level view of the move to OpenSea and the end of the old setup before 10 Nov.
+// Rows live in SC Marketing Actions under mission #234, so they are edited like any other task.
+const MIGRATION_ID = '234';
+const MIGRATION_DEADLINE = '2026-11-10';
+const migMission = () => rows.find(r => String(r.id) === MIGRATION_ID) || null;
+const migKids = () => rows.filter(r => String(r.parent) === MIGRATION_ID && r.type !== 'MISSION' && whoOk(r));
+function migStream(r) { const t = String(r.title || ''); return /^thirdweb/i.test(t) ? 2 : /^shop/i.test(t) ? 1 : 0; }
+function migSort(a, b) { return migStream(a) - migStream(b) || rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id); }
+function migGroup(title, note, list) {
+  if (!list.length) return '';
+  return '<div class="typehead BUILD">' + esc(title) + '<span class="cnt">' + list.length + (note ? ' · ' + esc(note) : '') + '</span></div>' + list.sort(migSort).map(r => card(r, false)).join('');
+}
+function migrationHtml() {
+  const m = migMission();
+  if (!m) return '<div class="empty">The migration mission is missing from the table.</div>';
+  const ks = migKids();
+  const done = ks.filter(r => r.status === 'Done').length;
+  const pct = ks.length ? Math.round(done * 100 / ks.length) : 0;
+  const days = Math.ceil((new Date(MIGRATION_DEADLINE + 'T12:00:00') - new Date(today() + 'T12:00:00')) / 86400000);
+  const when = days > 1 ? days + ' days to 10 Nov' : days === 1 ? '1 day to 10 Nov' : days === 0 ? 'Today is 10 Nov' : '10 Nov has passed';
+  const yours = ks.filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next'));
+  const claude = ks.filter(r => r.owner !== 'Andy' && (r.status === 'Today' || r.status === 'Next'));
+  const waiting = ks.filter(r => r.status === 'Waiting');
+  const later = ks.filter(r => r.status === 'Idea');
+  const finished = ks.filter(r => r.status === 'Done');
+  const link = safeUrl(m.link);
+  return '<div class="mission s-Today" data-mid="' + esc(m.id) + '">'
+    + '<div class="mhead"><h2>' + esc(m.title) + '</h2><span class="chip due' + (days <= 3 ? ' late' : '') + '">' + esc(when) + '</span>'
+    + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Playbook</a>' : '')
+    + '<button class="btn small ghost" data-mact="addstep">+ Step</button><button class="btn small ghost" data-mact="edit">Edit</button></div>'
+    + '<div class="prog"><div class="bar"><i style="width:' + pct + '%"></i></div>' + done + ' of ' + ks.length + ' done</div>'
+    + '<div class="nextbox"><div class="lbl">How it works</div><div class="step">Two streams. OpenSea and Shop lines build the new setup: pick, mint, list, then close shop NFT sales. thirdweb lines end the old setup. Your actions come first; Claude’s lines run once you press Go Claude.</div></div>'
+    + '</div>'
+    + migGroup('Your actions now', 'in order', yours)
+    + migGroup('Claude is on', 'needs Go Claude', claude)
+    + migGroup('Waiting', 'each line says what for', waiting)
+    + migGroup('Later', 'on hold', later)
+    + migGroup('Done', '', finished);
+}
+
 function render() {
   renderTabs();
   if (view === 'Follow list') { renderFollow(); return; }
@@ -629,6 +670,8 @@ function render() {
     html = list.map(r => card(r, true)).join('');
   } else if (view === 'Alerts') {
     html = alertsHtml(false);
+  } else if (view === 'Migration') {
+    html = migrationHtml();
   } else {
     const ms = missions().filter(missionShown).sort((a, b) => {
       const ra = nextAction(a), rb = nextAction(b);
