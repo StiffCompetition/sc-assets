@@ -430,6 +430,7 @@ function flatShown(r) {
 function tabCount(v) {
   if (v === 'Pages') return '';
   if (v === 'NFT Drops') return '';
+  if (v === 'Budgets') return '';
   if (v === 'Migration') return migKids().filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length || '';
   if (v === 'Journal') return jr.loaded && jr.book ? (jr.book.changed || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
@@ -446,7 +447,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', 'Migration', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', 'Migration', ...CATEGORIES, 'Products', 'Pricing', 'Budgets', 'Journal', 'NFT Drops', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -681,6 +682,7 @@ function render() {
   if (view === 'NFT Drops') { $('list').innerHTML = '<iframe src="https://n8n-production-afc2.up.railway.app/webhook/sc-drop-tool" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;border-radius:8px;background:#111"></iframe>'; return; }
   if (view === 'Products') { renderProducts(); return; }
   if (view === 'Pricing') { renderPricing(); return; }
+  if (view === 'Budgets') { renderBudgets(); return; }
   if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
@@ -2481,6 +2483,29 @@ function renderPricing() {
       pr.floors[i.dataset.m] = Number(i.value); toast('Floor saved'); renderPricing();
     } catch (e) { toast('Not saved: ' + e.message); }
   });
+}
+
+// ----- Job budgets (4 Nov 2026): read-only. Andy says yes in chat and the chat opens the budget; nothing is typed here. -----
+const BUDGET_URL = BASE + 'sc-job-budget';
+const bd = { rows: null, err: '' };
+async function loadBudgets() {
+  try {
+    const r = await fetch(BUDGET_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) });
+    if (!r.ok) throw new Error('answered ' + r.status);
+    const d = await r.json(); if (!d.ok) throw new Error(d.error || 'no answer');
+    bd.rows = d.budgets; bd.err = '';
+  } catch (e) { bd.err = e.message; }
+  if (view === 'Budgets') renderBudgets();
+}
+function renderBudgets() {
+  renderTabs();
+  if (bd.err) { $('list').innerHTML = '<div class="error-state">Could not load budgets (' + esc(bd.err) + '). Check the workflow SC - Job Budget Save is active. <button class="btn" id="bd_retry">Try again</button></div>'; $('bd_retry').onclick = () => { bd.err = ''; bd.rows = null; renderBudgets(); }; return; }
+  if (bd.rows === null) { $('list').innerHTML = '<div class="empty">Loading budgets…</div>'; loadBudgets(); return; }
+  const m = n => '$' + Number(n).toFixed(2);
+  const rows = bd.rows.slice().sort((a, b) => (a.status === b.status ? 0 : a.status === 'open' ? -1 : 1) || String(b.approved_on).localeCompare(String(a.approved_on)));
+  $('list').innerHTML = rows.length ? rows.map(r => '<div class="pbox"><div class="prow" style="justify-content:space-between"><b>' + esc(r.job) + '</b><span>' + esc(r.status) + '</span></div>'
+    + '<div>Approved ' + m(r.approved_usd) + ' · Spent ' + m(r.spent_usd) + ' · Left <b style="color:' + (r.left_usd < 0 ? '#c62828' : 'inherit') + '">' + m(r.left_usd) + '</b></div>'
+    + '<div style="color:var(--grey);font-size:13px">' + esc(r.approved_on) + (r.note ? ' · ' + esc(r.note) : '') + '</div></div>').join('') : '<div class="empty">No budgets yet.</div>';
 }
 </script>
 </body>
