@@ -625,7 +625,26 @@ function migStream(r) { const t = String(r.title || ''); return /^thirdweb/i.tes
 function migSort(a, b) { return migStream(a) - migStream(b) || rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id); }
 function migGroup(title, note, list) {
   if (!list.length) return '';
-  return '<div class="typehead BUILD">' + esc(title) + '<span class="cnt">' + list.length + (note ? ' · ' + esc(note) : '') + '</span></div>' + list.sort(migSort).map(r => card(r, false)).join('');
+  return '<div class="typehead BUILD">' + esc(title) + '<span class="cnt">' + list.length + (note ? ' · ' + esc(note) : '') + '</span></div>' + list.sort(migSort).map(migCard).join('');
+}
+// One short line per step: who, what to do next, and the buttons. Edit opens the full row.
+function migCard(r) {
+  const isA = r.owner === 'Andy';
+  const late = r.due && r.due < today() && r.status !== 'Done';
+  const link = safeUrl(r.link);
+  return '<div class="card s-' + esc(r.status) + '" data-id="' + esc(r.id) + '">'
+    + '<div class="body">'
+    + '<div class="title"><span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (isA ? 'You' : 'Claude') + '</span>' + esc(r.title) + '</div>'
+    + '<div class="action">' + esc(r.next_step || '') + '</div>'
+    + '<div class="meta">'
+    + (r.waiting_on ? '<span class="chip wait">Waiting on: ' + esc(r.waiting_on) + '</span>' : '')
+    + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
+    + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Open</a>' : '')
+    + '</div></div>'
+    + '<div class="acts"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>'
+    + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
+    + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
+    + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
 function migrationHtml() {
   const m = migMission();
@@ -646,12 +665,11 @@ function migrationHtml() {
     + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Playbook</a>' : '')
     + '<button class="btn small ghost" data-mact="addstep">+ Step</button><button class="btn small ghost" data-mact="edit">Edit</button></div>'
     + '<div class="prog"><div class="bar"><i style="width:' + pct + '%"></i></div>' + done + ' of ' + ks.length + ' done</div>'
-    + '<div class="nextbox"><div class="lbl">How it works</div><div class="step">Two streams. OpenSea and Shop lines build the new setup: pick, mint, list, then close shop NFT sales. thirdweb lines end the old setup. Your actions come first; Claude’s lines run once you press Go Claude.</div></div>'
     + '</div>'
-    + migGroup('Your actions now', 'in order', yours)
-    + migGroup('Claude is on', 'needs Go Claude', claude)
-    + migGroup('Waiting', 'each line says what for', waiting)
-    + migGroup('Later', 'on hold', later)
+    + migGroup('Your actions', '', yours)
+    + migGroup('Claude', 'press Go Claude to start', claude)
+    + migGroup('Waiting', '', waiting)
+    + migGroup('Later', '', later)
     + migGroup('Done', '', finished);
 }
 
