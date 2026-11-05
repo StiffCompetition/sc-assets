@@ -109,6 +109,8 @@
   .atile.on { background: var(--ac); border-color: var(--ac); } .atile.on .n, .atile.on .l { color: #fff; }
   .bkt { border: 1px solid var(--line); border-left: 4px solid #e0a800; background: #fff; padding: 8px 10px; margin-bottom: 12px; cursor: pointer; font-size: 14px; }
   .bkt .bl { margin-top: 6px; font-size: 13px; } .bkt .bi { padding: 5px 0; border-top: 1px solid var(--line); }
+  .chn { border: 1px solid var(--line); border-left: 4px solid #2e7d32; background: #fff; padding: 8px 10px; margin-bottom: 12px; font-size: 14px; }
+  .chn.gap { border-left-color: #c62828; } .chn .cr { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .chn .cc { font-size: 12px; padding: 3px 7px; border-radius: 10px; background: #e8f5e9; color: #1b5e20; } .chn .cc.red { background: #ffebee; color: #b71c1c; } .chn .cc.grey { background: #eee; color: #555; } .chn .cbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .chn .cbar .btn { margin-left: auto; }
   .atile.zero { opacity: .55; }
   .arow { background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--ac); margin-bottom: 6px; }
   .arow.red { background: #fdecea; }
@@ -404,6 +406,7 @@ async function load() {
     try { const fr = await fetch(FOLLOW_LIST_URL); if (fr.ok) { const fd = await fr.json(); frows = Array.isArray(fd) ? fd : []; } } catch (e2) { frows = []; }
     render();
     loadBaskets();
+    loadChannels();
   } catch (e) {
     $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
   }
@@ -419,6 +422,37 @@ function basketHtml() {
   let h = '<div class="bkt" id="bkt"><b>Baskets</b>: 24h ' + baskets.h24.count + ' (' + g(baskets.h24.value) + ') · 7 days ' + baskets.d7.count + ' (' + g(baskets.d7.value) + ') · bought later ' + baskets.boughtLater + ' <span class="gnote">' + (bktOpen ? '▲' : '▼') + '</span>';
   if (bktOpen) h += '<div class="bl">' + ((baskets.list || []).length ? baskets.list.map(b => '<div class="bi">' + esc(new Date(b.time).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' UK') + ' · ' + esc(b.country || 'Country unknown') + ' · ' + esc(b.products) + ' · ' + g(b.value) + (b.bought ? ' · bought later' : '') + (safeUrl(b.link) ? ' · <a href="' + esc(b.link) + '" target="_blank" rel="noopener">Open basket</a>' : '') + '</div>').join('') : '<div class="bi">No baskets in the last 7 days.</div>') + '</div>';
   return h + '</div>';
+}
+
+// Sales channels line on the Now tab (5 Nov 2026): last result of SC - Channel Sync (daily 05:15 UK, or the button). Green = every product on that channel.
+const CHN_STATUS_URL = BASE + 'sc-channel-status', CHN_RUN_URL = BASE + 'sc-channel-sync';
+let chn = null, chnBusy = false;
+function loadChannels() { fetch(CHN_STATUS_URL).then(r => r.ok ? r.json() : null).then(d => { if (d) chn = d; if (view === 'Now') render(); }).catch(() => {}); }
+function channelHtml() {
+  const list = (chn && chn.channels) || [];
+  const gaps = list.filter(c => c.state === 'live' && (c.missing || []).length);
+  const when = chn && chn.run_at ? new Date(chn.run_at).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' UK' : 'not run yet';
+  const fixedN = (chn && chn.fixed || []).length;
+  let h = '<div class="chn' + (gaps.length ? ' gap' : '') + '"><div class="cbar"><b>Sales channels</b><span>' + (gaps.length ? gaps.length + ' with gaps' : 'all products on every live channel') + ' · checked ' + esc(when) + (fixedN ? ' · ' + fixedN + ' fixed' : '') + '</span>'
+    + '<button class="btn" id="chn_run"' + (chnBusy ? ' disabled' : '') + '>' + (chnBusy ? 'Checking…' : 'Check channels') + '</button></div><div class="cr">';
+  h += list.map(c => {
+    if (c.state !== 'live') return '<span class="cc grey">' + esc(c.name) + ': ' + esc(c.state) + '</span>';
+    const miss = (c.missing || []).length;
+    return '<span class="cc' + (miss ? ' red' : '') + '" title="' + esc((c.missing || []).join('; ')) + '">' + esc(c.name) + ' ' + c.on + '/' + c.expected + '</span>';
+  }).join('');
+  return h + '</div></div>';
+}
+async function channelRun() {
+  if (chnBusy) return;
+  chnBusy = true; render();
+  try {
+    const r = await fetch(CHN_RUN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: 'dashboard' }) });
+    if (!r.ok) throw new Error('answered ' + r.status);
+    chn = await r.json();
+    const n = (chn.fixed || []).length;
+    toast(n ? n + ' gaps closed.' : 'All channels up to date.');
+  } catch (e) { toast('Check not run: ' + e.message); }
+  chnBusy = false; render();
 }
 
 const missions = () => rows.filter(r => r.type === 'MISSION');
@@ -718,13 +752,14 @@ function render() {
       const ra = nextAction(a), rb = nextAction(b);
       return (ra ? rank[ra.status] : 9) - (rb ? rank[rb.status] : 9);
     });
-    html = (view === 'Now' ? basketHtml() + alertsHtml(true) : '') + ms.map(missionCard).join('');
+    html = (view === 'Now' ? channelHtml() + basketHtml() + alertsHtml(true) : '') + ms.map(missionCard).join('');
     if (view === 'Now') html += loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).map(r => card(r, true)).join('');
   }
   if (view === 'Influencers') html = trackerHtml() + html;
   $('list').innerHTML = html || '<div class="empty">Nothing here.</div>';
   if (view === 'Influencers') wireTracker();
   if (view === 'Alerts' || view === 'Now') wireAlerts();
+  if (view === 'Now' && $('chn_run')) $('chn_run').onclick = channelRun;
   if (view === 'Now' && $('bkt')) $('bkt').onclick = e => { if (e.target.closest('a')) return; bktOpen = !bktOpen; render(); };
   $('list').querySelectorAll('.card').forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id);
