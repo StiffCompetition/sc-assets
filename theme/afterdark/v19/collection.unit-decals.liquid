@@ -92,13 +92,13 @@
     <div class="gg">
 {%- assign keys = '' -%}
 {%- paginate shop.metaobjects.sc_gif.values by 250 -%}
-{%- for g in shop.metaobjects.sc_gif.values -%}{%- assign p = g.position.value | plus: 100000 -%}{%- assign keys = keys | append: p | append: '|' | append: g.system.handle | append: ',' -%}{%- endfor -%}
+{%- for g in shop.metaobjects.sc_gif.values -%}{%- assign p = g.position.value | plus: 100000 -%}{%- assign keys = keys | append: p | append: '~~' | append: g.title.value | append: '~~' | append: g.gif_url.value | append: '~~' | append: g.file_name.value | append: '^^' -%}{%- endfor -%}
 {%- endpaginate -%}
-{%- assign keys = keys | split: ',' | sort | reverse -%}
-{%- assign gif_count = 0 -%}
-    {%- for k in keys -%}{%- assign h = k | split: '|' | last -%}{%- assign g = shop.metaobjects.sc_gif[h] -%}{%- if g -%}{%- assign gif_count = gif_count | plus: 1 %}
-    <div class="g"><img src="{{ g.gif_url.value }}&width=240" alt="{{ g.title.value | escape }} GIF" width="240" height="240" loading="lazy"><b>{{ g.title.value | escape }}</b><a class="btn" href="{{ g.gif_url.value }}" data-gif data-name="{{ g.file_name.value | escape }}">Save</a></div>
-    {%- endif -%}{%- endfor %}
+{%- assign keys = keys | split: '^^' | sort | reverse -%}
+{%- assign gif_count = keys.size -%}
+    {%- for k in keys -%}{%- assign d = k | split: '~~' %}
+    <div class="g"><img src="{{ d[2] }}&width=240" alt="{{ d[1] | escape }} GIF" width="240" height="240" loading="lazy"><b>{{ d[1] | escape }}</b><a class="btn" href="{{ d[2] }}" data-gif data-name="{{ d[3] | escape }}">Save</a></div>
+    {%- endfor %}
     </div>
     <p class="gall"><a class="btn" href="#gifs" id="sc-gif-all">Save all {{ gif_count }} GIFs</a></p>
   </div>
