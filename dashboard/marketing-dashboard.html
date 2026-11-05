@@ -417,7 +417,7 @@ function basketHtml() {
   if (!baskets || !baskets.h24) return '';
   const g = v => '£' + Number(v || 0).toFixed(2);
   let h = '<div class="bkt" id="bkt"><b>Baskets</b>: 24h ' + baskets.h24.count + ' (' + g(baskets.h24.value) + ') · 7 days ' + baskets.d7.count + ' (' + g(baskets.d7.value) + ') · bought later ' + baskets.boughtLater + ' <span class="gnote">' + (bktOpen ? '▲' : '▼') + '</span>';
-  if (bktOpen) h += '<div class="bl">' + ((baskets.list || []).length ? baskets.list.map(b => '<div class="bi">' + esc(new Date(b.time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + ' · ' + esc(b.country || 'Country unknown') + ' · ' + esc(b.products) + ' · ' + g(b.value) + (b.bought ? ' · bought later' : '') + (safeUrl(b.link) ? ' · <a href="' + esc(b.link) + '" target="_blank" rel="noopener">Open basket</a>' : '') + '</div>').join('') : '<div class="bi">No baskets in the last 7 days.</div>') + '</div>';
+  if (bktOpen) h += '<div class="bl">' + ((baskets.list || []).length ? baskets.list.map(b => '<div class="bi">' + esc(new Date(b.time).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' UK') + ' · ' + esc(b.country || 'Country unknown') + ' · ' + esc(b.products) + ' · ' + g(b.value) + (b.bought ? ' · bought later' : '') + (safeUrl(b.link) ? ' · <a href="' + esc(b.link) + '" target="_blank" rel="noopener">Open basket</a>' : '') + '</div>').join('') : '<div class="bi">No baskets in the last 7 days.</div>') + '</div>';
   return h + '</div>';
 }
 
