@@ -107,6 +107,8 @@
   .atile { border: 1px solid var(--line); border-top: 4px solid var(--ac); background: #fff; padding: 8px 10px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); }
   .atile .n { font-size: 22px; font-weight: 800; color: var(--ac); line-height: 1.1; } .atile .l { font-size: 12px; color: var(--grey); }
   .atile.on { background: var(--ac); border-color: var(--ac); } .atile.on .n, .atile.on .l { color: #fff; }
+  .bkt { border: 1px solid var(--line); border-left: 4px solid #e0a800; background: #fff; padding: 8px 10px; margin-bottom: 12px; cursor: pointer; font-size: 14px; }
+  .bkt .bl { margin-top: 6px; font-size: 13px; } .bkt .bi { padding: 5px 0; border-top: 1px solid var(--line); }
   .atile.zero { opacity: .55; }
   .arow { background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--ac); margin-bottom: 6px; }
   .arow.red { background: #fdecea; }
@@ -401,9 +403,22 @@ async function load() {
     rows = (Array.isArray(data) ? data : []).filter(r => r.status !== 'Removed');
     try { const fr = await fetch(FOLLOW_LIST_URL); if (fr.ok) { const fd = await fr.json(); frows = Array.isArray(fd) ? fd : []; } } catch (e2) { frows = []; }
     render();
+    loadBaskets();
   } catch (e) {
     $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
   }
+}
+
+// Abandoned baskets line on the Now tab (5 Nov 2026): same figures as the 6am SC Daily Brief, from SC - Abandoned Baskets API (list).
+const BASKETS_URL = BASE + 'sc-baskets-list';
+let baskets = null, bktOpen = false;
+function loadBaskets() { fetch(BASKETS_URL).then(r => r.ok ? r.json() : null).then(d => { baskets = d; if (view === 'Now') render(); }).catch(() => {}); }
+function basketHtml() {
+  if (!baskets || !baskets.h24) return '';
+  const g = v => '£' + Number(v || 0).toFixed(2);
+  let h = '<div class="bkt" id="bkt"><b>Baskets</b>: 24h ' + baskets.h24.count + ' (' + g(baskets.h24.value) + ') · 7 days ' + baskets.d7.count + ' (' + g(baskets.d7.value) + ') · bought later ' + baskets.boughtLater + ' <span class="gnote">' + (bktOpen ? '▲' : '▼') + '</span>';
+  if (bktOpen) h += '<div class="bl">' + ((baskets.list || []).length ? baskets.list.map(b => '<div class="bi">' + esc(new Date(b.time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + ' · ' + esc(b.country || 'Country unknown') + ' · ' + esc(b.products) + ' · ' + g(b.value) + (b.bought ? ' · bought later' : '') + (safeUrl(b.link) ? ' · <a href="' + esc(b.link) + '" target="_blank" rel="noopener">Open basket</a>' : '') + '</div>').join('') : '<div class="bi">No baskets in the last 7 days.</div>') + '</div>';
+  return h + '</div>';
 }
 
 const missions = () => rows.filter(r => r.type === 'MISSION');
@@ -703,13 +718,14 @@ function render() {
       const ra = nextAction(a), rb = nextAction(b);
       return (ra ? rank[ra.status] : 9) - (rb ? rank[rb.status] : 9);
     });
-    html = (view === 'Now' ? alertsHtml(true) : '') + ms.map(missionCard).join('');
+    html = (view === 'Now' ? basketHtml() + alertsHtml(true) : '') + ms.map(missionCard).join('');
     if (view === 'Now') html += loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).map(r => card(r, true)).join('');
   }
   if (view === 'Influencers') html = trackerHtml() + html;
   $('list').innerHTML = html || '<div class="empty">Nothing here.</div>';
   if (view === 'Influencers') wireTracker();
   if (view === 'Alerts' || view === 'Now') wireAlerts();
+  if (view === 'Now' && $('bkt')) $('bkt').onclick = e => { if (e.target.closest('a')) return; bktOpen = !bktOpen; render(); };
   $('list').querySelectorAll('.card').forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id);
     c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
