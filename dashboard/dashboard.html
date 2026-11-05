@@ -1811,7 +1811,8 @@ function campCard(it) {
 
 // ---------- OpenSea launch posts in Campaigns (19 Oct 2026, Andy) ----------
 // Replaces the weekly Telegram card. Every Saturday a workflow writes the coming Monday-to-Sunday posts as drafts (SC Drop Hype Calendar).
-// Here you edit, approve or skip each post. Approved posts go to X and Discord with their image at 4pm London on their day. Posted days are locked.
+// Here you edit, approve or skip each post (or Approve all drafts). Approved posts go to X and Discord with their image at 4pm London on their day,
+// and to Instagram and Facebook when the Instagram and Facebook caption is filled in (4 Nov 2026). Posted days are locked.
 const HYPE_LIST_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-hype-list';
 const HYPE_SAVE_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-hype-save';
 const HYPE_INVITE = 'HQ → discord.gg/NM3PMU8PWf';
@@ -1846,13 +1847,14 @@ function hypeCard(r) {
       '<label>Day<input type="date" class="hype-date" value="' + escapeHtml(r.date) + '"' + dis + '></label>' +
       '<label><span>X caption <span class="hype-count"></span></span><textarea class="hype-x"' + dis + '>' + escapeHtml(r.caption_x) + '</textarea></label>' +
       '<label>Discord caption<textarea class="hype-d"' + dis + '>' + escapeHtml(r.caption_discord) + '</textarea></label>' +
+      '<label>Instagram and Facebook caption<textarea class="hype-m"' + dis + '>' + escapeHtml(r.caption_meta || '') + '</textarea></label>' +
       btns + '<div class="hype-err"></div>' +
     '</div></div>';
 }
 async function hypeSend(card, status, btn) {
   const err = card.querySelector('.hype-err'); err.textContent = '';
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
-  const body = { id: Number(card.dataset.id), caption_x: card.querySelector('.hype-x').value, caption_discord: card.querySelector('.hype-d').value, post_date: card.querySelector('.hype-date').value };
+  const body = { id: Number(card.dataset.id), caption_x: card.querySelector('.hype-x').value, caption_discord: card.querySelector('.hype-d').value, caption_meta: card.querySelector('.hype-m').value, post_date: card.querySelector('.hype-date').value };
   if (status) body.status = status;
   try {
     const res = await fetch(HYPE_SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -1870,8 +1872,9 @@ async function renderHype() {
   const weeks = {};
   rows.forEach(r => { const m = hypeMonday(r.date); if (m >= lastMonday.toISOString().slice(0, 10)) (weeks[m] = weeks[m] || []).push(r); });
   const keys = Object.keys(weeks).sort();
-  let html = '<div class="hype-sec"><h3 class="camp-h">OpenSea launch: X and Discord</h3>' +
-    '<div class="lib-help">Posts to X and Discord with the image at 4pm London on the day shown. Nothing posts until you press Approve. The next week is written every Saturday morning.</div>';
+  let html = '<div class="hype-sec"><h3 class="camp-h">OpenSea launch: X, Discord, Instagram and Facebook</h3>' +
+    '<div class="lib-help">Posts to X and Discord with the image at 4pm London on the day shown, and to Instagram and Facebook when the Instagram and Facebook caption is filled in. Nothing posts until you press Approve. The next week is written every Saturday morning.</div>' +
+    (rows.some(r => r.status === 'draft') ? '<button class="btn hype-approve-all">Approve all drafts</button>' : '');
   if (HYPE.error) html += '<div class="hype-err">Could not load the launch posts: ' + escapeHtml(HYPE.error) + '</div>';
   else if (!keys.length) html += '<div class="loading">No launch posts yet. The next week is written on Saturday.</div>';
   keys.forEach(m => {
@@ -1883,6 +1886,13 @@ async function renderHype() {
   if (!HYPE.error && HYPE.art_left === 0) html += '<div class="lib-help" style="margin-top:10px">No unused launch images are left, so no further days can be written until more art is added.</div>';
   html += '</div>';
   box.innerHTML = html;
+  const allBtn = box.querySelector('.hype-approve-all');
+  if (allBtn) allBtn.onclick = async e => {
+    if (!confirm('Approve every draft post? They go out on their own at 4pm London on their days.')) return;
+    e.target.disabled = true; e.target.textContent = 'Approving…';
+    for (const card of box.querySelectorAll('.hype-card')) { if (card.querySelector('.hype-approve')) await hypeSend(card, 'ready', card.querySelector('.hype-approve')); }
+    await loadHype(); if (VIEW === 'campaigns') renderHype();
+  };
   box.querySelectorAll('.hype-card').forEach(card => {
     const x = card.querySelector('.hype-x'), cnt = card.querySelector('.hype-count');
     const upd = () => { const n = x.value.length; cnt.textContent = n + '/280'; cnt.classList.toggle('over', n > 280); };
