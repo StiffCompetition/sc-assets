@@ -530,7 +530,7 @@ function fmtDate(raw) {
   return d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 // Colour coding (9 Oct 2026): each post type has its own colour on the card edge; each character his Roll Call colour.
-const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60', 'Salute': '#5E35B1', 'Campaign': '#F5B800', 'Launch': '#2081E2' };
+const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60', 'Gift Guide': '#1B8A3A', 'Salute': '#5E35B1', 'Campaign': '#F5B800', 'Launch': '#2081E2' };
 const CHAR_COLOR = { 'Major Wood': '#556B2F', 'The Rear Admiral': '#1E3A8A', "Hammerin' Hanky": '#FF7A00', 'The Grip': '#1E5BD8', 'Slick Willy': '#111111', 'The Velvet Python': '#6B2FA0', 'SC Logo': '#555555' };
 // Brand posts are filed under "SC Logo" for the pipeline; on screen they read "All 6" (Roll Call) or "Brand".
 function charLabel(c, r) { return c === 'SC Logo' ? (r && isRollCall(r.notes) ? 'All 6' : 'Brand') : (c || ''); }
@@ -786,6 +786,7 @@ function fromBox(r) {
   else rows.push('<b>FROM</b> Not made yet - the brief is still being written.');
   let clip = '';
   if (r.format === 'Dare to Buy') clip = 'Three slides and an X image made from the product photo.';
+  else if (r.format === 'Gift Guide') clip = 'Holiday gift guide slides and an X image made at zero cost from the shop\'s own product photos (sc-assets giftguide/).';
   else if (r.format === 'Salute') clip = 'The Major Wood salute master clip over the salute\'s theme background, with the announcer voice, name and shop hooks.';
   else if (r.format === 'NFT') clip = 'The character\'s NFT template clip, with the shop NFT and its ticker.';
   else if (r.format === 'Brand Lore') clip = clipName(r);
@@ -1121,6 +1122,8 @@ function openDrawer(r) {
     '<div class="sub">' + fmtDate(r.post_date) + (r.post_time ? ' · ' + escapeHtml(r.post_time) + ' (custom time, London)' : '') + ' · ' + escapeHtml(charLabel(r.character, r)) + ' · ' + r.format + ' · <span class="postno">post #' + r.id + '</span></div>' +
     fromBox(r) +
     (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' :
+    // Gift Guide (5 Nov 2026, Andy): holiday merch carousel made at zero cost; slides listed in the notes, no video, nothing to remake here.
+    r.format === 'Gift Guide' ? panelBox(r) + slidesPreview(r) :
     // Salute posts are built whole by SC - Salute Post Builder (master clip + theme background + voice + hooks): no brief boxes to edit.
     r.format === 'Salute' ? panelBox(r) + (r.notes ? '<div class="field"><label>Salute (from the Salutes calendar)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
     // NFT posts are built whole by SC - NFT Post Builder (character template + NFT + ticker): no brief boxes to edit.
@@ -1211,8 +1214,10 @@ function slidesPreview(r) {
   const d = dtbSlides(r);
   if (!d) return '';
   const img = (u, label) => '<div style="flex:1 1 0;min-width:0"><div style="font-size:12px;margin-bottom:4px">' + label + '</div><a href="' + u.replace(/"/g, '&quot;') + '" target="_blank"><img src="' + u.replace(/"/g, '&quot;') + '" style="display:block;width:100%;border:1px solid var(--line)"></a></div>';
-  return '<div class="field"><label>Dare to Buy slides (Instagram and Facebook carousel, in order) and the X image. Check them, then set "approved" to schedule.</label>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap">' + img(d.slides[0], '1. The dare') + img(d.slides[1], '2. The product') + img(d.slides[2], '3. Get yours') + img(d.x, 'X image') + '</div></div>';
+  const names = r.format === 'Dare to Buy' ? ['The dare', 'The product', 'Get yours'] : [];
+  const cells = d.slides.map((u, i) => img(u, (i + 1) + (names[i] ? '. ' + names[i] : ''))).join('');
+  return '<div class="field"><label>' + escapeHtml(r.format) + ' slides (Instagram carousel and Facebook, in order) and the X image. Check them, then set "approved" to schedule.</label>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' + cells + img(d.x, 'X image') + '</div></div>';
 }
 function imagePreview(r) {
   if (!r.image_url || r.video_url || dtbSlides(r)) return '';
@@ -1272,7 +1277,7 @@ function videoPreview(url) {
 function flowOf(r) {
   if (!r) return 'standard';
   if (/REPOST:/.test(String(r.notes || ''))) return 'repost';   // Library repost: the clip is already made
-  if (r.format === 'Dare to Buy') return 'dtb';          // SC - Dare to Buy Builder makes the slides; no video
+  if (r.format === 'Dare to Buy' || r.format === 'Gift Guide') return 'dtb';   // still slides, no video (Gift Guide: made at zero cost, 5 Nov 2026)
   if (r.format === 'Salute') return 'salute';            // SC - Salute Post Builder makes the whole clip
   if (r.format === 'NFT') return 'nft';                  // SC - NFT Post Builder makes the whole clip
   if (isRollCall(r.notes)) return 'rollcall';            // fixed Roll Call clip + voice-over, no start image
@@ -1296,7 +1301,7 @@ const FLOW = {
   repost: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'Repost (Library tab): the clip is already made, so nothing is generated. Check the captions and platforms, then "approved" schedules it for its date and time. "draft" holds it back.' },
   dtb: { opts: ['draft', 'approved', 'posted', 'paused'],
-    help: 'Dare to Buy: the three carousel slides and the X image are made when the post is planned; there is no video. "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' }
+    help: 'Dare to Buy and Gift Guide: the carousel slides and the X image are already made; there is no video. "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' }
 };
 function statusField(current, r) {
   // 9 Oct 2026 (Andy): one final-approval button. "approved" saves the post as scheduled, which the scheduler posts at its slot.
@@ -1623,7 +1628,7 @@ function postedPlatforms(r) {
 }
 function libraryItems() {
   const items = [];
-  ROWS.filter(r => !repostKey(r) && r.video_url && r.format !== 'Dare to Buy' && ['approved', 'scheduled', 'posted'].indexOf(r.status) !== -1)
+  ROWS.filter(r => !repostKey(r) && r.video_url && r.format !== 'Dare to Buy' && r.format !== 'Gift Guide' && ['approved', 'scheduled', 'posted'].indexOf(r.status) !== -1)
     .forEach(r => items.push({ key: '#' + r.id, src: 'calendar', title: r.format + ' · post #' + r.id, character: r.character, format: r.format, video_url: r.video_url,
       image_url: r.image_url || '', caption_instagram: r.caption_instagram || r.text_content || '', caption_facebook: r.caption_facebook || r.text_content || '',
       caption_x: r.caption_x || r.text_content || '', made: isoDate(r.post_date), row: r }));
@@ -1981,17 +1986,17 @@ function openReschedule(r) {
   document.getElementById('rsGo').addEventListener('click', async () => {
     const msg = document.getElementById('rsMsg');
     const date = document.getElementById('rsDate').value;
-    const time = (document.getElementById('rsTime').value || '').trim() || (r.format === 'Dare to Buy' ? (r.post_time || '19:00') : '');   // 19 Oct 2026 (Andy): a Dare to Buy always keeps its own time (19:00 unless set)
+    const time = (document.getElementById('rsTime').value || '').trim() || ((r.format === 'Dare to Buy' || r.format === 'Gift Guide') ? (r.post_time || '19:00') : '');   // 19 Oct 2026 (Andy): a Dare to Buy always keeps its own time (19:00 unless set)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = 'Pick a date.'; return; }
     const dow = new Date(date + 'T12:00:00Z').getUTCDay();
     if (!anyDay && dow !== new Date(curDate + 'T12:00:00Z').getUTCDay()) { msg.textContent = 'This post belongs to ' + dowName + '; pick another ' + dowName + '.'; return; }
     const warns = [];   // 23 Oct 2026 (Andy): every check below is a warning with Do it anyway, never a refusal
-    if (anyDay && r.format !== 'Day Greeting' && r.format !== 'Product' && r.format !== 'Dare to Buy' && r.character === DAY_CHAR[dow]) warns.push(r.character + ' is that day\'s character; only the Day Greeting normally uses him.');
+    if (anyDay && r.format !== 'Day Greeting' && r.format !== 'Product' && r.format !== 'Dare to Buy' && r.format !== 'Gift Guide' && r.character === DAY_CHAR[dow]) warns.push(r.character + ' is that day\'s character; only the Day Greeting normally uses him.');
     const slot = time ? 'custom' : (r.format === 'Product' ? '12pm' : (r.format === 'Day Greeting' ? '6am' : '7am'));
     const due = new Date(date + 'T' + (time || (slot === '6am' ? '06:00' : (slot === '12pm' ? '12:00' : ((dow === 0 || dow === 6) ? '09:00' : '07:00')))) + ':00Z');
     if (due.getTime() < Date.now() - 60 * 60000) warns.push('That time has already passed.');
     // The day must not already hold a post of the same slot type (any time), nor any post at the exact custom time.
-    const clash = r.format === 'Dare to Buy' ? null : ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && (slotOfFormat(x.format) === slotOfFormat(r.format) || (time && x.post_time === time)));
+    const clash = (r.format === 'Dare to Buy' || r.format === 'Gift Guide') ? null : ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && (slotOfFormat(x.format) === slotOfFormat(r.format) || (time && x.post_time === time)));
     if (clash) warns.push('That slot already has a post (' + clash.character + ', ' + clash.format + ').');
     if (warns.length && !confirm(warns.join('\n') + '\n\nDo it anyway?')) { msg.textContent = 'Not moved.'; return; }
     const post_date = date + (slot === '6am' ? 'T06:00:00.000Z' : (slot === '7am' ? 'T07:00:00.000Z' : 'T12:00:00.000Z'));
@@ -2052,11 +2057,13 @@ function slotDue(r) {
   const t = r.post_time ? String(r.post_time).padStart(5, '0') : (r.format === 'Day Greeting' ? '06:00' : (r.format === 'Product' ? '12:00' : (r.format === 'Advice' ? '10:00' : (wkend ? '09:00' : '07:00'))));
   return londonToUtc(d, t);
 }
-// Dare to Buy (Playbook 7.7.6): still-image carousels. Their three slides and X image are listed in the row's notes.
+// Dare to Buy (Playbook 7.7.6) and Gift Guide (5 Nov 2026): still-image carousels. Their slides (2 to 10) and X image are listed in the row's notes.
 function dtbSlides(r) {
-  if (!r || r.format !== 'Dare to Buy') return null;
-  const m = String(r.notes || '').match(/Slides: (\S+) \| (\S+) \| (\S+) X image: (\S+)/);
-  return m ? { slides: [m[1], m[2], m[3]], x: m[4] } : null;
+  if (!r || (r.format !== 'Dare to Buy' && r.format !== 'Gift Guide')) return null;
+  const m = String(r.notes || '').match(/Slides: (.+?) X image: (\S+)/);
+  if (!m) return null;
+  const slides = m[1].split(' | ').map(x => x.trim()).filter(Boolean);
+  return slides.length >= 2 ? { slides: slides, x: m[2] } : null;
 }
 // Launch picture posts (4 Nov 2026, Andy): a picture is the finished media, posted by SC - Publish Launch Post, so it is approved like a clip.
 function isPicturePost(r) { return !!(r && r.format === 'Launch' && r.image_url && !r.video_url); }
