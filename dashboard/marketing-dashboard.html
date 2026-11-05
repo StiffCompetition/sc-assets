@@ -760,7 +760,10 @@ function gpHtml() {
     { k: 'Instagram followers', f: r => r.followers_ig },
     { k: 'Facebook followers', f: r => r.followers_fb },
     { k: 'GIPHY views (all time)', f: r => r.giphy_views },
-    { k: 'Shop visits from social', f: r => r.social_sessions }
+    { k: 'Shop visits from social', f: r => r.social_sessions },
+    { k: 'WhatsApp downloads: Stiff Moves', f: r => r.dl_moves },
+    { k: 'WhatsApp downloads: Stiff After Dark', f: r => r.dl_afterdark },
+    { k: 'WhatsApp downloads: Stiff Stickers', f: r => r.dl_stickers }
   ];
   const last = rows[rows.length - 1] || {}, prev = rows[rows.length - 2] || null;
   const num = v => v === null || v === undefined || v === '' ? null : Number(v);
@@ -768,7 +771,7 @@ function gpHtml() {
   const fmt = v => v === null || v === undefined || v === '' ? '–' : Number(v).toLocaleString();
   const dayNo = d => Math.round((new Date(d + 'T12:00:00') - new Date(start + 'T12:00:00')) / 86400000) + 1;
   const curDay = dayNo(today());
-  let h = '<div class="gp"><h3>GIF Promotion</h3><div class="sub">Two-week test of GIF comments on trending posts, 10 per platform per day. '
+  let h = '<div class="gp"><h3>GIF Promotion</h3><div class="sub">Two-week test of GIF comments on trending posts, 10 per platform per day, plus WhatsApp sticker pack downloads. '
     + (curDay < 1 ? 'Starts ' + esc(start) + ' (today is the baseline).' : curDay <= len ? 'Day ' + curDay + ' of ' + len + '.' : 'Test finished.')
     + ' Updated each morning. <button class="btn ghost" id="gp_reload" style="padding:1px 8px;font-size:12px">Refresh</button></div>';
   if (gp.err) h += '<div class="sub">Could not load the tracker.</div>';
