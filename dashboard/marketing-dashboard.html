@@ -769,17 +769,22 @@ function egOpenUrl(c) {
   if (c.platform === 'x' && c.post_id) return 'https://x.com/intent/post?in_reply_to=' + encodeURIComponent(c.post_id) + '&text=' + encodeURIComponent(c.comment || '');
   return c.post_url;
 }
+function egProfile(c) {
+  const m = /^(https:\/\/(?:www\.)?(?:x\.com|twitter\.com|instagram\.com|facebook\.com))\/([^\/?#]+)/.exec(c.post_url || '');
+  if (!m || ['reel', 'p', 'watch', 'permalink.php', 'story.php'].includes(m[2])) return '';
+  return m[1] + '/' + m[2];
+}
 function egHtml() {
   if (!eg) return '<div class="eg"><h3>GIF comments today</h3><div class="sub">Loading…</div></div>';
   const cards = (eg.cards || []).filter(c => c.status !== 'skipped' || c.day === eg.today);
   const posted = cards.filter(c => c.status === 'posted').length;
-  let h = '<div class="eg"><h3>GIF comments today</h3><div class="sub">' + posted + ' of ' + cards.length + ' posted. For each card: Save GIF, Open post (the comment is copied or filled in), paste, add the GIF from your photos, post, then tap Posted.</div>';
+  let h = '<div class="eg"><h3>GIF comments today</h3><div class="sub">' + posted + ' of ' + cards.length + ' posted. For each card: View post and View account to check them, then Save GIF, Reply (the comment is copied, or filled in on X), add the GIF from your photos, post, then tap Posted.</div>';
   if (eg.err) h += '<div class="sub">Could not load the cards.</div>';
   if (!cards.length) h += '<div class="sub">No cards yet. Claude adds the day\'s cards each morning.</div>';
   h += cards.map(c => '<div class="egc' + (c.status !== 'draft' ? ' done' : '') + '" data-id="' + c.id + '">' + (c.gif_url ? '<img src="' + esc(c.gif_url) + (c.gif_url.indexOf('?') > -1 ? '&' : '?') + 'width=200" alt="' + esc(c.gif_title) + '" loading="lazy">' : '')
     + '<div class="bd"><div><span class="tag' + (c.account === 'brand' ? ' brand' : '') + '">' + (c.account === 'brand' ? 'Brand ' : 'Your ') + esc(EG_PLAT[c.platform] || c.platform) + '</span><b>' + esc(c.author || '') + '</b></div>'
     + '<div class="pt">' + esc(c.post_text || '') + '</div><div class="cm">' + esc(c.comment || '') + '</div>'
-    + (c.status === 'draft' ? '<div class="bt"><button class="btn ghost" data-eg="gif">1. Save GIF</button><button class="btn ghost" data-eg="open">2. Open post</button><button class="btn" data-eg="posted">Posted</button><button class="btn ghost" data-eg="skipped">Skip</button></div>' : '<div class="sub" style="margin:0">' + (c.status === 'posted' ? 'Posted' : 'Skipped') + '</div>')
+    + (c.status === 'draft' ? '<div class="bt"><a class="btn ghost" href="' + esc(c.post_url || '') + '" target="_blank" rel="noopener">View post</a>' + (egProfile(c) ? '<a class="btn ghost" href="' + esc(egProfile(c)) + '" target="_blank" rel="noopener">View account</a>' : '') + '<button class="btn ghost" data-eg="gif">1. Save GIF</button><button class="btn ghost" data-eg="open">2. Reply</button><button class="btn" data-eg="posted">Posted</button><button class="btn ghost" data-eg="skipped">Skip</button></div>' : '<div class="sub" style="margin:0">' + (c.status === 'posted' ? 'Posted' : 'Skipped') + '</div>')
     + '</div></div>').join('');
   return h + '</div>';
 }
