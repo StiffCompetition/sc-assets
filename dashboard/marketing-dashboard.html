@@ -109,6 +109,15 @@
   .atile.on { background: var(--ac); border-color: var(--ac); } .atile.on .n, .atile.on .l { color: #fff; }
   .bkt { border: 1px solid var(--line); border-left: 4px solid #e0a800; background: #fff; padding: 8px 10px; margin-bottom: 12px; cursor: pointer; font-size: 14px; }
   .bkt .bl { margin-top: 6px; font-size: 13px; } .bkt .bi { padding: 5px 0; border-top: 1px solid var(--line); }
+  .gp { background: #fff; border: 1px solid var(--line); border-left: 4px solid #6a1b9a; padding: 10px 12px; margin-bottom: 12px; }
+  .gp h3 { margin: 0 0 6px; font-size: 16px; } .gp .sub { color: var(--grey); font-size: 13px; margin-bottom: 8px; }
+  .gp .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin-bottom: 10px; }
+  .gp .t { border: 1px solid var(--line); padding: 6px 8px; } .gp .t .k { font-size: 12px; color: var(--grey); } .gp .t .v { font-size: 22px; font-weight: 700; }
+  .gp .up { color: #2e7d32; font-size: 12px; font-weight: 600; } .gp .dn { color: #c62828; font-size: 12px; font-weight: 600; } .gp .eq { color: var(--grey); font-size: 12px; }
+  .gp .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin-bottom: 10px; }
+  .gp .ch { border: 1px solid var(--line); padding: 6px 8px; font-size: 12px; } .gp .ch svg { width: 100%; height: 60px; display: block; }
+  .gp table { width: 100%; border-collapse: collapse; font-size: 13px; } .gp th, .gp td { border-top: 1px solid var(--line); padding: 4px 6px; text-align: right; } .gp th:first-child, .gp td:first-child { text-align: left; }
+  .gp .verdict { margin-top: 10px; padding: 8px 10px; border: 1px solid var(--line); background: #faf7ff; font-size: 14px; }
   .chn { border: 1px solid var(--line); border-left: 4px solid #2e7d32; background: #fff; padding: 8px 10px; margin-bottom: 12px; font-size: 14px; }
   .chn.gap { border-left-color: #c62828; } .chn .cr { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .chn .cc { font-size: 12px; padding: 3px 7px; border-radius: 10px; background: #e8f5e9; color: #1b5e20; } .chn .cc.red { background: #ffebee; color: #b71c1c; } .chn .cc.grey { background: #eee; color: #555; } .chn .cbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .chn .cbar .btn { margin-left: auto; }
   .atile.zero { opacity: .55; }
@@ -414,6 +423,8 @@ async function load() {
 
 // Abandoned baskets line on the Now tab (5 Nov 2026): same figures as the 6am SC Daily Brief, from SC - Abandoned Baskets API (list).
 const BASKETS_URL = BASE + 'sc-baskets-list';
+const GP_URL = BASE + 'sc-gif-promo-list';
+let gp = null, gpLoading = false;
 let baskets = null, bktOpen = false;
 function loadBaskets() { fetch(BASKETS_URL).then(r => r.ok ? r.json() : null).then(d => { baskets = d; if (view === 'Now') render(); }).catch(() => {}); }
 function basketHtml() {
@@ -479,6 +490,7 @@ function flatShown(r) {
 function tabCount(v) {
   if (v === 'Pages') return '';
   if (v === 'NFT Drops') return '';
+  if (v === 'Engage') return '';
   if (v === 'Migration') return migKids().filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length || '';
   if (v === 'Journal') return jr.loaded && jr.book ? (jr.book.changed || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
@@ -495,7 +507,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', 'Migration', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', 'Migration', 'Engage', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -730,6 +742,57 @@ function migrationHtml() {
     + ms.map(migStream).join('');
 }
 
+// GIF promotion tracker (Andy, 5 Nov 2026): two-week test of GIF comments on trending posts, 10 per platform per day.
+// Data: n8n SC - GIF Promotion Tracker (table SC GIF Promotion Daily), filled daily 06:05 London; comments and GIPHY views added by Claude.
+function renderEngage() {
+  if (!gp && !gpLoading) { gpLoading = true; fetch(GP_URL).then(r => r.ok ? r.json() : null).then(d => { gp = d || { rows: [] }; gpLoading = false; if (view === 'Engage') renderEngage(); }).catch(() => { gp = { rows: [], err: true }; gpLoading = false; if (view === 'Engage') renderEngage(); }); }
+  $('list').innerHTML = gpHtml();
+  const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; renderEngage(); };
+}
+function gpHtml() {
+  if (!gp) return '<div class="gp"><h3>GIF Promotion</h3><div class="sub">Loading…</div></div>';
+  const rows = (gp.rows || []).slice().sort((a, b) => a.day < b.day ? -1 : 1);
+  const start = gp.start || '2026-11-06', len = gp.days || 14, target = gp.target_per_day || 30;
+  const tot = r => (Number(r.comments_x) || 0) + (Number(r.comments_ig) || 0) + (Number(r.comments_fb) || 0);
+  const M = [
+    { k: 'Comments posted', f: r => tot(r), goal: target },
+    { k: 'X followers', f: r => r.followers_x },
+    { k: 'Instagram followers', f: r => r.followers_ig },
+    { k: 'Facebook followers', f: r => r.followers_fb },
+    { k: 'GIPHY views (all time)', f: r => r.giphy_views },
+    { k: 'Shop visits from social', f: r => r.social_sessions }
+  ];
+  const last = rows[rows.length - 1] || {}, prev = rows[rows.length - 2] || null;
+  const num = v => v === null || v === undefined || v === '' ? null : Number(v);
+  const delta = (m, r, p) => { const a = num(m.f(r)), b = p ? num(m.f(p)) : null; if (a === null || b === null) return ''; const d = a - b; return d > 0 ? '<span class="up">▲ ' + d + '</span>' : d < 0 ? '<span class="dn">▼ ' + (-d) + '</span>' : '<span class="eq">no change</span>'; };
+  const fmt = v => v === null || v === undefined || v === '' ? '–' : Number(v).toLocaleString();
+  const dayNo = d => Math.round((new Date(d + 'T12:00:00') - new Date(start + 'T12:00:00')) / 86400000) + 1;
+  const curDay = dayNo(today());
+  let h = '<div class="gp"><h3>GIF Promotion</h3><div class="sub">Two-week test of GIF comments on trending posts, 10 per platform per day. '
+    + (curDay < 1 ? 'Starts ' + esc(start) + ' (today is the baseline).' : curDay <= len ? 'Day ' + curDay + ' of ' + len + '.' : 'Test finished.')
+    + ' Updated each morning. <button class="btn ghost" id="gp_reload" style="padding:1px 8px;font-size:12px">Refresh</button></div>';
+  if (gp.err) h += '<div class="sub">Could not load the tracker.</div>';
+  h += '<div class="tiles">' + M.map(m => '<div class="t"><div class="k">' + esc(m.k) + '</div><div class="v">' + fmt(m.f(last)) + (m.goal ? '<span style="font-size:13px;color:var(--grey)"> / ' + m.goal + '</span>' : '') + '</div>' + delta(m, last, prev) + '</div>').join('') + '</div>';
+  const spark = m => { const pts = rows.map(r => num(m.f(r))).filter(v => v !== null); if (pts.length < 2) return '<div style="color:var(--grey)">Chart starts after day 2</div>';
+    const mn = Math.min(...pts), mx = Math.max(...pts), W = 220, H = 56, sp = mx - mn || 1;
+    const xy = pts.map((v, i) => [Math.round(i * (W - 8) / (pts.length - 1)) + 4, Math.round(H - 4 - (v - mn) * (H - 8) / sp)]);
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><polyline fill="none" stroke="#6a1b9a" stroke-width="2" points="' + xy.map(p => p.join(',')).join(' ') + '"/>' + xy.map(p => '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="2.5" fill="#6a1b9a"/>').join('') + '</svg>'; };
+  h += '<div class="charts">' + M.map(m => '<div class="ch"><b>' + esc(m.k) + '</b>' + spark(m) + '</div>').join('') + '</div>';
+  h += '<div style="overflow-x:auto"><table><tr><th>Day</th>' + M.map(m => '<th>' + esc(m.k.replace(' (all time)', '')) + '</th>').join('') + '</tr>'
+    + rows.slice().reverse().map((r, i, a) => { const p = a[i + 1]; const n = dayNo(r.day); return '<tr><td>' + esc(r.day) + (n >= 1 && n <= len ? ' (day ' + n + ')' : n < 1 ? ' (baseline)' : '') + '</td>' + M.map(m => '<td>' + fmt(m.f(r)) + ' ' + delta(m, r, p) + '</td>').join('') + '</tr>'; }).join('') + '</table></div>';
+  if (rows.length && curDay > len) {
+    const base = rows.find(r => r.day < start) || rows[0];
+    const g = k => (num(last[k]) || 0) - (num(base[k]) || 0);
+    const fol = g('followers_x') + g('followers_ig') + g('followers_fb');
+    const views = g('giphy_views'), soc = rows.filter(r => r.day >= start).reduce((s, r) => s + (num(r.social_sessions) || 0), 0);
+    const posted = rows.filter(r => r.day >= start).reduce((s, r) => s + tot(r), 0);
+    const verdict = fol >= 50 || soc >= 30 ? 'Grow: the comments are working.' : fol >= 15 || views >= 1000 ? 'Continue at this level for another two weeks.' : 'Stop: not enough movement for the effort.';
+    h += '<div class="verdict"><b>Day 14 verdict: ' + esc(verdict) + '</b><br>' + posted + ' comments posted, ' + fol + ' new followers, ' + views.toLocaleString() + ' new GIPHY views, ' + soc + ' shop visits from social.</div>';
+  }
+  if (!rows.length) h += '<div class="sub">No figures yet. The first numbers arrive tomorrow morning.</div>';
+  return h + '</div>';
+}
+
 function render() {
   renderTabs();
   if (view === 'Follow list') { renderFollow(); return; }
@@ -738,6 +801,7 @@ function render() {
   if (view === 'Products') { renderProducts(); return; }
   if (view === 'Pricing') { renderPricing(); return; }
   if (view === 'Journal') { renderJournal(); return; }
+  if (view === 'Engage') { renderEngage(); return; }
   if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
   let html = '';
   if (view === 'Done') {
