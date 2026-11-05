@@ -678,64 +678,8 @@ function migrationHtml() {
   const when = days > 1 ? days + ' days to 10 Nov' : days === 1 ? '1 day to 10 Nov' : days === 0 ? 'Today is 10 Nov' : '10 Nov has passed';
   const yours = all.filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length;
   return '<div class="nextbox"><div class="lbl">Move to OpenSea</div><div class="action" style="margin-top:2px"><span class="chip due' + (days <= 3 ? ' late' : '') + '">' + esc(when) + '</span> <span class="chip">' + done + ' of ' + all.length + ' steps done</span> <span class="chip wait">' + yours + ' for you</span></div></div>'
-    + '<div id="migCamp" class="mission s-Next"><div class="mhead"><h2>Launch campaign</h2></div><div class="empty">Loading the posts&hellip;</div></div>'
     + ms.map(migStream).join('');
 }
-// Launch campaign (4 Nov 2026, Andy): every post of the OpenSea launch, 5 to 10 November, on X, Discord, Instagram and Facebook.
-// One Approve all, then SC - Launch Campaign Engine posts each row at its time with no further step. Per row: Approve, Hold, Skip, Edit.
-const CAMP_API = 'https://n8n-production-afc2.up.railway.app/webhook/sc-launch-campaign';
-const CAMP_NAMES = { x: 'X', discord: 'Discord', instagram: 'Instagram', facebook: 'Facebook' };
-let campRows = [];
-function campDay(d) { const t = new Date(d); return isNaN(t) ? '' : t.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' London'; }
-function campHtml() {
-  const box = $('migCamp'); if (!box) return;
-  const drafts = campRows.filter(r => r.status === 'draft').length;
-  const ready = campRows.filter(r => r.status === 'ready').length;
-  const posted = campRows.filter(r => r.status === 'posted').length;
-  const failed = campRows.filter(r => r.status === 'failed').length;
-  let html = '<div class="mhead"><h2>Launch campaign</h2>'
-    + (drafts ? '<button class="btn small go" data-camp="approve_all">Approve all (' + drafts + ')</button>' : '')
-    + '</div><div class="prog"><span class="chip">' + posted + ' posted</span> <span class="chip">' + ready + ' approved, waiting for their time</span>' + (drafts ? ' <span class="chip wait">' + drafts + ' need your approval</span>' : '') + (failed ? ' <span class="chip late">' + failed + ' failed</span>' : '') + '</div>';
-  const days = {};
-  campRows.forEach(r => { (days[r.post_at] = days[r.post_at] || []).push(r); });
-  Object.keys(days).sort().forEach(d => {
-    const list = days[d];
-    html += '<div class="typehead BUILD">' + esc(campDay(d)) + ' <span class="cnt">' + esc(list[0].day_label) + ' &middot; ' + esc(list[0].character_name) + '</span></div>';
-    list.forEach(r => {
-      const st = r.status === 'posted' ? 'Done' : r.status === 'ready' ? 'Next' : r.status === 'failed' ? 'Today' : r.status === 'skipped' ? 'Idea' : 'Waiting';
-      html += '<div class="card s-' + st + '" data-cid="' + r.id + '"><div class="body">'
-        + '<div class="title"><span class="who-tag claude">' + esc(CAMP_NAMES[r.platform] || r.platform) + '</span>' + esc(r.status === 'posted' ? 'Posted' : r.status === 'ready' ? 'Approved' : r.status === 'failed' ? 'Failed' : r.status === 'skipped' ? 'Skipped' : 'Needs your approval') + '</div>'
-        + '<div class="action" style="white-space:pre-wrap">' + esc(r.caption) + '</div>'
-        + '<div class="meta"><a class="lnk" href="' + esc(safeUrl(r.image_url)) + '" target="_blank" rel="noopener">Image</a>'
-        + (r.result ? (/^https?:/.test(r.result) ? '<a class="lnk" href="' + esc(safeUrl(r.result)) + '" target="_blank" rel="noopener">View post</a>' : '<span class="chip">' + esc(r.result) + '</span>') : '')
-        + '</div></div><div class="acts">'
-        + (r.status === 'draft' || r.status === 'skipped' || r.status === 'failed' ? '<button class="btn small go" data-camp="ready">Approve</button>' : '')
-        + (r.status === 'ready' ? '<button class="btn small ghost" data-camp="draft">Hold</button>' : '')
-        + (r.status !== 'posted' && r.status !== 'skipped' ? '<button class="btn small ghost" data-camp="skipped">Skip</button>' : '')
-        + (r.status !== 'posted' ? '<button class="btn small ghost" data-camp="edit">Edit</button>' : '')
-        + '</div></div>';
-    });
-  });
-  box.innerHTML = html;
-}
-async function campLoad() {
-  try { const d = await (await fetch(CAMP_API, { cache: 'no-store' })).json(); campRows = d.rows || []; campHtml(); }
-  catch (e) { const box = $('migCamp'); if (box) box.innerHTML = '<div class="mhead"><h2>Launch campaign</h2></div><div class="empty">Could not load the posts.</div>'; }
-}
-async function campAct(body) {
-  try { const d = await (await fetch(CAMP_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json(); if (!d.ok) alert(d.error || 'Not saved'); }
-  catch (e) { alert('Not saved: ' + e); }
-  campLoad();
-}
-document.addEventListener('click', e => {
-  const b = e.target.closest('[data-camp]'); if (!b) return;
-  const act = b.getAttribute('data-camp');
-  if (act === 'approve_all') { if (confirm('Approve every post? They go out on their own at their times.')) campAct({ action: 'approve_all' }); return; }
-  const card = b.closest('[data-cid]'); const id = card && Number(card.getAttribute('data-cid')); if (!id) return;
-  const r = campRows.find(x => x.id === id) || {};
-  if (act === 'edit') { const c = prompt('Caption', r.caption || ''); if (c != null && c.trim()) campAct({ action: 'edit', id, caption: c }); return; }
-  campAct({ action: 'set', id, status: act });
-});
 
 function render() {
   renderTabs();
@@ -754,7 +698,6 @@ function render() {
     html = alertsHtml(false);
   } else if (view === 'Migration') {
     html = migrationHtml();
-    setTimeout(campLoad, 0);
   } else {
     const ms = missions().filter(missionShown).sort((a, b) => {
       const ra = nextAction(a), rb = nextAction(b);

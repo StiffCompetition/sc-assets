@@ -733,49 +733,7 @@ def _dtb_asset(name):
 
 _CLD_CROP = _re.compile(r'^https://res\.cloudinary\.com/dkapdtxek/image/fetch/c_crop,g_xy_center,x_(-?[0-9.]+),y_(-?[0-9.]+),w_([0-9.]+),h_([0-9.]+),fl_relative/(.+)$')
 
-# ---- Crop link (4 Nov 2026): replaces the Cloudinary fetch-crop link. GET /crop?src=<picture>&x=&y=&w=&h= returns the same crop
-# (x, y = centre and w, h = size, all as fractions of the picture; 0.5, 0.5, 1, 1 = the whole picture). Only our own Shopify files and the repo's jsDelivr files are allowed.
-_CROP_OK = ('https://cdn.shopify.com/s/files/1/0661/7428/7966/', 'https://cdn.jsdelivr.net/gh/StiffCompetition/')
-_CROP_LINK = _re.compile(r'^https://sc-hotline-compose-production\.up\.railway\.app/crop\?(.+)$')
-
-def _crop_cut(src_img, x, y, w, h):
-    cw, ch = max(1, round(w * src_img.width)), max(1, round(h * src_img.height))
-    left = int(-(-(x * src_img.width - cw / 2) // 1)); top = int(-(-(y * src_img.height - ch / 2) // 1))
-    left = max(0, min(left, src_img.width - cw)); top = max(0, min(top, src_img.height - ch))
-    return src_img.crop((left, top, left + cw, top + ch))
-
-from fastapi import Response as _Resp
-@app.get('/crop')
-def crop_get(src: str, x: float = 0.5, y: float = 0.5, w: float = 1.0, h: float = 1.0):
-    if not src.startswith(_CROP_OK):
-        return _Resp('source not allowed', status_code=400)
-    try:
-        raw = _tf_fetch(src, 60)
-    except Exception:
-        return _Resp('source not found', status_code=404)
-    hdr = {'Cache-Control': 'public, max-age=86400'}
-    try:
-        im0 = Image.open(io.BytesIO(raw))
-        fmt = (im0.format or 'JPEG').upper()
-        if abs(x - 0.5) < 1e-6 and abs(y - 0.5) < 1e-6 and abs(w - 1) < 1e-6 and abs(h - 1) < 1e-6 and fmt in ('JPEG', 'PNG', 'WEBP'):
-            return _Resp(raw, media_type={'JPEG': 'image/jpeg', 'PNG': 'image/png', 'WEBP': 'image/webp'}[fmt], headers=hdr)
-        im = ImageOps.exif_transpose(im0)
-        out = _crop_cut(im if im.mode in ('RGB', 'RGBA', 'LA') else im.convert('RGBA' if 'A' in im.getbands() or im.mode == 'P' else 'RGB'), x, y, w, h)
-        data, ctype = _tf_encode(out, 'png' if out.mode in ('RGBA', 'LA') else 'jpg')
-        return _Resp(data, media_type=ctype, headers=hdr)
-    except Exception as e:
-        return _Resp('crop failed: ' + str(e)[:100], status_code=500)
-
 def _dtb_photo(url):
-    mn = _CROP_LINK.match(url)
-    if mn:
-        q = _up.parse_qs(mn.group(1))
-        g = lambda k, d: float(q.get(k, [d])[0])
-        srcu = q['src'][0]
-        if not srcu.startswith(_CROP_OK):
-            raise ValueError('source not allowed')
-        base = ImageOps.exif_transpose(Image.open(io.BytesIO(_tf_fetch(srcu)))).convert('RGB')
-        return _crop_cut(base, g('x', 0.5), g('y', 0.5), g('w', 1.0), g('h', 1.0))
     m = _CLD_CROP.match(url)
     if not m:
         return ImageOps.exif_transpose(Image.open(io.BytesIO(_tf_fetch(url)))).convert('RGB')
