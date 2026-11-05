@@ -109,6 +109,14 @@
   .atile.on { background: var(--ac); border-color: var(--ac); } .atile.on .n, .atile.on .l { color: #fff; }
   .bkt { border: 1px solid var(--line); border-left: 4px solid #e0a800; background: #fff; padding: 8px 10px; margin-bottom: 12px; cursor: pointer; font-size: 14px; }
   .bkt .bl { margin-top: 6px; font-size: 13px; } .bkt .bi { padding: 5px 0; border-top: 1px solid var(--line); }
+  .eg { background: #fff; border: 1px solid var(--line); border-left: 4px solid #1565c0; padding: 10px 12px; margin-bottom: 12px; }
+  .eg h3 { margin: 0 0 4px; font-size: 16px; } .eg .sub { color: var(--grey); font-size: 13px; margin-bottom: 8px; }
+  .egc { border: 1px solid var(--line); padding: 8px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; }
+  .egc.done { opacity: .45; } .egc img { width: 96px; height: 96px; object-fit: cover; border: 1px solid var(--line); flex: none; }
+  .egc .bd { flex: 1; min-width: 0; font-size: 14px; } .egc .pt { color: var(--grey); font-size: 13px; margin: 2px 0 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .egc .cm { background: #f4f6fb; padding: 6px 8px; margin-bottom: 6px; } .egc .bt { display: flex; flex-wrap: wrap; gap: 6px; }
+  .egc .bt button, .egc .bt a { font-size: 13px; padding: 4px 10px; }
+  .egc .tag { font-size: 11px; font-weight: 700; padding: 1px 6px; color: #fff; background: #1565c0; margin-right: 6px; } .egc .tag.brand { background: #6a1b9a; }
   .gp { background: #fff; border: 1px solid var(--line); border-left: 4px solid #6a1b9a; padding: 10px 12px; margin-bottom: 12px; }
   .gp h3 { margin: 0 0 6px; font-size: 16px; } .gp .sub { color: var(--grey); font-size: 13px; margin-bottom: 8px; }
   .gp .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin-bottom: 10px; }
@@ -416,6 +424,7 @@ async function load() {
     render();
     loadBaskets();
     loadChannels();
+    if (!eg) fetch(EG_LIST).then(r => r.ok ? r.json() : null).then(d => { if (d && !eg) { eg = d; renderTabs(); } }).catch(() => {});
   } catch (e) {
     $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
   }
@@ -424,6 +433,8 @@ async function load() {
 // Abandoned baskets line on the Now tab (5 Nov 2026): same figures as the 6am SC Daily Brief, from SC - Abandoned Baskets API (list).
 const BASKETS_URL = BASE + 'sc-baskets-list';
 const GP_URL = BASE + 'sc-gif-promo-list';
+const EG_LIST = BASE + 'sc-engage-list', EG_SAVE = BASE + 'sc-engage-save';
+let eg = null, egLoading = false;
 let gp = null, gpLoading = false;
 let baskets = null, bktOpen = false;
 function loadBaskets() { fetch(BASKETS_URL).then(r => r.ok ? r.json() : null).then(d => { baskets = d; if (view === 'Now') render(); }).catch(() => {}); }
@@ -490,7 +501,7 @@ function flatShown(r) {
 function tabCount(v) {
   if (v === 'Pages') return '';
   if (v === 'NFT Drops') return '';
-  if (v === 'Engage') return '';
+  if (v === 'Engage') return eg ? (eg.cards || []).filter(c => c.status === 'draft').length || '' : '';
   if (v === 'Migration') return migKids().filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length || '';
   if (v === 'Journal') return jr.loaded && jr.book ? (jr.book.changed || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
@@ -746,8 +757,48 @@ function migrationHtml() {
 // Data: n8n SC - GIF Promotion Tracker (table SC GIF Promotion Daily), filled daily 06:05 London; comments and GIPHY views added by Claude.
 function renderEngage() {
   if (!gp && !gpLoading) { gpLoading = true; fetch(GP_URL).then(r => r.ok ? r.json() : null).then(d => { gp = d || { rows: [] }; gpLoading = false; if (view === 'Engage') renderEngage(); }).catch(() => { gp = { rows: [], err: true }; gpLoading = false; if (view === 'Engage') renderEngage(); }); }
-  $('list').innerHTML = gpHtml();
-  const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; renderEngage(); };
+  if (!eg && !egLoading) { egLoading = true; fetch(EG_LIST).then(r => r.ok ? r.json() : null).then(d => { eg = d || { cards: [] }; egLoading = false; if (view === 'Engage') renderEngage(); }).catch(() => { eg = { cards: [], err: true }; egLoading = false; if (view === 'Engage') renderEngage(); }); }
+  $('list').innerHTML = egHtml() + gpHtml();
+  const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; eg = null; renderEngage(); };
+  wireEngage();
+}
+// GIF comment cards (Andy, 5 Nov 2026): personal accounts 10 a day per platform, brand accounts 2-3 witty ones on big viral posts.
+// X blocks API replies to posts that did not mention us (Feb 2026), so every platform is a tap flow: save GIF, open post with the comment ready, then Posted or Skip.
+const EG_PLAT = { x: 'X', instagram: 'Instagram', facebook: 'Facebook' };
+function egOpenUrl(c) {
+  if (c.platform === 'x' && c.post_id) return 'https://x.com/intent/post?in_reply_to=' + encodeURIComponent(c.post_id) + '&text=' + encodeURIComponent(c.comment || '');
+  return c.post_url;
+}
+function egHtml() {
+  if (!eg) return '<div class="eg"><h3>GIF comments today</h3><div class="sub">Loading…</div></div>';
+  const cards = (eg.cards || []).filter(c => c.status !== 'skipped' || c.day === eg.today);
+  const posted = cards.filter(c => c.status === 'posted').length;
+  let h = '<div class="eg"><h3>GIF comments today</h3><div class="sub">' + posted + ' of ' + cards.length + ' posted. For each card: Save GIF, Open post (the comment is copied or filled in), paste, add the GIF from your photos, post, then tap Posted.</div>';
+  if (eg.err) h += '<div class="sub">Could not load the cards.</div>';
+  if (!cards.length) h += '<div class="sub">No cards yet. Claude adds the day\'s cards each morning.</div>';
+  h += cards.map(c => '<div class="egc' + (c.status !== 'draft' ? ' done' : '') + '" data-id="' + c.id + '">' + (c.gif_url ? '<img src="' + esc(c.gif_url) + (c.gif_url.indexOf('?') > -1 ? '&' : '?') + 'width=200" alt="' + esc(c.gif_title) + '" loading="lazy">' : '')
+    + '<div class="bd"><div><span class="tag' + (c.account === 'brand' ? ' brand' : '') + '">' + (c.account === 'brand' ? 'Brand ' : 'Your ') + esc(EG_PLAT[c.platform] || c.platform) + '</span><b>' + esc(c.author || '') + '</b></div>'
+    + '<div class="pt">' + esc(c.post_text || '') + '</div><div class="cm">' + esc(c.comment || '') + '</div>'
+    + (c.status === 'draft' ? '<div class="bt"><button class="btn ghost" data-eg="gif">1. Save GIF</button><button class="btn ghost" data-eg="open">2. Open post</button><button class="btn" data-eg="posted">Posted</button><button class="btn ghost" data-eg="skipped">Skip</button></div>' : '<div class="sub" style="margin:0">' + (c.status === 'posted' ? 'Posted' : 'Skipped') + '</div>')
+    + '</div></div>').join('');
+  return h + '</div>';
+}
+function wireEngage() {
+  document.querySelectorAll('.egc [data-eg]').forEach(b => b.onclick = async () => {
+    const id = Number(b.closest('.egc').dataset.id), c = (eg.cards || []).find(x => x.id === id); if (!c) return;
+    const act = b.dataset.eg;
+    if (act === 'gif') {
+      try { const r = await fetch(c.gif_url); const bl = await r.blob(); const nm = (c.gif_url.split('/').pop().split('?')[0]) || 'stiff-moves.gif';
+        if (navigator.canShare && navigator.canShare({ files: [new File([bl], nm, { type: 'image/gif' })] })) { await navigator.share({ files: [new File([bl], nm, { type: 'image/gif' })] }); }
+        else { const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = nm; document.body.appendChild(a); a.click(); a.remove(); }
+      } catch (e) { window.open(c.gif_url, '_blank'); }
+      return;
+    }
+    if (act === 'open') { try { await navigator.clipboard.writeText(c.comment || ''); } catch (e) {} window.open(egOpenUrl(c), '_blank'); return; }
+    b.disabled = true;
+    try { await fetch(EG_SAVE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: act }) }); c.status = act; if (act === 'posted') gp = null; } catch (e) { b.disabled = false; return; }
+    renderEngage();
+  });
 }
 function gpHtml() {
   if (!gp) return '<div class="gp"><h3>GIF Promotion</h3><div class="sub">Loading…</div></div>';
