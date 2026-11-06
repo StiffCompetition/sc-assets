@@ -2604,7 +2604,7 @@ function retCard(c) {
   return '<div class="pbox"><div style="margin-bottom:4px">' + chip(c.outlet, '#2f6fed') + chip(dmg ? 'Damaged or faulty' : 'Change of mind', dmg ? '#c0392b' : '#8a8f98') + '<span class="sub">' + esc(c.order_ref ? 'Order ' + c.order_ref : '') + (c.customer ? ' · ' + esc(c.customer) : '') + '</span></div>'
     + (c.item ? '<div><b>' + esc(c.item) + '</b></div>' : '')
     + '<div style="margin:4px 0">Deadline: ' + retDue(c.deadline) + '</div>'
-    + '<div style="margin:8px 0 2px"><span class="sub">Step ' + (i + 1) + ' of ' + flow.length + '</span><br><b>' + esc(st.title) + '</b></div>'
+    + '<div style="margin:8px 0 2px"><span class="sub">Step ' + (i + 1) + ' of ' + ((dmg && st.s !== 'Awaiting item') ? flow.length - 1 : flow.length) + '</span><br><b>' + esc(st.title) + '</b></div>'
     + '<div style="margin:2px 0 6px">' + esc(st.text(o)) + '</div>'
     + (st.email ? '<pre style="white-space:pre-wrap;background:#f4f4f4;border:1px solid var(--line);padding:8px;font-family:inherit;font-size:14px;margin:6px 0">' + esc(st.email(c)) + '</pre><button class="btn small ghost" data-retcopy="' + id + '">Copy email</button> ' : '')
     + (c.notes ? '<div class="sub" style="margin:6px 0">' + esc(c.notes) + '</div>' : '')
