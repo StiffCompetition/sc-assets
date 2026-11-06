@@ -1,0 +1,50 @@
+{%- comment -%}
+  Adds shipping details and a return policy to every Offer in the product page's Google data
+  (27 Oct 2026, dashboard task 165, Search Console merchant listings). Values come from the shop's own
+  Shipping policy and Refund policy and from the Pricing, Shipping and Promotions Playbook free shipping rule.
+  Physical products (mugs, museum prints, t-shirts, tote bags): 30-day return by mail, return label supplied
+  by us, full refund; free shipping in every country where the four "SC Free Shipping" shipping profiles
+  (Mugs, T-Shirts, Tote Bags, Museum Prints) have a Free shipping rate (checked 26 Oct 2026: AU CA DE DK GB IE NZ SE US
+  and the whole EU zone). Keep this list in step with those profiles and with snippets/free-shipping-message.liquid.
+  2-5 business days production, 3-7 business days transit. Digital products (NFT, Digital Download): no returns
+  once delivered, instant delivery, no shipping fee. Any other product type is left exactly as Shopify writes it.
+  Country and currency follow the visitor's browsing country. If Shopify's data does not contain the expected
+  text, nothing changes.
+{%- endcomment -%}
+{%- assign sc_out = page_body -%}
+{%- if template.name == 'product' and product != blank -%}
+  {%- assign sc_kind = '' -%}
+  {%- assign sc_free = '' | split: ',' -%}
+  {%- assign sc_type = product.type | downcase -%}
+  {%- case sc_type -%}
+    {%- when 'mug', 'print material', 't-shirt', 'tote bag' -%}
+      {%- assign sc_kind = 'physical' -%}
+      {%- assign sc_free = 'AU,CA,DE,DK,GB,IE,NZ,SE,US,AD,AL,AT,AX,BE,BG,CY,CZ,EE,ES,FI,FO,FR,GG,GI,GL,GR,HR,HU,IT,JE,LT,LU,LV,MT,NL,PL,PT,RO,SI,SK,SM,VA' | split: ',' -%}
+    {%- when 'nft', 'digital download' -%}
+      {%- assign sc_kind = 'digital' -%}
+  {%- endcase -%}
+  {%- if sc_kind != '' -%}
+    {%- assign sc_country = localization.country.iso_code -%}
+    {%- assign sc_currency = localization.country.currency.iso_code -%}
+    {%- assign sc_policy_url = shop.refund_policy.url | prepend: request.origin -%}
+    {%- capture sc_patch -%}
+      "hasMerchantReturnPolicy":{"@type":"MerchantReturnPolicy","applicableCountry":"{{ sc_country }}","merchantReturnLink":"{{ sc_policy_url }}",
+      {%- if sc_kind == 'physical' -%}
+        "returnPolicyCategory":"https://schema.org/MerchantReturnFiniteReturnWindow","merchantReturnDays":30,"returnMethod":"https://schema.org/ReturnByMail","returnFees":"https://schema.org/FreeReturn","refundType":"https://schema.org/FullRefund"}
+        {%- if sc_free contains sc_country -%}
+          ,"shippingDetails":{"@type":"OfferShippingDetails","shippingRate":{"@type":"MonetaryAmount","value":0,"currency":"{{ sc_currency }}"},"shippingDestination":{"@type":"DefinedRegion","addressCountry":"{{ sc_country }}"},"deliveryTime":{"@type":"ShippingDeliveryTime","handlingTime":{"@type":"QuantitativeValue","minValue":2,"maxValue":5,"unitCode":"DAY"},"transitTime":{"@type":"QuantitativeValue","minValue":3,"maxValue":7,"unitCode":"DAY"}}}
+        {%- endif -%}
+      {%- else -%}
+        "returnPolicyCategory":"https://schema.org/MerchantReturnNotPermitted"}
+        ,"shippingDetails":{"@type":"OfferShippingDetails","shippingRate":{"@type":"MonetaryAmount","value":0,"currency":"{{ sc_currency }}"},"shippingDestination":{"@type":"DefinedRegion","addressCountry":"{{ sc_country }}"},"deliveryTime":{"@type":"ShippingDeliveryTime","handlingTime":{"@type":"QuantitativeValue","minValue":0,"maxValue":0,"unitCode":"DAY"},"transitTime":{"@type":"QuantitativeValue","minValue":0,"maxValue":0,"unitCode":"DAY"}}}
+      {%- endif -%}
+    {%- endcapture -%}
+    {%- capture sc_new -%}"@type":"Offer",{{ sc_patch | strip_newlines | strip }},{%- endcapture -%}
+    {%- assign sc_out = page_body | replace: '"@type":"Offer",', sc_new -%}
+  {%- endif -%}
+{%- endif -%}
+{%- comment -%} OpenSea launch strip on every page (4 Nov 2026): remove this one line to take it off. {%- endcomment -%}
+{%- render 'sc-opensea-banner' -%}
+{%- comment -%} Christmas 2026 look (6 Nov 2026, draft): remove this one line to take it off. {%- endcomment -%}
+{%- if template.name == 'index' -%}{%- render 'sc-xmas-top' -%}{%- endif -%}
+{{ sc_out }}
