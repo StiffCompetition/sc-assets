@@ -1,10 +1,8 @@
 <style>
+[id$='__hero_video']{display:none!important}
 .scxh{display:flex;flex-direction:column;align-items:center;padding:22px 16px 8px}
 .scxh__win{position:relative;aspect-ratio:9/16;width:min(100%,calc(min(86svh,760px)*.5625));background:#000;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.45);overflow:visible}
 .scxh__v{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:10px;display:block;background:#000}
-.scxh__hol{position:absolute;width:74px;height:62px;background:url('{{ 'sc-xmas-holly.svg' | asset_url }}') center/contain no-repeat;z-index:3;pointer-events:none}
-.scxh__hol.a{left:-18px;top:-22px;transform:rotate(-18deg)}
-.scxh__hol.b{right:-18px;top:-22px;transform:scaleX(-1) rotate(-18deg)}
 .scxh__snd{position:absolute;left:10px;bottom:10px;height:44px;padding:0 16px;border:0;border-radius:22px;background:rgba(0,0,0,.65);color:#fff;font-size:1.2rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;z-index:2}
 .scxh__pp{position:absolute;right:10px;bottom:10px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.6rem;cursor:pointer;z-index:2}
 .scxh__btns{display:flex;gap:12px;justify-content:center;width:100%;max-width:520px;padding:18px 0 10px}
@@ -14,7 +12,6 @@
 </style>
 <div class="scxh">
   <div class="scxh__win">
-    <span class="scxh__hol a" aria-hidden="true"></span><span class="scxh__hol b" aria-hidden="true"></span>
     <video class="scxh__v" muted loop playsinline preload="metadata" poster="{{ 'sc-xmas-hero-poster.jpg' | asset_url }}" aria-label="Wishing everyone a warm and wonderful Christmas from Stiff Competition"><source src="{{ 'sc-xmas-hero-v6.mp4' | asset_url }}" type="video/mp4"></video>
     <button type="button" class="scxh__snd" aria-pressed="false">Tap for sound</button>
     <button type="button" class="scxh__pp" aria-label="Pause video">&#10074;&#10074;</button>
@@ -33,5 +30,16 @@
   var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(!rm){var q=v.play();if(q&&q.catch)q.catch(sync);}
   sync();
+  /* old hero clip moves down into LATEST TRANSMISSION as its first clip */
+  try{
+    var old=document.querySelector("[id$='__hero_video'] video"),tr=document.querySelector('.ltr__track');
+    if(old&&tr){
+      var t=document.createElement('div');t.className='ltr__tile';
+      var ov=document.createElement('video');ov.controls=true;ov.playsInline=true;ov.preload='none';ov.poster=old.getAttribute('poster')||'';
+      old.querySelectorAll('source').forEach(function(s){ov.appendChild(s.cloneNode(true));});
+      t.appendChild(ov);tr.insertBefore(t,tr.firstChild);
+      ov.addEventListener('play',function(){document.querySelectorAll('.scxh__v,.ltr__tile video').forEach(function(o){if(o!==ov&&!o.paused)o.pause();});});
+    }
+  }catch(e){}
 })();
 </script>

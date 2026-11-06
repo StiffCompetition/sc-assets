@@ -1,16 +1,9 @@
 <style>
-.scx-lights{height:84px;background:url('{{ 'sc-xmas-lights.png' | asset_url }}') repeat-x top center;background-size:auto 100%;margin:0 0 -26px;position:relative;z-index:2;pointer-events:none}
-.scx-bar{background:#e5261b;color:#fff;text-align:center;padding:1.1rem 1.6rem;font-weight:700;font-size:1.3rem;letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:1}
-.scx-bar span{display:inline-block}
-.scx-bar i{font-style:normal;margin:0 .8rem;opacity:.85}
+.scx-lights{height:112px;background:url('{{ 'sc-xmas-lights.png' | asset_url }}') repeat-x top center;background-size:auto 100%;pointer-events:none;margin:0 0 -34px;position:relative;z-index:2}
+@media(max-width:749px){.scx-lights{height:84px;margin-bottom:-26px}}
 .scx-snow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
-.scx-h::before{content:'';display:block;width:64px;height:54px;margin:0 auto .2rem;background:url('{{ 'sc-xmas-holly.svg' | asset_url }}') center/contain no-repeat}
-[id$='__hero_video']{display:none!important}
-@media(max-width:749px){.scx-lights{height:64px;margin-bottom:-20px}.scx-bar{font-size:1.1rem;padding:.9rem 1rem}.scx-bar i{display:none}.scx-bar span{display:block}}
 </style>
 <div class="scx-lights" aria-hidden="true"></div>
-<div class="scx-bar"><span>A warm and wonderful Christmas</span><i>&bull;</i><span>from Stiff Competition</span></div>
-{% render 'sc-xmas-hero' %}
 <canvas class="scx-snow" aria-hidden="true"></canvas>
 <script>
 (function(){
@@ -25,20 +18,12 @@
     for(var i=0;i<f.length;i++){var o=f[i];o.y+=o.s;o.d+=.012;o.x+=Math.sin(o.d)*.5;
       if(o.y>h+6){o.y=-6;o.x=Math.random()*w;}
       x.beginPath();x.arc(o.x,o.y,o.r,0,6.283);x.fillStyle='rgba(255,255,255,.95)';x.shadowColor='rgba(120,150,200,.8)';x.shadowBlur=4;x.fill();}
+    /* no snow over any video */
+    x.save();x.globalCompositeOperation='destination-out';x.shadowBlur=0;
+    document.querySelectorAll('video').forEach(function(v){var r=v.getBoundingClientRect();if(r.bottom>0&&r.top<h)x.fillRect(r.left-12,r.top-12,r.width+24,r.height+24);});
+    x.restore();
     requestAnimationFrame(tick);
   }
   tick();
-  /* old hero clip moves down into LATEST TRANSMISSION as its first clip */
-  try{
-    var old=document.querySelector("[id$='__hero_video'] video"),tr=document.querySelector('.ltr__track');
-    if(old&&tr){
-      var t=document.createElement('div');t.className='ltr__tile';
-      var v=document.createElement('video');v.controls=true;v.playsInline=true;v.preload='none';v.poster=old.getAttribute('poster')||'';
-      old.querySelectorAll('source').forEach(function(s){v.appendChild(s.cloneNode(true));});
-      t.appendChild(v);tr.insertBefore(t,tr.firstChild);
-      v.addEventListener('play',function(){document.querySelectorAll('.scxh__v,.ltr__tile video').forEach(function(o){if(o!==v&&!o.paused)o.pause();});});
-    }
-  }catch(e){}
-  document.querySelectorAll('.shopify-section h1.title, .shopify-section h2.title, .sc-pick h2, .sc-hd h2').forEach(function(e){e.classList.add('scx-h');});
 })();
 </script>

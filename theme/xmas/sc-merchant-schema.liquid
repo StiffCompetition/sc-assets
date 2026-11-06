@@ -44,7 +44,8 @@
   {%- endif -%}
 {%- endif -%}
 {%- comment -%} OpenSea launch strip on every page (4 Nov 2026): remove this one line to take it off. {%- endcomment -%}
+{%- comment -%} Christmas 2026 look (6 Nov 2026, draft): remove these two lines to take it off. {%- endcomment -%}
+{%- render 'sc-xmas-top' -%}
 {%- render 'sc-opensea-banner' -%}
-{%- comment -%} Christmas 2026 look (6 Nov 2026, draft): remove this one line to take it off. {%- endcomment -%}
-{%- if template.name == 'index' -%}{%- render 'sc-xmas-top' -%}{%- endif -%}
+{%- if template.name == 'index' -%}{%- render 'sc-xmas-hero' -%}{%- endif -%}
 {{ sc_out }}
