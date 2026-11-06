@@ -737,8 +737,15 @@ function missionCard(m) {
 // 15 Oct 2026 (Andy): shortcut tab with the quiz and character result page links
 const SHOP = 'https://stiffcompetition.shop/pages/';
 const PAGE_LINKS = [['The quiz: How Stiff Are You?', 'how-stiff'], ['Major Wood', 'major-wood'], ['The Rear Admiral', 'the-rear-admiral'], ['Hammerin\u2019 Hanky', 'hammerin-hanky'], ['Slick Willy', 'slick-willy'], ['The Velvet Python', 'the-velvet-python'], ['The Grip', 'the-grip']];
+// Copy texts (6 Nov 2026, Andy): texts he pastes into Claude, each with a Copy button.
+const SNIPPETS = [
+  ['Claude style: Director mode', 'Director mode. Reply in one line, results only, zero padding. Yes/no questions get "Yes" or "No". Never show research or reasoning. Finished work = "ready, publish it" + link. Only add detail if Andy asks.'],
+  ['Stiff Competition project instructions (top line)', 'Reply to Andy in one line, results only. Yes/no gets Yes or No. Research stays with you; he asks if he wants detail.']
+];
 function pagesHtml() {
-  return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px">' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>';
+  return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px">' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>'
+    + '<h2 style="margin:22px 0 8px;font-size:19px">Copy texts</h2><div style="display:flex;flex-direction:column;gap:10px;max-width:640px">'
+    + SNIPPETS.map((x, i) => '<div class="card"><div class="body"><div class="title">' + esc(x[0]) + '</div><div class="step" style="margin-top:4px">' + esc(x[1]) + '</div></div><div class="acts"><button class="btn small" data-snip="' + i + '">Copy</button></div></div>').join('') + '</div>';
 }
 
 // Migration tab (4 Nov 2026, Andy): one view of the move to OpenSea in four streams, each a mission in SC Marketing Actions.
@@ -909,7 +916,7 @@ function gpHtml() {
 function render() {
   renderTabs();
   if (view === 'Follow list') { renderFollow(); return; }
-  if (view === 'Pages') { $('list').innerHTML = pagesHtml(); return; }
+  if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
   // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
   if (view === 'Content') { $('list').innerHTML = '<iframe src="' + BASE + 'sc-dashboard" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;background:#fff"></iframe>'; return; }
   if (view === 'NFT Drops') { $('list').innerHTML = '<iframe src="https://n8n-production-afc2.up.railway.app/webhook/sc-drop-tool" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;border-radius:8px;background:#111"></iframe>'; return; }
