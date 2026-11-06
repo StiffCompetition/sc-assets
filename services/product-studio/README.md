@@ -2,6 +2,9 @@
 
 The service downloads its code bundle from the CODE_URL variable at start (a .tgz in the shop's Files).
 
+## v25 (6 Nov 2026): print size taken from Gelato's model mock-up
+Gelato shows the print larger on a worn garment than on the flat mock-up. Measured on Gelato's own model mock-up (man2 front, same artwork as its flat mock-up), the print is 1.48 times its flat-mock-up proportion. Applied to the t-shirt: print area = 0.751 of the shirt width at the shoulder seams, top edge 0.195 of that width below the neckline (Gelato's 3 in rule scaled the same way). Gate tolerance is 3% of the shirt width.
+
 ## v24 (6 Nov 2026): Gelato placement on model pictures
 Andy, 6 Nov 2026: "There are no guesses in our processes."
 

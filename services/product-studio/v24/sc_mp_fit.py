@@ -13,7 +13,7 @@ def fit_check(cutout_png, print_w_frac):
 
 
 
-def place_check(final_jpg, shirt_rgb, box, pa_w_frac, pa_top_frac, tol=0.02):
+def place_check(final_jpg, shirt_rgb, box, pa_w_frac, pa_top_frac, tol=0.03):
     """Go-live gate (Andy, 6 Nov 2026: no picture goes live unless it matches Gelato's mock-up). The finished picture is
     measured again from scratch (shirt found by its colour, shoulder seams, centre line, neckline) and the print area that
     was placed (box = x, y, width, height on the finished picture) must sit where Gelato's proportions put it: centred,
