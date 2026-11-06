@@ -47,7 +47,8 @@ def caption(im, text, size, age_frames):
     im.alpha_composite(sh.filter(ImageFilter.GaussianBlur(2)))
     ImageDraw.Draw(im).text((x, y), text, font=ff, fill=(255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0))
 
-def make(mp4, name, text=None, hit=0.0, top=None, start=0.0, end=None, hold=0.8, fps=12, size=30, boom=False):
+def make(mp4, name, text=None, hit=0.0, top=None, start=0.0, end=None, hold=0.8, fps=12, size=30, boom=False, box=None):
+    """box=(x,y,w,h): crop this region of the source before resizing to 480 (default: centred square, top at `top`)."""
     tmp = tempfile.mkdtemp()
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', str(start)] + (['-to', str(end)] if end else []) +
                    ['-i', mp4, '-vf', f'fps={fps}', f'{tmp}/r%04d.png'], check=True)
@@ -57,7 +58,7 @@ def make(mp4, name, text=None, hit=0.0, top=None, start=0.0, end=None, hold=0.8,
     for i, n in enumerate(fr):
         im = Image.open(f'{tmp}/{n}').convert('RGB'); w, h = im.size; s = min(w, h)
         t0 = top if top is not None else (h - s) // 2
-        im = im.crop(((w - s) // 2, t0, (w - s) // 2 + s, t0 + s)).resize((W, W), Image.LANCZOS).convert('RGBA')
+        im = im.crop((box[0], box[1], box[0] + box[2], box[1] + box[3]) if box else ((w - s) // 2, t0, (w - s) // 2 + s, t0 + s)).resize((W, W), Image.LANCZOS).convert('RGBA')
         t = i / fps
         if text and (t >= hit or boom):
             caption(im, text, size, int((((hit + 1) if boom else t) - hit) * fps))
