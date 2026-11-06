@@ -1,6 +1,6 @@
 <style>
-.scx-str{position:absolute;left:0;right:0;top:0;height:28px;pointer-events:none;z-index:6;overflow:hidden}
-.scx-str svg{display:block;width:100%;height:28px}
+.scx-str{position:absolute;left:0;right:0;top:0;height:32px;pointer-events:none;z-index:6;overflow:hidden}
+.scx-str svg{display:block;width:100%;height:32px}
 .scx-str .gl{animation:scxt 1.7s ease-in-out infinite alternate}
 .scx-str .bd{animation:scxb 1.7s ease-in-out infinite alternate}
 .scx-str .k1,.scx-str .k1b{animation-delay:-.4s}.scx-str .k2,.scx-str .k2b{animation-delay:-.9s}.scx-str .k3,.scx-str .k3b{animation-delay:-1.3s}.scx-str .k4,.scx-str .k4b{animation-delay:-.7s}
@@ -13,7 +13,7 @@
 (function(){
   var C=['#ff2d3d','#ffc21a','#22c55e','#2f7cff','#ff4fb0'];
   function build(host){
-    var W=host.clientWidth||window.innerWidth,m=W<750,sc=m?.8:1,span=138*sc,n=Math.ceil(W/span)+1,sag=4*sc;
+    var W=host.clientWidth||window.innerWidth,m=W<750,sc=m?.9:1.15,span=138*sc,n=Math.ceil(W/span)+1,sag=4*sc;
     var d='<defs>';
     C.forEach(function(c,i){
       d+='<radialGradient id="scxg'+i+'"><stop offset="0" stop-color="'+c+'" stop-opacity=".9"/><stop offset=".45" stop-color="'+c+'" stop-opacity=".35"/><stop offset="1" stop-color="'+c+'" stop-opacity="0"/></radialGradient>';
@@ -33,10 +33,10 @@
          +'<ellipse cx="-1.6" cy="8" rx=".9" ry="2.6" fill="#fff" opacity=".85"/></g>';
       });
     }
-    host.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' 28" width="'+W+'" height="28" preserveAspectRatio="xMinYMin slice">'+d+'<path d="'+wire+'" fill="none" stroke="#14301b" stroke-width="1.7"/><path d="'+wire+'" fill="none" stroke="#2f6a3d" stroke-width=".6" opacity=".7"/>'+b+'</svg>';
+    host.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' 32" width="'+W+'" height="32" preserveAspectRatio="xMinYMin slice">'+d+'<path d="'+wire+'" fill="none" stroke="#14301b" stroke-width="1.7"/><path d="'+wire+'" fill="none" stroke="#2f6a3d" stroke-width=".6" opacity=".7"/>'+b+'</svg>';
   }
   function go(){
-    var sec=document.querySelector('.shopify-section-group-header-group')||(document.querySelector('header')||{}).parentElement;
+    var hd=document.querySelector('header'),sec=hd&&hd.closest('.shopify-section');
     if(!sec||document.querySelector('.scx-str'))return;
     var h=document.createElement('div');h.className='scx-str';h.setAttribute('aria-hidden','true');sec.appendChild(h);build(h);
     var t;window.addEventListener('resize',function(){clearTimeout(t);t=setTimeout(function(){build(h)},150)});
