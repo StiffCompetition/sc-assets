@@ -11,6 +11,7 @@ MONT = HERE + '/fonts/montserrat-800.woff'; INTER = HERE + '/fonts/inter-800.wof
 BAND = HERE + '/sc_outline_band.png'
 W = 480
 GX0, GX1, GTOP, GBASE = 25, 94, 451, 466      # WhatsApp GIPHY stamp: left, right, cap top, baseline
+HANDLE_BOTTOM = 469                           # lowest pixel of the @STIFFCOMP letters (the @ and P dip below the baseline)
 TIME_X = 370                                  # WhatsApp time/tick start (keep clear)
 COL, ALPHA = (255, 250, 235), 166             # GIPHY stamp colour and ~65% opacity, measured from WhatsApp
 S = 4                                         # supersample for smooth corners
@@ -20,7 +21,7 @@ def overlay(mode):
     band = np.array(Image.open(BAND)) > 0
     tw = (GX1 - GX0) * S; pad = 4 * S; lw = tw - 2 * pad
     lh = round(band.shape[0] * lw / band.shape[1]); th = lh + 2 * pad     # box exactly as wide as the word GIPHY
-    bottom = (GBASE if mode == 'page' else GTOP - 7) * S
+    bottom = (HANDLE_BOTTOM if mode == 'page' else GTOP - 7) * S   # page: box bottom = bottom of the @STIFFCOMP letters (Andy, 6 Nov 2026)
     y0, x0 = bottom - th, GX0 * S
     L = Image.new('RGBA', (W * S, W * S), (0, 0, 0, 0))
     tile = Image.new('L', L.size, 0)
