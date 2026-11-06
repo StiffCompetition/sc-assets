@@ -509,6 +509,7 @@ function tabCount(v) {
   if (v === 'Engage') return eg ? (eg.cards || []).filter(c => c.status === 'draft').length || '' : '';
   if (v === 'Migration') return migKids().filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length || '';
   if (v === 'Journal') return jr.loaded && jr.book ? (jr.book.changed || '') : '';
+  if (v === 'Returns') return rt.loaded ? (retOpen().length || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
@@ -523,7 +524,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', 'Content', 'Migration', 'Engage', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', 'Content', 'Migration', 'Engage', ...CATEGORIES, 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -921,6 +922,7 @@ function render() {
   if (view === 'Content') { $('list').innerHTML = '<iframe src="' + BASE + 'sc-dashboard" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;background:#fff"></iframe>'; return; }
   if (view === 'NFT Drops') { $('list').innerHTML = '<iframe src="https://n8n-production-afc2.up.railway.app/webhook/sc-drop-tool" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;border-radius:8px;background:#111"></iframe>'; return; }
   if (view === 'Products') { renderProducts(); return; }
+  if (view === 'Returns') { renderReturns(); return; }
   if (view === 'Pricing') { renderPricing(); return; }
   if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Engage') { renderEngage(); return; }
@@ -2404,6 +2406,102 @@ function wireDesigns() {
 
 load();
 loadTrack();
+
+// ===== Returns tab (6 Nov 2026, Andy): every sales outlet, one row per case, one next step =====
+// Data: n8n data table SC Returns, through SC - Returns API (list/save). eBay cases arrive by SC - eBay Returns Sync; other outlets are added with the Add case form.
+const RET_LIST = BASE + 'sc-returns-list', RET_SAVE = BASE + 'sc-returns-save';
+const rt = { loaded: false, loading: false, rows: [], err: '', form: false, busy: false };
+const RET_OUTLETS = ['Shopify shop', 'eBay UK', 'Amazon UK', 'Etsy UK', 'TikTok Shop', 'TeePublic'];
+const RET_GELATO = 'Then file the Gelato claim: open the order on Gelato, press Report a problem, add the photos (item and packaging, taken outside the packaging) and the description. Do it within 30 days of delivery.';
+// Per outlet and case type: days to answer, the link where the case is handled, and the exact steps.
+const RET_RULES = {
+  'Shopify shop': { link: 'https://admin.shopify.com/store/t4ry91-a0/orders', days: { damaged: 14, change_of_mind: 14 },
+    damaged: 'Email the customer: ask for 2-3 photos (item, packaging, close-up of the fault). When the photos show it is faulty, refund the order in Shopify or send a replacement; the customer keeps the item and pays nothing. ' + RET_GELATO,
+    change_of_mind: 'Email the customer the return address: Stiff Competition Product Returns, 20 Wenlock Road, London N1 7GU. When the parcel arrives, refund the order in Shopify within 14 days, then send the item to charity.' },
+  'eBay UK': { link: 'https://www.ebay.co.uk/sh/ord/returns', days: { damaged: 3, change_of_mind: 14 },
+    damaged: 'Open the case on eBay. Message the buyer: ask for 2-3 photos (item, packaging, close-up of the fault). When the photos show it is faulty, send the eBay prepaid return label (we pay) or choose full refund, buyer keeps the item. Answer within 3 business days. Refund on eBay. ' + RET_GELATO,
+    change_of_mind: 'Open the case on eBay. The buyer posts it to 20 Wenlock Road and pays the postage. Refund on eBay within 14 days of the item arriving, then send it to charity.' },
+  'Amazon UK': { link: 'https://sellercentral.amazon.co.uk/orders-v3/returns', days: { damaged: 2, change_of_mind: 2 },
+    damaged: 'Seller Central > Manage Returns. Ask the buyer for 2-3 photos. When they show it is faulty, authorise the return or give a full refund with no return. Refund within 2 days of the return arriving. An unanswered in-policy return becomes an A-to-z claim against us. ' + RET_GELATO,
+    change_of_mind: 'Seller Central > Manage Returns. Authorise the return to our UK address (20 Wenlock Road). Refund within 2 days of receiving it, then send the item to charity.' },
+  'Etsy UK': { link: 'https://www.etsy.com/your/orders/sold', days: { damaged: 14, change_of_mind: 14 },
+    damaged: 'Open the case in Etsy. Ask the buyer for 2-3 photos. When they show it is faulty, refund in Etsy; the buyer keeps the item. Etsy Purchase Protection covers only our first damaged case each calendar year. ' + RET_GELATO,
+    change_of_mind: 'Follow our Etsy return policy: buyer posts it to 20 Wenlock Road. Refund in Etsy when it arrives, then send the item to charity.' },
+  'TikTok Shop': { link: 'https://seller-uk.tiktok.com', days: { damaged: 2, change_of_mind: 2 },
+    damaged: 'TikTok Seller Center > Orders > Manage Returns > Awaiting Your Action. Ask for photos, confirm faulty, approve the refund within 2 days. ' + RET_GELATO,
+    change_of_mind: 'TikTok Seller Center > Orders > Manage Returns > Awaiting Your Action. Approve the return to 20 Wenlock Road and refund within 2 days of receiving it, then send the item to charity.' },
+  'TeePublic': { link: 'https://www.teepublic.com', days: { damaged: 0, change_of_mind: 0 }, noAction: true,
+    damaged: 'No action: TeePublic sells the shirt and handles the customer, return and refund itself.',
+    change_of_mind: 'No action: TeePublic sells the shirt and handles the customer, return and refund itself.' }
+};
+async function loadReturns(quiet) {
+  if (rt.loading) return; rt.loading = true;
+  try {
+    const r = await fetch(RET_LIST + '?t=' + Date.now()); if (!r.ok) throw new Error('HTTP ' + r.status);
+    rt.rows = await r.json(); rt.err = ''; rt.loaded = true;
+  } catch (e) { rt.err = e.message; }
+  rt.loading = false;
+  if (view === 'Returns') renderReturns(); else renderTabs();
+}
+function retOpen() { return rt.rows.filter(x => x.status !== 'Done' && x.status !== 'No action'); }
+function retDays(d) { if (!d) return null; const a = new Date(d + 'T00:00:00'), b = new Date(today() + 'T00:00:00'); return Math.round((a - b) / 86400000); }
+function retDue(d) {
+  const n = retDays(d); if (n === null) return '<span class="sub">no deadline</span>';
+  const col = n < 0 ? '#c0392b' : n <= 2 ? '#e49b0f' : '#2e9e5b';
+  return '<b style="color:' + col + '">' + (n < 0 ? Math.abs(n) + ' day' + (Math.abs(n) === 1 ? '' : 's') + ' overdue' : n === 0 ? 'due today' : n + ' day' + (n === 1 ? '' : 's') + ' left') + '</b> <span class="sub">(' + esc(d) + ')</span>';
+}
+async function retSave(body) {
+  rt.busy = true;
+  try {
+    const r = await fetch(RET_SAVE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json(); if (!j.ok) throw new Error(j.error || 'not saved');
+    rt.busy = false; rt.loading = false; await loadReturns(true); return true;
+  } catch (e) { rt.busy = false; toast('Not saved: ' + e.message); return false; }
+}
+function retCard(c) {
+  const dmg = c.case_type === 'damaged';
+  const chip = (t, bg) => '<span style="display:inline-block;padding:1px 8px;margin-right:6px;font-size:12px;color:#fff;background:' + bg + '">' + esc(t) + '</span>';
+  return '<div class="pbox"><div style="margin-bottom:4px">' + chip(c.outlet, '#2f6fed') + chip(dmg ? 'Damaged or faulty' : 'Change of mind', dmg ? '#c0392b' : '#8a8f98') + '<span class="sub">' + esc(c.order_ref ? 'Order ' + c.order_ref : '') + (c.customer ? ' · ' + esc(c.customer) : '') + '</span></div>'
+    + (c.item ? '<div><b>' + esc(c.item) + '</b></div>' : '')
+    + '<div style="margin:4px 0">Deadline: ' + retDue(c.deadline) + '</div>'
+    + '<div style="margin:6px 0;white-space:pre-wrap">' + esc(c.next_step || '') + '</div>'
+    + (c.notes ? '<div class="sub" style="margin-bottom:6px">' + esc(c.notes) + '</div>' : '')
+    + '<div class="prow">' + (c.next_link ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(c.next_link) + '">Open ' + esc(c.outlet) + '</a> ' : '')
+    + '<button class="btn small ghost" data-retdone="' + c.id + '">Done</button></div></div>';
+}
+function renderReturns() {
+  if (rt.err) { $('list').innerHTML = '<div class="error-state">Could not load returns (' + esc(rt.err) + '). Check the workflow SC - Returns API (list) is active. <button class="btn" id="rt_retry">Try again</button></div>'; $('rt_retry').onclick = () => { rt.err = ''; rt.loading = false; loadReturns(); }; return; }
+  if (!rt.loaded) { $('list').innerHTML = '<div class="empty">Loading returns…</div>'; loadReturns(); return; }
+  const open = retOpen().sort((a, b) => (a.deadline || '9999').localeCompare(b.deadline || '9999'));
+  const done = rt.rows.filter(x => x.status === 'Done' || x.status === 'No action').sort((a, b) => (b.closed_on || '').localeCompare(a.closed_on || '')).slice(0, 10);
+  let h = '<div class="pbox"><button class="btn" id="rt_add">Add a return or damage case</button> <span class="sub">eBay UK cases arrive here by themselves every 30 minutes. Add cases from the other outlets here.</span></div>';
+  if (rt.form) {
+    h += '<div class="pbox"><h3>New case</h3><div class="prow"><select id="rf_o">' + RET_OUTLETS.map(o => '<option>' + o + '</option>').join('') + '</select> '
+      + '<select id="rf_t"><option value="damaged">Damaged or faulty</option><option value="change_of_mind">Change of mind</option></select></div>'
+      + '<div class="prow" style="margin-top:6px"><input id="rf_n" placeholder="Order number" style="padding:6px"> <input id="rf_c" placeholder="Customer name" style="padding:6px"> <input id="rf_i" placeholder="Item" style="padding:6px"></div>'
+      + '<div class="prow" style="margin-top:6px"><label class="sub">Date the case arrived <input type="date" id="rf_d" value="' + today() + '"></label></div>'
+      + '<div class="prow" style="margin-top:6px"><button class="btn" id="rf_go">Save case</button> <button class="btn ghost" id="rf_x">Cancel</button></div></div>';
+  }
+  h += open.length ? open.map(retCard).join('') : '<div class="empty">No open return or damage cases.</div>';
+  if (done.length) h += '<div class="pbox"><h3>Closed</h3>' + done.map(c => '<div class="sub">' + esc(c.outlet) + ' · ' + esc(c.order_ref || '') + ' · ' + esc(c.item || '') + ' · ' + esc(c.status) + ' ' + esc(c.closed_on || '') + '</div>').join('') + '</div>';
+  $('list').innerHTML = h;
+  $('rt_add').onclick = () => { rt.form = !rt.form; renderReturns(); };
+  if ($('rf_x')) $('rf_x').onclick = () => { rt.form = false; renderReturns(); };
+  if ($('rf_go')) $('rf_go').onclick = async () => {
+    const o = $('rf_o').value, t = $('rf_t').value, rule = RET_RULES[o], opened = $('rf_d').value || today();
+    const dl = new Date(opened + 'T00:00:00'); dl.setDate(dl.getDate() + rule.days[t]);
+    const dls = dl.getFullYear() + '-' + String(dl.getMonth() + 1).padStart(2, '0') + '-' + String(dl.getDate()).padStart(2, '0');
+    const ok = await retSave({ outlet: o, order_ref: $('rf_n').value.trim(), customer: $('rf_c').value.trim(), item: $('rf_i').value.trim(), case_type: t, status: rule.noAction ? 'No action' : 'New',
+      deadline: rule.noAction ? '' : dls, next_step: rule[t], next_link: rule.link, source: 'dashboard', opened_on: opened, closed_on: rule.noAction ? today() : '' });
+    if (ok) { rt.form = false; toast('Saved'); renderReturns(); }
+  };
+  $('list').querySelectorAll('[data-retdone]').forEach(b => b.onclick = async () => {
+    const c = rt.rows.find(x => String(x.id) === b.dataset.retdone); if (!c) return;
+    if (await retSave({ ...c, status: 'Done', closed_on: today() })) toast('Closed');
+  });
+}
+
+setTimeout(() => loadReturns(true), 1500); setInterval(() => { if (!document.hidden) { rt.loading = false; loadReturns(true); } }, 120000);
 
 // ===== Pricing tab (18 Oct 2026, Andy): cost, price and profit for every product in every market =====
 // Data: n8n data table SC Pricing Matrix (inputs only: price, Gelato cost, Gelato shipping, FX, PayPal, code).
