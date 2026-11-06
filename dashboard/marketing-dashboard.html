@@ -2528,32 +2528,44 @@ function wireDesigns() {
 load();
 loadTrack();
 
-// ===== Returns tab (6 Nov 2026, Andy): every sales outlet, one row per case, one next step =====
-// Data: n8n data table SC Returns, through SC - Returns API (list/save). eBay cases arrive by SC - eBay Returns Sync; other outlets are added with the Add case form.
+// ===== Returns tab (6 Nov 2026, Andy): every sales outlet, one row per case, one step at a time =====
+// Data: n8n data table SC Returns, through SC - Returns API (list/save). eBay UK cases arrive by SC - eBay Returns Sync; other outlets are added with the Add case form.
+// Faulty or damaged (decided 6 Nov 2026): customer emails photos, we check them, we claim with Gelato, the customer keeps the item and is refunded or sent a replacement.
+// If the customer wants to send it back instead, we pay a prepaid label (UK law). Change of mind: the customer pays the postage.
 const RET_LIST = BASE + 'sc-returns-list', RET_SAVE = BASE + 'sc-returns-save';
 const rt = { loaded: false, loading: false, rows: [], err: '', form: false, busy: false };
-const RET_OUTLETS = ['Shopify shop', 'eBay UK', 'Amazon UK', 'Etsy UK', 'TikTok Shop', 'TeePublic'];
-const RET_GELATO = 'Then file the Gelato claim: open the order on Gelato, press Report a problem, add the photos (item and packaging, taken outside the packaging) and the description. Do it within 30 days of delivery.';
-// Per outlet and case type: days to answer, the link where the case is handled, and the exact steps.
-const RET_RULES = {
-  'Shopify shop': { link: 'https://admin.shopify.com/store/t4ry91-a0/orders', days: { damaged: 14, change_of_mind: 14 },
-    damaged: 'Email the customer: ask for 2-3 photos (item, packaging, close-up of the fault). When the photos show it is faulty, email the customer a prepaid return label (we pay) to 20 Wenlock Road. The item always comes back. When it arrives, refund the order in Shopify or send a replacement. ' + RET_GELATO,
-    change_of_mind: 'Email the customer the return address: Stiff Competition Product Returns, 20 Wenlock Road, London N1 7GU. When the parcel arrives, refund the order in Shopify within 14 days, then send the item to charity.' },
-  'eBay UK': { link: 'https://www.ebay.co.uk/sh/ord/returns', days: { damaged: 3, change_of_mind: 14 },
-    damaged: 'Open the case on eBay. Message the buyer: ask for 2-3 photos (item, packaging, close-up of the fault). When the photos show it is faulty, send the eBay prepaid return label (we pay). The item always comes back; never choose refund with the buyer keeping the item. Answer within 3 business days. Refund on eBay when the item arrives. ' + RET_GELATO,
-    change_of_mind: 'Open the case on eBay. The buyer posts it to 20 Wenlock Road and pays the postage. Refund on eBay within 14 days of the item arriving, then send it to charity.' },
-  'Amazon UK': { link: 'https://sellercentral.amazon.co.uk/orders-v3/returns', days: { damaged: 2, change_of_mind: 2 },
-    damaged: 'Seller Central > Manage Returns. Ask the buyer for 2-3 photos. When they show it is faulty, authorise the return with a prepaid label (we pay). The item always comes back. Refund within 2 days of the return arriving. An unanswered in-policy return becomes an A-to-z claim against us. ' + RET_GELATO,
-    change_of_mind: 'Seller Central > Manage Returns. Authorise the return to our UK address (20 Wenlock Road). Refund within 2 days of receiving it, then send the item to charity.' },
-  'Etsy UK': { link: 'https://www.etsy.com/your/orders/sold', days: { damaged: 14, change_of_mind: 14 },
-    damaged: 'Open the case in Etsy. Ask the buyer for 2-3 photos. When they show it is faulty, send a prepaid return label (we pay). The item always comes back; refund in Etsy when it arrives. Etsy Purchase Protection covers only our first damaged case each calendar year. ' + RET_GELATO,
-    change_of_mind: 'Follow our Etsy return policy: buyer posts it to 20 Wenlock Road. Refund in Etsy when it arrives, then send the item to charity.' },
-  'TikTok Shop': { link: 'https://seller-uk.tiktok.com', days: { damaged: 2, change_of_mind: 2 },
-    damaged: 'TikTok Seller Center > Orders > Manage Returns > Awaiting Your Action. Ask for photos, confirm faulty, approve the return with a prepaid label (we pay). The item always comes back; approve the refund within 2 days of it arriving. ' + RET_GELATO,
-    change_of_mind: 'TikTok Seller Center > Orders > Manage Returns > Awaiting Your Action. Approve the return to 20 Wenlock Road and refund within 2 days of receiving it, then send the item to charity.' },
-  'TeePublic': { link: 'https://www.teepublic.com', days: { damaged: 0, change_of_mind: 0 }, noAction: true,
-    damaged: 'No action: TeePublic sells the shirt and handles the customer, return and refund itself.',
-    change_of_mind: 'No action: TeePublic sells the shirt and handles the customer, return and refund itself.' }
+const RET_GELATO_LINK = 'https://dashboard.gelato.com/orders';
+const RET_OUT = {
+  'Shopify shop': { link: 'https://admin.shopify.com/store/t4ry91-a0/orders', days: { damaged: 14, change_of_mind: 14 }, contact: 'Email the customer.', refund: 'In Shopify open the order and press Refund (or create a replacement order).' },
+  'eBay UK': { link: 'https://www.ebay.co.uk/sh/ord/returns', days: { damaged: 3, change_of_mind: 14 }, contact: 'Send it as a message inside the eBay case (answer within 3 business days of the case opening).', refund: 'In the eBay case choose Give a full refund, buyer keeps the item.' },
+  'Amazon UK': { link: 'https://sellercentral.amazon.co.uk/orders-v3/returns', days: { damaged: 2, change_of_mind: 2 }, contact: 'Message the buyer in Seller Central > Manage Returns.', refund: 'In Seller Central > Manage Returns give a full refund with no return. An unanswered case becomes an A-to-z claim against us.' },
+  'Etsy UK': { link: 'https://www.etsy.com/your/orders/sold', days: { damaged: 14, change_of_mind: 14 }, contact: 'Message the buyer in the Etsy case.', refund: 'Refund the order in Etsy. Etsy Purchase Protection covers a damaged item only for our first case each calendar year.' },
+  'TikTok Shop': { link: 'https://seller-uk.tiktok.com', days: { damaged: 2, change_of_mind: 2 }, contact: 'TikTok Seller Center > Orders > Manage Returns > Awaiting Your Action. Message the buyer there.', refund: 'Approve the refund in Seller Center within 2 days of deciding.' },
+  'TeePublic': { link: 'https://www.teepublic.com', days: { damaged: 0, change_of_mind: 0 }, noAction: true, contact: '', refund: '' }
+};
+const RET_OUTLETS = Object.keys(RET_OUT);
+const RET_CHECK = 'Check the photos: 1) they clearly show the fault; 2) it is a print, manufacturing or shipping fault, not wear, washing or misuse; 3) the item is not altered; 4) the order was delivered within the last 30 days (Gelato\'s limit); 5) not a repeat pattern from this customer. If any check fails, ask for better photos once.';
+function retEmail(c) {
+  return 'Hi ' + (c.customer || 'there') + ',\n\nSorry your order ' + (c.order_ref || '') + ' arrived with a problem. To put it right, please reply with 2 or 3 clear photos:\n1. The whole item on a plain surface in daylight.\n2. A close-up of the fault.\n3. The outer packaging and the shipping label (this shows any damage in transit).\n\nAlso tell us in one line what is wrong. Once we have checked the photos we will refund you or send a replacement, and you can keep the item: nothing to post back.\n\nThanks,\nStiff Competition';
+}
+function retRetEmail(c) {
+  return 'Hi ' + (c.customer || 'there') + ',\n\nThanks for letting us know about order ' + (c.order_ref || '') + '. To return it, please post it to:\n\nStiff Competition Product Returns\n20 Wenlock Road\nLondon N1 7GU\n\nReturn postage is paid by you. Please keep your proof of posting. We will refund you within 14 days of the parcel arriving.\n\nThanks,\nStiff Competition';
+}
+// Stages per case type. Each stage is looked up by the case status; any unknown status counts as the first stage.
+const RET_FLOW = {
+  damaged: [
+    { s: 'New', title: 'Ask for photos', text: o => o.contact + ' Copy the email below and send it. It tells the customer exactly which photos we need.', email: retEmail, next: 'Photos requested', btn: 'Photo request sent' },
+    { s: 'Photos requested', title: 'Wait for the photos', text: () => 'The customer replies with 2-3 photos. When they arrive, press the button. No photos after 5 days: remind them once, then close the case.', next: 'Photos received', btn: 'Photos received', alt: [{ btn: 'No reply: close', next: 'Done' }] },
+    { s: 'Photos received', title: 'Check the photos', text: () => RET_CHECK, next: 'Verified', btn: 'Faulty: confirmed', alt: [{ btn: 'Not faulty: close', next: 'Done' }] },
+    { s: 'Verified', title: 'File the Gelato claim', text: () => 'Open the order on Gelato and press Report a problem. Add the photos (item and packaging) and one line on the fault. Claim within 30 days of delivery. Gelato sends a free replacement, or a refund if a replacement is not possible.', link: RET_GELATO_LINK, linkText: 'Open Gelato orders', next: 'Claim filed', btn: 'Gelato claim filed', alt: [{ btn: 'Customer wants to send it back', next: 'Awaiting item' }] },
+    { s: 'Claim filed', title: 'Refund or replace the customer', text: o => 'The customer keeps the item. ' + o.refund + ' Or send them the free Gelato replacement.', next: 'Done', btn: 'Customer sorted: close', alt: [{ btn: 'Customer wants to send it back', next: 'Awaiting item' }] },
+    { s: 'Awaiting item', title: 'Customer returns it: we pay', text: () => 'UK law: we pay return postage on faulty items. Send the customer a prepaid return label (eBay: the eBay label). Return address: 20 Wenlock Road, London N1 7GU. When it arrives, refund, then send the item to charity.', next: 'Done', btn: 'Item arrived and refunded: close' }
+  ],
+  change_of_mind: [
+    { s: 'New', title: 'Send return instructions', text: o => o.contact + ' Copy the email below and send it. The customer pays the postage.', email: retRetEmail, next: 'Awaiting item', btn: 'Instructions sent' },
+    { s: 'Awaiting item', title: 'Wait for the parcel', text: () => 'The parcel arrives at 20 Wenlock Road. Press the button when it does. Nothing after the deadline: close the case.', next: 'Item arrived', btn: 'Item arrived', alt: [{ btn: 'Never sent: close', next: 'Done' }] },
+    { s: 'Item arrived', title: 'Refund, then charity', text: o => o.refund + ' Refund within the deadline shown (14 days; Amazon 2 days). Then send the item to charity.', next: 'Done', btn: 'Refunded: close' }
+  ]
 };
 async function loadReturns(quiet) {
   if (rt.loading) return; rt.loading = true;
@@ -2579,16 +2591,28 @@ async function retSave(body) {
     rt.busy = false; rt.loading = false; await loadReturns(true); return true;
   } catch (e) { rt.busy = false; toast('Not saved: ' + e.message); return false; }
 }
+function retStage(c) {
+  const flow = RET_FLOW[c.case_type === 'change_of_mind' ? 'change_of_mind' : 'damaged'];
+  let i = flow.findIndex(x => x.s === c.status); if (i < 0) i = 0;
+  return { flow, i, st: flow[i] };
+}
 function retCard(c) {
-  const dmg = c.case_type === 'damaged';
+  const dmg = c.case_type !== 'change_of_mind', o = RET_OUT[c.outlet] || RET_OUT['Shopify shop'];
+  const { flow, i, st } = retStage(c);
   const chip = (t, bg) => '<span style="display:inline-block;padding:1px 8px;margin-right:6px;font-size:12px;color:#fff;background:' + bg + '">' + esc(t) + '</span>';
+  const id = c.id;
   return '<div class="pbox"><div style="margin-bottom:4px">' + chip(c.outlet, '#2f6fed') + chip(dmg ? 'Damaged or faulty' : 'Change of mind', dmg ? '#c0392b' : '#8a8f98') + '<span class="sub">' + esc(c.order_ref ? 'Order ' + c.order_ref : '') + (c.customer ? ' · ' + esc(c.customer) : '') + '</span></div>'
     + (c.item ? '<div><b>' + esc(c.item) + '</b></div>' : '')
     + '<div style="margin:4px 0">Deadline: ' + retDue(c.deadline) + '</div>'
-    + '<div style="margin:6px 0;white-space:pre-wrap">' + esc(c.next_step || '') + '</div>'
-    + (c.notes ? '<div class="sub" style="margin-bottom:6px">' + esc(c.notes) + '</div>' : '')
-    + '<div class="prow">' + (c.next_link ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(c.next_link) + '">Open ' + esc(c.outlet) + '</a> ' : '')
-    + '<button class="btn small ghost" data-retdone="' + c.id + '">Done</button></div></div>';
+    + '<div style="margin:8px 0 2px"><span class="sub">Step ' + (i + 1) + ' of ' + flow.length + '</span><br><b>' + esc(st.title) + '</b></div>'
+    + '<div style="margin:2px 0 6px">' + esc(st.text(o)) + '</div>'
+    + (st.email ? '<pre style="white-space:pre-wrap;background:#f4f4f4;border:1px solid var(--line);padding:8px;font-family:inherit;font-size:14px;margin:6px 0">' + esc(st.email(c)) + '</pre><button class="btn small ghost" data-retcopy="' + id + '">Copy email</button> ' : '')
+    + (c.notes ? '<div class="sub" style="margin:6px 0">' + esc(c.notes) + '</div>' : '')
+    + '<div class="prow" style="margin-top:6px">' + (st.link ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(st.link) + '">' + esc(st.linkText) + '</a> ' : '')
+    + '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(c.next_link || o.link) + '">Open ' + esc(c.outlet) + '</a> '
+    + '<button class="btn small" data-retnext="' + id + '" data-st="' + esc(st.next) + '">' + esc(st.btn) + '</button> '
+    + (st.alt || []).map((a, k) => '<button class="btn small ghost" data-retnext="' + id + '" data-st="' + esc(a.next) + '">' + esc(a.btn) + '</button>').join(' ')
+    + '</div></div>';
 }
 function renderReturns() {
   if (rt.err) { $('list').innerHTML = '<div class="error-state">Could not load returns (' + esc(rt.err) + '). Check the workflow SC - Returns API (list) is active. <button class="btn" id="rt_retry">Try again</button></div>'; $('rt_retry').onclick = () => { rt.err = ''; rt.loading = false; loadReturns(); }; return; }
@@ -2609,19 +2633,23 @@ function renderReturns() {
   $('rt_add').onclick = () => { rt.form = !rt.form; renderReturns(); };
   if ($('rf_x')) $('rf_x').onclick = () => { rt.form = false; renderReturns(); };
   if ($('rf_go')) $('rf_go').onclick = async () => {
-    const o = $('rf_o').value, t = $('rf_t').value, rule = RET_RULES[o], opened = $('rf_d').value || today();
+    const o = $('rf_o').value, t = $('rf_t').value, rule = RET_OUT[o], opened = $('rf_d').value || today();
     const dl = new Date(opened + 'T00:00:00'); dl.setDate(dl.getDate() + rule.days[t]);
     const dls = dl.getFullYear() + '-' + String(dl.getMonth() + 1).padStart(2, '0') + '-' + String(dl.getDate()).padStart(2, '0');
     const ok = await retSave({ outlet: o, order_ref: $('rf_n').value.trim(), customer: $('rf_c').value.trim(), item: $('rf_i').value.trim(), case_type: t, status: rule.noAction ? 'No action' : 'New',
-      deadline: rule.noAction ? '' : dls, next_step: rule[t], next_link: rule.link, source: 'dashboard', opened_on: opened, closed_on: rule.noAction ? today() : '' });
+      deadline: rule.noAction ? '' : dls, next_step: '', next_link: rule.link, notes: rule.noAction ? 'TeePublic handles the customer, return and refund itself.' : '', source: 'dashboard', opened_on: opened, closed_on: rule.noAction ? today() : '' });
     if (ok) { rt.form = false; toast('Saved'); renderReturns(); }
   };
-  $('list').querySelectorAll('[data-retdone]').forEach(b => b.onclick = async () => {
-    const c = rt.rows.find(x => String(x.id) === b.dataset.retdone); if (!c) return;
-    if (await retSave({ ...c, status: 'Done', closed_on: today() })) toast('Closed');
+  $('list').querySelectorAll('[data-retcopy]').forEach(b => b.onclick = () => {
+    const c = rt.rows.find(x => String(x.id) === b.dataset.retcopy); if (!c) return;
+    copyText(retStage(c).st.email(c), 'Email copied');
+  });
+  $('list').querySelectorAll('[data-retnext]').forEach(b => b.onclick = async () => {
+    const c = rt.rows.find(x => String(x.id) === b.dataset.retnext); if (!c) return;
+    const nx = b.dataset.st;
+    if (await retSave({ ...c, status: nx, closed_on: nx === 'Done' ? today() : (c.closed_on || '') })) toast(nx === 'Done' ? 'Closed' : 'Saved');
   });
 }
-
 setTimeout(() => loadReturns(true), 1500); setInterval(() => { if (!document.hidden) { rt.loading = false; loadReturns(true); } }, 120000);
 
 // ===== Pricing tab (18 Oct 2026, Andy): cost, price and profit for every product in every market =====
