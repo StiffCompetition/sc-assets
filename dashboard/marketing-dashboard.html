@@ -660,19 +660,21 @@ function cleanupUrl(list) {
   const sys = cleanupRow();
   const q = 'Alert clean-up for Andy\'s SC dashboard. Reply to Andy in one line per point, results only, no research shown.'
     + (sys ? ' First save this chat\'s link: call read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink) with id ' + sys.id + ' and that link; also save it on every alert row below whose chat_link is empty.' : '')
-    + ' Read the SC Master Manual first. Open alerts (rows in the n8n data table SC Marketing Actions): '
+    + ' Read the SC Master Manual first.'
+    + ' Step 1, fresh email check: run the n8n workflow SC - Inbox Watch now (execute_workflow, executionMode production, triggerNodeName "Daily 05:30 London"), wait until it finishes, then re-read every open ALERT row in the n8n data table SC Marketing Actions (new emails may have added alerts) and every task whose notes it moved on today (notes contain "Email ' + new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }) + '").'
+    + ' Alerts open when Andy pressed the button: '
     + list.map(r => '#' + r.id + ' ' + r.title).join('; ') + '.'
+    + ' Tasks moved on by email: if owner Claude, carry the work on as far as it can go without spend; if owner Andy, make sure next_step is his one question.'
     + ' For each one: read the row, the failed run or email, and decide noise or needs attention.'
     + ' Noise (build or one-off workflows, tests, duplicates, already fixed): fix the root cause at its source so it cannot come back (for example tag the workflow build, archive a finished one-off, fix the failing step), then close the row with SC - Marketing Actions API (save): whole row, status Done, next_step none, done_on today, notes Problem / Proposed solution / Notes with the cause and the fix; add a comment and complete its Todoist task.'
     + ' Needs attention: keep it open with a clear Problem line; if it is Andy\'s, owner Andy, next_step = his exact action, and link = the exact page where he does it.'
     + ' Andy pressing this button is his yes to fix root causes. Still ask him first before any spend, key or password change, or publishing live content. Never touch workflows tagged build. Never delete: rename to start with DELETE ME.'
-    + ' End with an executive summary: Closed (number), Root causes fixed (one line each), Needs you (one line each with link).';
+    + ' End with an executive summary: New emails (number), Closed (number), Root causes fixed (one line each), Tasks moved on by email (one line each), Needs you (one line each with link).';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
 function cleanupBar(list) {
-  if (!list.length) return '';
   const sys = cleanupRow(), last = sys && safeUrl(sys.chat_link);
-  return '<div class="cleanbar"><a class="btn" target="_blank" rel="noopener" href="' + esc(cleanupUrl(list)) + '">Clean up all alerts (' + list.length + ')</a>'
+  return '<div class="cleanbar"><a class="btn" target="_blank" rel="noopener" href="' + esc(cleanupUrl(list)) + '">Check email and clean up alerts (' + list.length + ')</a>'
     + (last ? '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(last) + '">Open last clean-up chat</a>' : '') + '</div>';
 }
 // In use line (6 Nov 2026, Andy): what one chat at a time may use (browser, Shopify theme, shared files), and which chat holds it. From SC - File Lock (list).
