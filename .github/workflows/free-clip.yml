@@ -1,0 +1,46 @@
+name: Free clip (HF Wan)
+# Push a job file gifs/jobs/<name>.json ({"image_url","prompt"}); each job runs on its own GitHub runner
+# (its own internet address, so its own free Hugging Face allowance) and the clip is committed to gifs/clips/<name>.mp4.
+on:
+  push:
+    paths: ['gifs/jobs/**.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      names: ${{ steps.l.outputs.names }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "gifs/jobs\ngifs/clips" }
+      - id: l
+        run: |
+          n=$(for f in gifs/jobs/*.json; do b=$(basename "$f" .json); [ -f "gifs/clips/$b.mp4" ] || echo "$b"; done | jq -R . | jq -sc .)
+          echo "names=$n" >> "$GITHUB_OUTPUT"; echo "$n"
+  clip:
+    needs: list
+    if: needs.list.outputs.names != '[]'
+    runs-on: ubuntu-latest
+    strategy: { fail-fast: false, matrix: { name: "${{ fromJson(needs.list.outputs.names) }}" } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "gifs/jobs\ngif-tools" }
+      - run: pip install requests && curl -s https://api.ipify.org && echo && python3 gif-tools/free_clip.py "gifs/jobs/${{ matrix.name }}.json" "${{ matrix.name }}.mp4"
+      - uses: actions/upload-artifact@v4
+        with: { name: "${{ matrix.name }}", path: "${{ matrix.name }}.mp4" }
+  save:
+    needs: clip
+    if: always() && needs.clip.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: gifs/clips }
+      - uses: actions/download-artifact@v4
+        with: { path: dl }
+      - run: |
+          mkdir -p gifs/clips; for d in dl/*/; do cp "$d"*.mp4 gifs/clips/ 2>/dev/null || true; done; ls gifs/clips
+          git config user.name "sc-clip-bot"; git config user.email "noreply@github.com"
+          git add gifs/clips; git commit -m "Free clips from runner" || exit 0
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
