@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MAR</title>
+<title>SC Dashboard</title>
 <style>
   :root {
     --ink: #1a1a1a;
@@ -129,6 +129,9 @@
   .chn { border: 1px solid var(--line); border-left: 4px solid #2e7d32; background: #fff; padding: 8px 10px; margin-bottom: 12px; font-size: 14px; }
   .chn.gap { border-left-color: #c62828; } .chn .cr { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .chn .cc { font-size: 12px; padding: 3px 7px; border-radius: 10px; background: #e8f5e9; color: #1b5e20; } .chn .cc.red { background: #ffebee; color: #b71c1c; } .chn .cc.grey { background: #eee; color: #555; } .chn .cbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .chn .cbar .btn { margin-left: auto; }
   .atile.zero { opacity: .55; }
+  .cleanbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; } .cleanbar .btn { flex: 1 1 auto; min-height: 44px; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+  .inuse { font-size: 13px; background: #fff8e1; border: 1px solid #f0d58a; padding: 6px 10px; margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap; } .inuse .iu { white-space: nowrap; }
+  a.doit { text-decoration: none; }
   .arow { background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--ac); margin-bottom: 6px; }
   .arow.red { background: #fdecea; }
   .arow .ahead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; }
@@ -304,7 +307,7 @@
 <body>
 <header>
   <img class="logo-img" src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/cl_SCSMAuto_sc_letters_logo_header_v1.png" alt="SC" onerror="this.outerHTML='<div class=&quot;logo&quot;>SC</div>'">
-  <div><h1>Marketing</h1><p>What needs doing, in order</p></div>
+  <div><h1>SC Dashboard</h1><p>What needs doing, in order</p></div>
   <div class="spacer"></div>
   <button class="btn ghost" id="giftBtn">Gift NFT</button>
   <button class="btn" id="addBtn">+ Add</button>
@@ -424,6 +427,7 @@ async function load() {
     render();
     loadBaskets();
     loadChannels();
+    loadLocks();
     if (!eg) fetch(EG_LIST).then(r => r.ok ? r.json() : null).then(d => { if (d && !eg) { eg = d; renderTabs(); } }).catch(() => {});
   } catch (e) {
     $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
@@ -479,7 +483,7 @@ async function channelRun() {
 
 const missions = () => rows.filter(r => r.type === 'MISSION');
 const kids = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && r.type !== 'DAILY');
-const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && !missions().some(m => String(m.id) === String(r.parent)));
+const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && r.type !== 'SYSTEM' && !missions().some(m => String(m.id) === String(r.parent)));
 const dailies = () => rows.filter(r => r.type === 'DAILY');
 const whoOk = r => who === 'Everyone' || r.owner === who;
 
@@ -494,12 +498,13 @@ function missionShown(m) {
   return false;
 }
 function flatShown(r) {
-  if (r.type === 'MISSION' || !whoOk(r)) return false;
+  if (r.type === 'MISSION' || r.type === 'SYSTEM' || !whoOk(r)) return false;
   if (view === 'Done') return r.status === 'Done';
   return false;
 }
 function tabCount(v) {
   if (v === 'Pages') return '';
+  if (v === 'Content') return '';
   if (v === 'NFT Drops') return '';
   if (v === 'Engage') return eg ? (eg.cards || []).filter(c => c.status === 'draft').length || '' : '';
   if (v === 'Migration') return migKids().filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length || '';
@@ -518,7 +523,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', 'Migration', 'Engage', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', 'Content', 'Migration', 'Engage', ...CATEGORIES, 'Products', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -526,12 +531,23 @@ function renderTabs() {
 }
 
 function chatUrl(r) {
-  const q = 'Marketing dashboard task #' + r.id + ': ' + r.title + '. Next step: ' + (r.next_step || '') + '. Read this row in the n8n data table SC Marketing Actions and work only on this task.'
+  const daily = r.type === 'DAILY';
+  const q = 'Marketing dashboard task #' + r.id + ': ' + r.title + '. Next step: ' + (r.next_step || '') + '. Reply to Andy in one line, results only. Read this row in the n8n data table SC Marketing Actions and work only on this task.'
     + ' First, save this chat\'s link on the row: get it by calling read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink) with id ' + r.id + ' and that chat_link.'
     + ' You can edit rows yourself: to update or close this row, call the n8n workflow SC - Marketing Actions API (save) (webhook sc-marketing-save) with this row\'s id and the WHOLE row, because it overwrites every field.'
-    + ' When the work is done set status Done, next_step none, done_on today (YYYY-MM-DD), and put the cause, the fix and the test in notes.'
+    + (daily ? ' This is a daily routine line: keep status Today and type DAILY; when today\'s step is done set done_on today (YYYY-MM-DD) only.' : ' When the work is done set status Done, next_step none, done_on today (YYYY-MM-DD), and put the cause, the fix and the test in notes.')
+    + ' If Andy has an action, set link to the exact page where he does it (never a playbook).'
     + ' Keep notes as three lines: Problem: ... / Proposed solution: ... / Notes: ... (a short summary); the save workflow refuses an open task without a Problem. If it now needs Andy, set status Waiting, owner Andy and waiting_on instead. Then read the row back to check it saved.';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+
+// 6 Nov 2026 (Andy): a task for Andy opens straight to where he does it (e.g. TikTok upload), never a playbook.
+const isDocLink = u => /docs\.google\.com\/(document|spreadsheets|presentation)|drive\.google\.com|github\.com\/[^/]+\/[^/]+\/(blob|tree)/i.test(u || '');
+function actLink(r, cls) {
+  const link = safeUrl(r.link);
+  if (!link) return '';
+  if (r.owner === 'Andy' && r.status !== 'Done' && !isDocLink(link)) return '<a class="btn small go doit" target="_blank" rel="noopener" href="' + esc(link) + '">Do it</a>';
+  return '<a class="' + (cls || 'lnk') + '" href="' + esc(link) + '" target="_blank" rel="noopener">' + (isDocLink(link) ? 'Notes' : 'Open') + '</a>';
 }
 
 // 18 Oct 2026 (Andy): every open task states the problem, the proposed solution (if there is one) and a short summary of notes.
@@ -564,7 +580,7 @@ function card(r, showMission) {
     + (r.type === 'ALERT' && Number(r.alert_count) > 1 ? '<span class="chip due late">' + esc(r.alert_count) + ' times</span>' : '')
     + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
     + (showMission ? '<span class="chip">' + esc(r.category || '') + '</span>' : '')
-    + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Open</a>' : '')
+    + actLink(r)
     + '</div>'
     + notesHtml(r)
     + '</div>'
@@ -624,16 +640,52 @@ function alertRow(r) {
     + '<div class="ahead" data-act="toggle"><span class="ag">' + esc(red ? 'Red' : AG[g].label) + '</span><div class="at">' + esc(r.title) + '</div><span class="am">' + (Number(r.alert_count) > 1 ? esc(r.alert_count) + '× · ' : '') + esc(ago(r.last_seen || r.createdAt)) + '</span></div>'
     + '<div class="abtns">'
     + (link ? '<a class="btn small' + (pay ? ' warn' : ' ghost') + '" target="_blank" rel="noopener" href="' + esc(link) + '">' + (pay ? 'Top up / pay' : /mail\.google\.com/.test(link) ? 'Open email' : 'Open') + '</a>' : '')
-    + (safeUrl(r.chat_link) ? '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(safeUrl(r.chat_link)) + '">Open chat</a>' : '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">Ask Claude</a>')
+    + chatBtn(r)
     + '<button class="btn small done" data-act="done">Done</button>'
     + '</div>'
     + '<div class="adet">' + (problem ? '<b>Problem</b>' + esc(problem) : '') + (p && p.solution ? '<b>Proposed solution</b>' + esc(p.solution) : '') + (r.next_step ? '<b>Next step</b>' + esc(r.next_step) : '') + (p && p.notes ? '<b>Notes</b>' + esc(p.notes) : '') + (r.waiting_on ? '<b>Waiting on</b>' + esc(r.waiting_on) : '')
     + '<div class="acts2"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select><button class="btn small ghost" data-act="edit">Edit</button><span class="am">#' + esc(r.id) + '</span></div></div>'
     + '</div>';
 }
+
+// Ask Claude turns into Open chat once the chat has saved its link on the row (6 Nov 2026, Andy).
+function chatBtn(r) {
+  return safeUrl(r.chat_link)
+    ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(safeUrl(r.chat_link)) + '">Open chat</a>'
+    : '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">Ask Claude</a>';
+}
+// Clean up all alerts (6 Nov 2026, Andy): one chat sorts every open alert, closes the noise, fixes each root cause, keeps what matters, and ends with a short summary.
+const cleanupRow = () => rows.find(r => r.type === 'SYSTEM' && r.title === 'Alert clean-up chat');
+function cleanupUrl(list) {
+  const sys = cleanupRow();
+  const q = 'Alert clean-up for Andy\'s SC dashboard. Reply to Andy in one line per point, results only, no research shown.'
+    + (sys ? ' First save this chat\'s link: call read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink) with id ' + sys.id + ' and that link; also save it on every alert row below whose chat_link is empty.' : '')
+    + ' Read the SC Master Manual first. Open alerts (rows in the n8n data table SC Marketing Actions): '
+    + list.map(r => '#' + r.id + ' ' + r.title).join('; ') + '.'
+    + ' For each one: read the row, the failed run or email, and decide noise or needs attention.'
+    + ' Noise (build or one-off workflows, tests, duplicates, already fixed): fix the root cause at its source so it cannot come back (for example tag the workflow build, archive a finished one-off, fix the failing step), then close the row with SC - Marketing Actions API (save): whole row, status Done, next_step none, done_on today, notes Problem / Proposed solution / Notes with the cause and the fix; add a comment and complete its Todoist task.'
+    + ' Needs attention: keep it open with a clear Problem line; if it is Andy\'s, owner Andy, next_step = his exact action, and link = the exact page where he does it.'
+    + ' Andy pressing this button is his yes to fix root causes. Still ask him first before any spend, key or password change, or publishing live content. Never touch workflows tagged build. Never delete: rename to start with DELETE ME.'
+    + ' End with an executive summary: Closed (number), Root causes fixed (one line each), Needs you (one line each with link).';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+function cleanupBar(list) {
+  if (!list.length) return '';
+  const sys = cleanupRow(), last = sys && safeUrl(sys.chat_link);
+  return '<div class="cleanbar"><a class="btn" target="_blank" rel="noopener" href="' + esc(cleanupUrl(list)) + '">Clean up all alerts (' + list.length + ')</a>'
+    + (last ? '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(last) + '">Open last clean-up chat</a>' : '') + '</div>';
+}
+// In use line (6 Nov 2026, Andy): what one chat at a time may use (browser, Shopify theme, shared files), and which chat holds it. From SC - File Lock (list).
+const LOCK_URL = BASE + 'sc-file-lock';
+let locks = null;
+function loadLocks() { fetch(LOCK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).then(d => { locks = (d && d.locks) || []; if (view === 'Now' || view === 'Alerts' || view === 'Today') render(); }).catch(() => {}); }
+function inUseHtml() {
+  if (!locks || !locks.length) return '';
+  return '<div class="inuse"><b>In use</b>' + locks.map(l => '<span class="iu">' + esc(l.file) + (safeUrl(l.holder) ? ' · <a target="_blank" rel="noopener" href="' + esc(l.holder) + '">chat</a>' : '') + ' · until ' + esc(new Date(l.expires_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + '</span>').join('') + '</div>';
+}
 function alertsHtml(redOnly) {
   let list = openAlerts();
-  const strip = alertStrip(list);
+  const strip = (redOnly ? '' : cleanupBar(list)) + alertStrip(list);
   if (redOnly) list = list.filter(aRed);
   else if (afilter === 'red') list = list.filter(aRed);
   else if (afilter) list = list.filter(r => aGroup(r) === afilter);
@@ -710,12 +762,12 @@ function migCard(r) {
     + '<div class="meta">'
     + (r.waiting_on ? '<span class="chip wait">Waiting on: ' + esc(r.waiting_on) + '</span>' : '')
     + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
-    + (link ? '<a class="lnk" href="' + esc(link) + '" target="_blank" rel="noopener">Open</a>' : '')
+    + actLink(r)
     + '</div></div>'
     + '<div class="acts"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>'
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
     + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
-    + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">Ask Claude</a>'
+    + chatBtn(r)
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
 function migStream(m, n) {
@@ -856,18 +908,20 @@ function render() {
   renderTabs();
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); return; }
+  // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
+  if (view === 'Content') { $('list').innerHTML = '<iframe src="' + BASE + 'sc-dashboard" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;background:#fff"></iframe>'; return; }
   if (view === 'NFT Drops') { $('list').innerHTML = '<iframe src="https://n8n-production-afc2.up.railway.app/webhook/sc-drop-tool" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;border-radius:8px;background:#111"></iframe>'; return; }
   if (view === 'Products') { renderProducts(); return; }
   if (view === 'Pricing') { renderPricing(); return; }
   if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Engage') { renderEngage(); return; }
-  if (view === 'Today') { $('list').innerHTML = routineHtml(); wireRoutine(); return; }
+  if (view === 'Today') { $('list').innerHTML = inUseHtml() + routineHtml(); wireRoutine(); return; }
   let html = '';
   if (view === 'Done') {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
     html = list.map(r => card(r, true)).join('');
   } else if (view === 'Alerts') {
-    html = alertsHtml(false);
+    html = inUseHtml() + alertsHtml(false);
   } else if (view === 'Migration') {
     html = migrationHtml();
   } else {
@@ -875,7 +929,7 @@ function render() {
       const ra = nextAction(a), rb = nextAction(b);
       return (ra ? rank[ra.status] : 9) - (rb ? rank[rb.status] : 9);
     });
-    html = (view === 'Now' ? channelHtml() + basketHtml() + alertsHtml(true) : '') + ms.map(missionCard).join('');
+    html = (view === 'Now' ? inUseHtml() + channelHtml() + basketHtml() + alertsHtml(true) : '') + ms.map(missionCard).join('');
     if (view === 'Now') html += loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).map(r => card(r, true)).join('');
   }
   if (view === 'Influencers') html = trackerHtml() + html;
@@ -1320,7 +1374,8 @@ function dlineHtml(r) {
   let extra = '';
   if (r.link === 'sc:clips-today' && !waiting) extra = clipsHtml(r);
   const acts = (r.link === 'sc:follow' ? '<button class="btn small ghost" data-da="follow">Open Influencers</button>' : '')
-    + (link ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(link) + '">Open</a>' : '')
+    + actLink(r, 'btn small ghost chatlnk')
+    + chatBtn(r)
     + '<button class="btn small ghost" data-da="edit">Edit</button>';
   return '<div class="dline' + cls + '" data-did="' + esc(r.id) + '">'
     + '<input type="checkbox" data-da="tick"' + (ticked ? ' checked' : '') + (waiting ? ' disabled' : '') + ' aria-label="Done today">'
