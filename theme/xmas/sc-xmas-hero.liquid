@@ -41,6 +41,14 @@
       ov.addEventListener('play',function(){document.querySelectorAll('.scxh__v,.ltr__tile video').forEach(function(o){if(o!==ov&&!o.paused)o.pause();});});
     }
   }catch(e){}}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mv);else mv();
+  function tile(){try{
+    var sec=document.querySelector('[id*="featured_collection"]');var ul=sec&&sec.querySelector('ul.product-grid');
+    if(!ul||document.getElementById('scx-xmas-tile'))return;
+    var li=document.createElement('li');li.id='scx-xmas-tile';li.className='grid__item';li.style.setProperty('--animation-order','0');
+    li.innerHTML='<div class="card-wrapper product-card-wrapper underline-links-hover"><div class="card card--standard card--media" style="--ratio-percent:100%"><div class="card__inner color-scheme-2 gradient ratio" style="--ratio-percent:100%"><div class="card__media"><div class="media media--transparent media--hover-effect"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/pics67_1793980363277_pic_01_main_black_1847c3d4-6153-444e-853a-f2fffbb73181.jpg?v=1793981446&width=1000" alt="Christmas 2026 t-shirts" width="1000" height="1000" loading="lazy" class="motion-reduce"></div></div></div></div><div class="card__content"><div class="card__information"><h3 class="card__heading h5"><a href="/collections/christmas-2026" class="full-unstyled-link">Christmas 2026</a></h3><div class="card-information"><span class="caption-large light">Funny Christmas t-shirts</span></div></div></div></div>';
+    var kids=[].slice.call(ul.children);if(kids.length>=4){kids[kids.length-1].style.display='none';}
+    ul.insertBefore(li,ul.firstElementChild);
+  }catch(e){}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){mv();tile();});else{mv();tile();}
 })();
 </script>
