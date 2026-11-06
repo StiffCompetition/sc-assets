@@ -855,7 +855,7 @@ function wireEngage() {
     const act = b.dataset.eg;
     if (act === 'gif') {
       try { const r = await fetch(c.gif_url); const bl = await r.blob(); const nm = (c.gif_url.split('/').pop().split('?')[0]) || 'stiff-moves.gif';
-        if (navigator.canShare && navigator.canShare({ files: [new File([bl], nm, { type: 'image/gif' })] })) { await navigator.share({ files: [new File([bl], nm, { type: 'image/gif' })] }); }
+        if (/Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.canShare && navigator.canShare({ files: [new File([bl], nm, { type: 'image/gif' })] })) { await navigator.share({ files: [new File([bl], nm, { type: 'image/gif' })] }); }
         else { const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = nm; document.body.appendChild(a); a.click(); a.remove(); }
       } catch (e) { window.open(c.gif_url, '_blank'); }
       return;
