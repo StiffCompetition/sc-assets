@@ -31,7 +31,7 @@
   if(!rm){var q=v.play();if(q&&q.catch)q.catch(sync);}
   sync();
   /* old hero clip moves down into LATEST TRANSMISSION as its first clip */
-  try{
+  function mv(){try{
     var old=document.querySelector("[id$='__hero_video'] video"),tr=document.querySelector('.ltr__track');
     if(old&&tr){
       var t=document.createElement('div');t.className='ltr__tile';
@@ -40,6 +40,7 @@
       t.appendChild(ov);tr.insertBefore(t,tr.firstChild);
       ov.addEventListener('play',function(){document.querySelectorAll('.scxh__v,.ltr__tile video').forEach(function(o){if(o!==ov&&!o.paused)o.pause();});});
     }
-  }catch(e){}
+  }catch(e){}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mv);else mv();
 })();
 </script>
