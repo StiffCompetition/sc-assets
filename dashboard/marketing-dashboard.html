@@ -996,6 +996,25 @@ const rlBuckets = () => rows.filter(r => r.type === 'BUCKET').sort((a, b) => Num
 const rlKids = (r, t) => rows.filter(x => x.type === t && String(x.parent) === String(r.id)).sort((a, b) => Number(a.id) - Number(b.id));
 const rlChatsIn = b => rlKids(b, 'GROUP').flatMap(g => rlKids(g, 'CHAT')).concat(rlKids(b, 'CHAT'));
 const rlOpenChat = r => r.status !== 'Done';
+// Master Claude (6 Nov 2026, Andy): read-only chat that reads every Relaunch chat and tells Andy what to do first. Last chat link kept on a SYSTEM row.
+const masterRow = () => rows.find(r => r.type === 'SYSTEM' && r.title === 'Relaunch master chat');
+function masterUrl() {
+  const sys = masterRow();
+  const q = 'Master Claude for Andy\'s SC dashboard, Relaunch tab. READ-ONLY: you read every Relaunch chat and tell Andy what to focus on, in order, and make sure none is missed. Andy updates the chats himself. You never change rows, tasks, workflows or files, never spend, never message other chats. The only write you make is saving this chat\'s link (next line). Reply in one line per point, results only, no research shown, no ID codes, clickable links, never the word honest, no hedging.'
+    + (sys ? ' First save this chat\'s link: call read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink, triggerNodeName "Chat Link Webhook") with id ' + sys.id + ' and that chat_link.' : '')
+    + ' Read the SC Master Manual first.'
+    + ' Step 1, rows: read every row with category Relaunch in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO). BUCKET = workstream, GROUP sits under a bucket (parent = bucket id), CHAT sits under a group (parent = group id). Each CHAT has status, next_step, owner, due, waiting_on, chat_link and link (its Todoist task). Skip type SYSTEM and status Done.'
+    + ' Step 2, state of each open chat: take the row; the chat\'s last updated time (read_conversation shows it); its Todoist task description and latest comment; and a search inside the chat (conversation_search with within_conversation_id = the chat id at the end of its link) for its latest status. Open at most one page per chat. Where the sources disagree, say so. A chat with no chat_link is judged from its row and Todoist task.'
+    + ' Step 3, rank what Andy should do: (1) dated deadlines and launch dates (due field and next_step); (2) anything blocking revenue or other chats; (3) every other chat waiting on Andy; (4) quick wins under five minutes; (5) the rest.'
+    + ' Step 4, coverage: list every chat that is waiting on Andy, and every chat whose row has no real next step (next_step "Review status"), has no chat link, has not moved for several days, or whose row disagrees with the chat; one line each saying what Andy updates.'
+    + ' Reply format: "Do now" (his top five, one line each: what he does, with the chat link or the page where he does it); "Then" (the rest of waiting on Andy, one line each); "Chats to update" (out-of-date or empty rows, one line each); "On track" (one line with the count).';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+function masterBar() {
+  const sys = masterRow(), last = sys && safeUrl(sys.chat_link);
+  return '<div class="cleanbar"><a class="btn" target="_blank" rel="noopener" href="' + esc(masterUrl()) + '">Ask Master Claude: what do I do first?</a>'
+    + (last ? '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(last) + '">Open last master chat</a>' : '') + '</div>';
+}
 function rlChatRow(c) {
   const link = safeUrl(c.chat_link), other = safeUrl(c.link);
   return '<div class="rl-chat' + (c.status === 'Done' ? ' done' : '') + '" data-id="' + esc(c.id) + '">'
@@ -1040,7 +1059,7 @@ async function rlSaveForm() {
 function renderRelaunch() {
   const bs = rlBuckets();
   const waiting = rows.filter(r => r.type === 'CHAT' && r.owner === 'Andy' && ACTIVE.includes(r.status));
-  let h = '<div class="pbox"><button class="btn" data-rl="addbucket">Add bucket</button></div>';
+  let h = masterBar() + '<div class="pbox"><button class="btn" data-rl="addbucket">Add bucket</button></div>';
   if (rlForm) h += rlFormHtml();
   h += '<div class="rl-wait"><h3>Waiting on you (' + waiting.length + ')</h3>' + (waiting.length ? waiting.map(rlChatRow).join('') : '<div style="color:var(--grey)">Nothing.</div>') + '</div>';
   h += bs.map(b => {
