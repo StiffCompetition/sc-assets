@@ -302,6 +302,26 @@
   .sheets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; } .sheets img { width: 100%; display: block; border: 1px solid var(--line); }
   @media (max-width: 640px) { .sheets { grid-template-columns: 1fr; } }
   .run pre { white-space: pre-wrap; font-size: 12px; background: #fafafa; padding: 6px; margin: 4px 0 0; }
+
+  /* Relaunch tab (6 Nov 2026, Andy): buckets > groups > chats */
+  .rl-wait { border: 2px solid var(--ink); background: #fff; padding: 10px 12px; margin-bottom: 12px; }
+  .rl-wait h3 { margin: 0 0 6px; font-size: 15px; }
+  .rl-bucket { border: 1px solid var(--line); background: #fff; margin-bottom: 10px; }
+  .rl-bh { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; cursor: pointer; }
+  .rl-bh h3 { margin: 0; font-size: 15px; flex: 1 1 200px; }
+  .rl-bh .sub { color: var(--grey); font-size: 13px; flex: 1 1 100%; }
+  .rl-group { border-top: 1px solid var(--line); padding: 8px 12px 10px 20px; }
+  .rl-gh { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px; }
+  .rl-gh b { font-size: 14px; }
+  .rl-chat { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px dotted var(--line); font-size: 14px; }
+  .rl-chat .t { flex: 1 1 220px; min-width: 0; }
+  .rl-chat .t small { display: block; color: var(--grey); }
+  .rl-chat.done .t { color: var(--grey); text-decoration: line-through; }
+  .rl-who { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); }
+  .rl-who.Andy { background: #1a1a1a; color: #fff; }
+  .rl-form { border: 2px solid var(--ink); background: #fff; padding: 10px 12px; margin-bottom: 12px; }
+  .rl-form input, .rl-form select { padding: 6px; margin: 3px 6px 3px 0; font-size: 14px; max-width: 100%; }
+  .rl-form input.w { width: 100%; box-sizing: border-box; }
 </style>
 </head>
 <body>
@@ -482,8 +502,10 @@ async function channelRun() {
 }
 
 const missions = () => rows.filter(r => r.type === 'MISSION');
-const kids = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && r.type !== 'DAILY');
-const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && r.type !== 'SYSTEM' && !missions().some(m => String(m.id) === String(r.parent)));
+const RL_TYPES = ['BUCKET', 'GROUP', 'CHAT'];   // 6 Nov 2026: Relaunch tab rows (buckets, groups, chats); kept out of every other list
+const isRL = r => RL_TYPES.includes(r.type);
+const kids = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && r.type !== 'DAILY' && !isRL(r));
+const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && r.type !== 'SYSTEM' && !isRL(r) && !missions().some(m => String(m.id) === String(r.parent)));
 const dailies = () => rows.filter(r => r.type === 'DAILY');
 const whoOk = r => who === 'Everyone' || r.owner === who;
 
@@ -498,7 +520,7 @@ function missionShown(m) {
   return false;
 }
 function flatShown(r) {
-  if (r.type === 'MISSION' || r.type === 'SYSTEM' || !whoOk(r)) return false;
+  if (r.type === 'MISSION' || r.type === 'SYSTEM' || isRL(r) || !whoOk(r)) return false;
   if (view === 'Done') return r.status === 'Done';
   return false;
 }
@@ -509,6 +531,7 @@ function tabCount(v) {
   if (v === 'Engage') return eg ? (eg.cards || []).filter(c => c.status === 'draft').length || '' : '';
   if (v === 'Migration') return migKids().filter(r => r.owner === 'Andy' && (r.status === 'Today' || r.status === 'Next')).length || '';
   if (v === 'Journal') return jr.loaded && jr.book ? (jr.book.changed || '') : '';
+  if (v === 'Relaunch') return rows.filter(r => r.type === 'CHAT' && r.owner === 'Andy' && ACTIVE.includes(r.status)).length || '';
   if (v === 'Returns') return rt.loaded ? (retOpen().length || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
@@ -524,7 +547,7 @@ function tabCount(v) {
 }
 
 function renderTabs() {
-  const names = ['Today', 'Alerts', 'Now', 'Content', 'Migration', 'Engage', ...CATEGORIES, 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
+  const names = ['Today', 'Alerts', 'Now', 'Relaunch', 'Content', 'Migration', 'Engage', ...CATEGORIES, 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Done', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
@@ -923,6 +946,7 @@ function render() {
   if (view === 'NFT Drops') { $('list').innerHTML = '<iframe src="https://n8n-production-afc2.up.railway.app/webhook/sc-drop-tool" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;border-radius:8px;background:#111"></iframe>'; return; }
   if (view === 'Products') { renderProducts(); return; }
   if (view === 'Returns') { renderReturns(); return; }
+  if (view === 'Relaunch') { renderRelaunch(); return; }
   if (view === 'Pricing') { renderPricing(); return; }
   if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Engage') { renderEngage(); return; }
@@ -961,6 +985,103 @@ function render() {
     c.querySelector('[data-mact=edit]').onclick = () => openDlg(m);
     c.querySelector('[data-mact=addstep]').onclick = () => openDlg(null, m);
   });
+}
+
+
+// ---- Relaunch tab (6 Nov 2026, Andy): buckets hold groups (e.g. one per sales channel); groups hold chats.
+// Rows live in SC Marketing Actions: type BUCKET / GROUP / CHAT, category Relaunch, parent = the row above.
+const CHATLINK_URL = BASE + 'sc-marketing-chatlink';
+let rlOpen = {}, rlForm = null;
+const rlBuckets = () => rows.filter(r => r.type === 'BUCKET').sort((a, b) => Number(a.id) - Number(b.id));
+const rlKids = (r, t) => rows.filter(x => x.type === t && String(x.parent) === String(r.id)).sort((a, b) => Number(a.id) - Number(b.id));
+const rlChatsIn = b => rlKids(b, 'GROUP').flatMap(g => rlKids(g, 'CHAT')).concat(rlKids(b, 'CHAT'));
+const rlOpenChat = r => r.status !== 'Done';
+function rlChatRow(c) {
+  const link = safeUrl(c.chat_link), other = safeUrl(c.link);
+  return '<div class="rl-chat' + (c.status === 'Done' ? ' done' : '') + '" data-id="' + esc(c.id) + '">'
+    + '<div class="t">' + esc(c.title) + (c.next_step && c.next_step !== 'none' ? '<small>' + esc(c.next_step) + (c.due ? ' · due ' + esc(c.due) : '') + '</small>' : '') + '</div>'
+    + '<span class="rl-who ' + esc(c.owner) + '">' + esc(c.owner || '') + '</span>'
+    + '<select data-rl="status">' + STATUSES.map(x => '<option' + (x === c.status ? ' selected' : '') + '>' + x + '</option>').join('') + '</select>'
+    + (link ? '<a class="btn small" href="' + esc(link) + '" target="_blank" rel="noopener">Open chat</a>' : '')
+    + (other ? '<a class="btn small ghost" href="' + esc(other) + '" target="_blank" rel="noopener">To-do</a>' : '')
+    + '<button class="btn small ghost" data-rl="edit">Edit</button></div>';
+}
+function rlFormHtml() {
+  const f = rlForm, r = f.row || {}, kind = f.kind;
+  return '<div class="rl-form"><h3 style="margin:0 0 6px;font-size:15px">' + (f.row ? 'Edit ' : 'Add ') + kind + '</h3>'
+    + '<input class="w" id="rf_title" placeholder="Name" value="' + esc(r.title || '') + '">'
+    + '<input class="w" id="rf_next" placeholder="Next action" value="' + esc(r.next_step && r.next_step !== 'none' ? r.next_step : '') + '">'
+    + '<select id="rf_owner">' + ['Claude', 'Andy'].map(o => '<option' + (o === (r.owner || 'Claude') ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>'
+    + '<select id="rf_status">' + STATUSES.map(o => '<option' + (o === (r.status || 'Next') ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>'
+    + (kind === 'chat' ? '<input class="w" id="rf_chat" placeholder="Chat link (paste the claude.ai chat address)" value="' + esc(r.chat_link || '') + '"><input class="w" id="rf_link" placeholder="To-do or other link (optional)" value="' + esc(r.link || '') + '">' : '')
+    + '<div style="margin-top:6px"><button class="btn" id="rf_save">Save</button> <button class="btn ghost" id="rf_cancel">Cancel</button></div></div>';
+}
+async function rlSaveForm() {
+  const f = rlForm, r = f.row || {};
+  const title = $('rf_title').value.trim();
+  if (!title) { toast('Give it a name'); return; }
+  const status = $('rf_status').value;
+  const row = Object.assign({ id: '', category: 'Relaunch', type: { chat: 'CHAT', group: 'GROUP', bucket: 'BUCKET' }[f.kind], parent: f.parent || '', due: '', link: '', notes: '', waiting_on: '', go: '', repeat: '', done_on: '' }, r, {
+    title, next_step: $('rf_next').value.trim() || (status === 'Done' ? 'none' : ''), owner: $('rf_owner').value, status,
+    done_on: status === 'Done' ? (r.done_on || today()) : ''
+  });
+  if (f.kind === 'chat') row.link = $('rf_link').value.trim();
+  try {
+    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id || '', title: row.title, category: row.category, status: row.status, next_step: row.next_step, owner: row.owner, due: row.due || '', link: row.link || '', notes: row.notes || '', waiting_on: row.waiting_on || '', go: row.go || '', parent: row.parent || '', type: row.type, repeat: row.repeat || '', done_on: row.done_on || '' }) });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'not saved');
+    if (f.kind === 'chat') {
+      const cl = $('rf_chat').value.trim();
+      if (/^https:\/\/claude\.ai\//.test(cl) && cl !== (r.chat_link || '')) await fetch(CHATLINK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: out.id || row.id, chat_link: cl }) });
+    }
+    toast('Saved'); rlForm = null; await load();
+  } catch (e) { toast('Not saved: ' + e.message); }
+}
+function renderRelaunch() {
+  const bs = rlBuckets();
+  const waiting = rows.filter(r => r.type === 'CHAT' && r.owner === 'Andy' && ACTIVE.includes(r.status));
+  let h = '<div class="pbox"><button class="btn" data-rl="addbucket">Add bucket</button></div>';
+  if (rlForm) h += rlFormHtml();
+  h += '<div class="rl-wait"><h3>Waiting on you (' + waiting.length + ')</h3>' + (waiting.length ? waiting.map(rlChatRow).join('') : '<div style="color:var(--grey)">Nothing.</div>') + '</div>';
+  h += bs.map(b => {
+    const chats = rlChatsIn(b), open = chats.filter(rlOpenChat).length, mine = chats.filter(c => rlOpenChat(c) && c.owner === 'Andy').length;
+    const isOpen = !!rlOpen[b.id];
+    let body = '';
+    if (isOpen) {
+      body = rlKids(b, 'GROUP').map(g => '<div class="rl-group"><div class="rl-gh"><b>' + esc(g.title) + '</b>'
+        + '<span class="chip">' + esc(g.status) + '</span>' + (g.next_step && g.next_step !== 'none' ? '<span style="color:var(--grey);font-size:13px">' + esc(g.next_step) + '</span>' : '')
+        + '<button class="btn small" data-rl="addchat" data-p="' + esc(g.id) + '">Add chat</button><button class="btn small ghost" data-rl="editgroup" data-p="' + esc(g.id) + '">Edit</button></div>'
+        + rlKids(g, 'CHAT').map(rlChatRow).join('') + '</div>').join('')
+        + rlKids(b, 'CHAT').map(rlChatRow).join('')
+        + '<div class="rl-group"><button class="btn small ghost" data-rl="addgroup" data-p="' + esc(b.id) + '">Add group</button> <button class="btn small ghost" data-rl="addchat" data-p="' + esc(b.id) + '">Add chat here</button> <button class="btn small ghost" data-rl="editbucket" data-p="' + esc(b.id) + '">Edit bucket</button></div>';
+    }
+    return '<div class="rl-bucket" data-bid="' + esc(b.id) + '"><div class="rl-bh" data-rl="toggle"><h3>' + (isOpen ? '▾ ' : '▸ ') + esc(b.title) + '</h3>'
+      + '<span class="chip">' + open + ' open</span>' + (mine ? '<span class="chip" style="background:#1a1a1a;color:#fff">' + mine + ' for you</span>' : '') + '<span class="chip">' + esc(b.status) + '</span>'
+      + '<div class="sub">' + esc(b.next_step || '') + '</div></div>' + body + '</div>';
+  }).join('');
+  $('list').innerHTML = h;
+  const byId = id => rows.find(x => String(x.id) === String(id));
+  $('list').querySelectorAll('[data-rl]').forEach(el => {
+    const a = el.dataset.rl;
+    if (a === 'status') {
+      el.onchange = () => { const c = byId(el.closest('[data-id]').dataset.id); save(Object.assign({}, c, { status: el.value, done_on: el.value === 'Done' ? today() : '', next_step: el.value === 'Done' ? 'none' : (c.next_step === 'none' ? '' : c.next_step) })); };
+      return;
+    }
+    el.onclick = e => {
+      if (e.target.closest('a')) return;
+      if (a === 'toggle') { const id = el.closest('.rl-bucket').dataset.bid; rlOpen[id] = !rlOpen[id]; render(); return; }
+      e.stopPropagation();
+      const p = el.dataset.p;
+      if (a === 'addbucket') rlForm = { kind: 'bucket', parent: '' };
+      else if (a === 'addgroup') { rlOpen[p] = true; rlForm = { kind: 'group', parent: p }; }
+      else if (a === 'addchat') { rlForm = { kind: 'chat', parent: p }; }
+      else if (a === 'editgroup') rlForm = { kind: 'group', parent: byId(p).parent, row: byId(p) };
+      else if (a === 'editbucket') rlForm = { kind: 'bucket', parent: '', row: byId(p) };
+      else if (a === 'edit') { const c = byId(el.closest('[data-id]').dataset.id); rlForm = { kind: 'chat', parent: c.parent, row: c }; }
+      render(); window.scrollTo(0, 0);
+    };
+  });
+  if (rlForm) { $('rf_save').onclick = rlSaveForm; $('rf_cancel').onclick = () => { rlForm = null; render(); }; }
 }
 
 async function save(r) {
