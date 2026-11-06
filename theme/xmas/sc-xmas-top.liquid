@@ -75,7 +75,8 @@
     if(!ul||document.getElementById('sc-xmas-card'))return;
     var first=ul.querySelector('li.collection-list__item');if(!first)return;
     var li=first.cloneNode(true);li.id='sc-xmas-card';li.style.setProperty('--animation-order','0');
-    li.querySelectorAll('a').forEach(function(a){a.setAttribute('href','/collections/christmas-2026');a.childNodes.forEach(function(n){if(n.nodeType===3){n.textContent='Christmas 2026';}});});
+    li.querySelectorAll('a').forEach(function(a){a.setAttribute('href','/collections/christmas-2026');var d=false;a.childNodes.forEach(function(n){if(n.nodeType===3){if(!d&&n.textContent.trim()){n.textContent='Christmas 2026';d=true;}else{n.textContent='';}}});});
+    var mc=document.getElementById('sc-mint-card');if(mc){mc.querySelectorAll('a').forEach(function(a){var d=false;a.childNodes.forEach(function(n){if(n.nodeType===3){if(!d&&n.textContent.trim()){d=true;}else{n.textContent='';}}});});}
     var im=li.querySelector('img');
     if(im){im.removeAttribute('srcset');im.src='https://cdn.shopify.com/s/files/1/0661/7428/7966/files/pics67_1793980363277_pic_01_main_black_1847c3d4-6153-444e-853a-f2fffbb73181.jpg?v=1793981446&width=1500';im.alt='Christmas 2026 t-shirts';im.width=1500;im.height=1500;}
     li.querySelectorAll('.card__caption').forEach(function(p){var ic=p.querySelector('.icon-wrap');p.textContent='Funny Christmas t-shirts. Six characters, six Santa hats.';if(ic){p.appendChild(ic);}});
