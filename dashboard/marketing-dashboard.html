@@ -2593,8 +2593,8 @@ function renderPricing() {
     + '<label>Market <select id="pr_m">' + markets.map(m => '<option' + (m === pr.mkt ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></label>'
     + '<label><input type="checkbox" id="pr_p"' + (pr.prob ? ' checked' : '') + '> Problems only</label>'
     + (pr.prob ? '' : '<button class="btn small ghost" id="pr_ea">Open all products</button><button class="btn small ghost" id="pr_ca">Close all</button>') + '</div>'
-    + '<details style="margin-top:8px"><summary>Price rule per market (% on top of cost) and how profit is worked out</summary>'
-    + '<div class="tplinfo">Profit = price in pounds - Gelato cost - Gelato shipping (where we pay it) - PayPal fee (' + pr.pp.pct + '% + £' + pr.pp.fixed.toFixed(2) + '). After code = the same with ' + pr.promo + '% off (STANDTALL10, ends 30 Nov 2026). Price rule: total cost (Gelato cost, Gelato shipping where we pay it, PayPal fee) plus 35% on top, rounded up to a whole number. Canada: 25% on top. NFTs are not on this tab yet.</div>'
+    + '<details style="margin-top:8px"><summary>Price rule (40% on top of cost) and how profit is worked out</summary>'
+    + '<div class="tplinfo">Profit = price in pounds - Gelato cost - Gelato shipping (where we pay it) - PayPal fee (' + pr.pp.pct + '% + £' + pr.pp.fixed.toFixed(2) + '). After code = the same with ' + pr.promo + '% off (STANDTALL10, ends 30 Nov 2026). Price rule: total cost (Gelato cost, Gelato shipping where we pay it, PayPal fee) plus 40% on top, rounded up to a whole number. The same rule in every market. NFTs are not on this tab yet.</div>'
     + '<div class="prow" style="flex-wrap:wrap;gap:8px">' + ['United States', 'Canada', 'United Kingdom', 'Germany (EU)', 'Australia', 'New Zealand', 'Europe'].map(m =>
       '<label>' + esc(m) + ' <input type="number" class="pr_fl" data-m="' + esc(m) + '" value="' + (pr.floors[m] || 0) + '" style="width:56px"></label>').join('') + '</div></details></div>'
     + prFlagPanel() + prRecallPanel() + prStockPanel() + prHistPanel()
