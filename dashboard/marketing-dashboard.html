@@ -37,6 +37,7 @@
   .tabs select { font-family: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line); background: #fff; }
 
   main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
+  main.wide { max-width: none; padding: 0; }
   .group-title { margin: 22px 0 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); }
   .card { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
   .card { border-left: 5px solid var(--c-park); }
@@ -945,6 +946,7 @@ window.addEventListener('resize', fitContentFrame);
 
 function render() {
   renderTabs();
+  $('list').classList.toggle('wide', view === 'Content');
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
   // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
