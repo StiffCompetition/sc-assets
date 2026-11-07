@@ -245,7 +245,7 @@ def frame(i):
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'room0':
-        frame(0).save('room0.png'); sys.exit()
+        frame(0).save('room0.png'); WM.save('wm_overlay.png'); sys.exit()
     N = int(FPS * TOTAL)
     if len(sys.argv) > 1 and sys.argv[1] == 'stills':
         for tt in [0.4, 1.2, 2.2, 3.0, 3.6, 4.3, 5.0, 6.5, END_START + 0.9, END_START + 5.0]:

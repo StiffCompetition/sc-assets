@@ -57,6 +57,9 @@ CREAM = (246, 238, 216)
 ROOM0 = Image.open('room0.png').convert('RGB') if os.environ.get('DISS0') else None
 
 
+WMO = Image.open('wm_overlay.png').convert('RGBA') if os.environ.get('DISS0') else None
+
+
 def frame(t):
     z = 1.0 + float(os.environ.get('ZOOM', 0.04)) * (t / T)
     w, h = int(W * z), int(H * z)
@@ -86,6 +89,8 @@ def frame(t):
                 cx = (p2[j] if j < len(L2) else p2[-1] + f2.getlength(L2[-1])); cy = y2; ff = f2
             if int(t * 6) % 2 == 0:
                 dr.rectangle([cx + 4, cy + ff.size * 0.15, cx + 4 + ff.size * 0.08, cy + ff.size * 1.05], fill=CREAM + (200,))
+    if WMO is not None:
+        im = im.convert('RGBA'); im.alpha_composite(WMO); im = im.convert('RGB')
     # fades
     a = 1.0
     if t < 0.4:
