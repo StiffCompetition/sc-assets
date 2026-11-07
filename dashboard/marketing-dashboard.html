@@ -1019,9 +1019,23 @@ function masterUrl() {
     + ' Reply format, nothing else, 15 lines at most: "Do now" (at most three: the exact action in plain words, why it brings sales or promotion in a few words, the chat link or the page where he does it); "Then" (at most five, one line each); "Stop or park" (one line each, with the reason); "Gaps" (at most three true gaps, one line each with what he does); "Chats to update" (only rows of true tasks that are out of date, one line each).';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
+// End of day report (6 Nov 2026, Andy): one press opens a chat that researches every chat and writes the day into the Drive doc SC Daily Wins and To-Do Log, newest day at the top.
+const WINS_DOC = '1oHJNxSyB3lO_FVuULL9I1INhkcsP4s1lJ5uUY1rWUwg';
+function winsUrl() {
+  const d = new Date(), day = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const q = 'End of day report for Andy, Stiff Competition. Today is ' + day + '. Andy is a director: he wants the finished log entry and a short summary, not the research. Plain words, clickable links, no ID codes, never the word honest, no hedging. Read the SC Master Manual first. Cost: nil, use only the tools already connected.'
+    + ' Step 1, research every chat from today: call recent_chats (n 20, then again with before = the oldest time returned, until you pass the start of today, Colombia time UTC-5), and for each chat updated today run conversation_search with within_conversation_id and read the turns around its latest results (read_conversation) so you know what was actually finished, what was decided and what is waiting. Skip chats that did nothing today.'
+    + ' Step 2, cross-check the facts: Todoist tasks completed today (find-completed-tasks and find-activity), open Todoist tasks and comments added today, rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO) changed or marked Done today, open ALERT rows, n8n workflows published or changed today. A win counts only if a chat, a task or a row shows it finished. Never guess.'
+    + ' Step 3, write the day: Wins = one short line each, outcome first, grouped by workstream, only things that move sales, promotion or the launch. Still to do = every open item carried from earlier days that is not finished (take them from the previous day section), plus new ones from today, each with who acts (Andy or Claude) and, where Andy acts, the link to where he does it. Remove carried items finished today.'
+    + ' Step 4, save into the Google Doc SC Daily Wins and To-Do Log (https://docs.google.com/document/d/' + WINS_DOC + '). Read it, find the first Heading 2 (the newest day), and insert the new section directly above it with the doc connector: a Heading 2 "' + day + '", a Heading 3 "Done" with one normal paragraph per win, a Heading 3 "Still to do" with one normal paragraph per item. If a section for today already exists, replace its contents instead of adding a second one. Read the doc back to check the order and that older days are untouched.'
+    + ' Step 5, reply in 8 lines at most: the number of wins, the three biggest, the top three still-to-dos for tomorrow, and the doc link.';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
 function masterBar() {
   const sys = masterRow(), last = sys && safeUrl(sys.chat_link);
   return '<div class="cleanbar"><a class="btn" target="_blank" rel="noopener" href="' + esc(masterUrl()) + '">Ask Master Claude: what do I do first?</a>'
+    + '<a class="btn" target="_blank" rel="noopener" href="' + esc(winsUrl()) + '">End of day report: wins and to-dos</a>'
+    + '<a class="btn ghost" target="_blank" rel="noopener" href="https://docs.google.com/document/d/' + WINS_DOC + '">Open daily wins log</a>'
     + (last ? '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(last) + '">Open last master chat</a>' : '') + '</div>';
 }
 function rlChatRow(c) {
