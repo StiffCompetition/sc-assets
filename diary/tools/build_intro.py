@@ -54,8 +54,11 @@ jit = [random.randint(-2, 2) for _ in range(n)]
 CREAM = (246, 238, 216)
 
 
+ROOM0 = Image.open('room0.png').convert('RGB') if os.environ.get('DISS0') else None
+
+
 def frame(t):
-    z = 1.0 + 0.04 * (t / T)
+    z = 1.0 + float(os.environ.get('ZOOM', 0.04)) * (t / T)
     w, h = int(W * z), int(H * z)
     cw, ch = bg.size
     box = ((cw - W / z * 1.0) / 2, (ch - H / z * 1.0) / 2, (cw + W / z) / 2, (ch + H / z) / 2)
@@ -87,7 +90,12 @@ def frame(t):
     a = 1.0
     if t < 0.4:
         a = t / 0.4
-    if t > T - FD:
+    if os.environ.get('DISS0'):
+        d0 = float(os.environ['DISS0'])
+        if t > d0:
+            x = (t - d0) / (T - d0); x = x * x * (3 - 2 * x)
+            im = Image.blend(im, ROOM0, x)
+    elif t > T - FD:
         a = max(0.0, (T - t) / FD)
     if a < 1:
         im = Image.blend(Image.new("RGB", (W, H), (0, 0, 0)), im, a)

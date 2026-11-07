@@ -233,8 +233,7 @@ def frame(i):
         q = ease((t - HOLD_END) / FADE)
         return Image.blend(wm(dreamy(desk_frame(t), q)), BLACK, q)
     if t < DESK_IN:
-        im = wm(dreamy(room_frame(t), room_k(t)))
-        return Image.blend(BLACK, im, ease(t / 1.0))
+        return wm(dreamy(room_frame(t), room_k(t)))
     if t < ROOM_END:
         p = ease((t - DESK_IN) / XF)
         r = dreamy(room_frame(t), 0.6 + 0.4 * p)
@@ -245,6 +244,8 @@ def frame(i):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == 'room0':
+        frame(0).save('room0.png'); sys.exit()
     N = int(FPS * TOTAL)
     if len(sys.argv) > 1 and sys.argv[1] == 'stills':
         for tt in [0.4, 1.2, 2.2, 3.0, 3.6, 4.3, 5.0, 6.5, END_START + 0.9, END_START + 5.0]:
