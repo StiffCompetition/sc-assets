@@ -196,12 +196,30 @@ def soften(im, r, br=1.0):
     return im
 
 
-def room_soft(t):
-    e = ease(t / 2.4)
-    return soften(room_frame(t), 5 * (1 - e), 0.8 + 0.2 * e)
-
-
 HAZE = Image.new('RGB', (W, H), (255, 226, 176))
+
+
+def dreamy(im, k):
+    """Street-intro look: soft-focus glow, lifted blacks, warm haze. k 0..1."""
+    im = im.convert('RGB')
+    if k <= 0.01: return im
+    glow = ImageEnhance.Brightness(im.filter(ImageFilter.GaussianBlur(14 * k + 1))).enhance(1.10)
+    out = Image.blend(im.filter(ImageFilter.GaussianBlur(5 * k)), glow, 0.45 * k)
+    out = ImageEnhance.Contrast(out).enhance(1 - 0.30 * k)
+    out = ImageEnhance.Color(out).enhance(1 - 0.18 * k)
+    return Image.blend(out, HAZE, 0.22 * k)
+
+
+CLEAR = 1.6   # desk haze clears over this long after the dissolve
+
+
+def wm(im):
+    im = im.convert('RGBA'); im.alpha_composite(WM)
+    return im.convert('RGB')
+
+
+def room_k(t):
+    return 1.0 - 0.4 * ease(min(t / DESK_IN, 1.0))   # 1.0 -> 0.6, never fully sharp
 
 
 def frame(i):
@@ -211,25 +229,21 @@ def frame(i):
     if t >= HOLD_END:
         return BLACK
     if t < DESK_IN:
-        im = room_soft(t)
-        im = im.convert('RGBA'); im.alpha_composite(WM)
-        a = ease(t / 1.0)
-        return Image.blend(BLACK, im.convert('RGB'), a)
+        im = wm(dreamy(room_frame(t), room_k(t)))
+        return Image.blend(BLACK, im, ease(t / 1.0))
     if t < ROOM_END:
         p = ease((t - DESK_IN) / XF)
-        r = soften(room_frame(t), 9 * p, 1.0).convert('RGBA'); r.alpha_composite(WM)
-        dk = soften(desk_frame(t).convert('RGB'), 9 * (1 - p), 1.0).convert('RGBA'); dk.alpha_composite(WM)
-        out = Image.blend(r.convert('RGB'), dk.convert('RGB'), p)
-        h = 0.22 * float(np.sin(np.pi * p))
-        return Image.blend(out, HAZE, h)
-    dk = desk_frame(t); dk.alpha_composite(WM)
-    return dk.convert('RGB')
+        r = dreamy(room_frame(t), 0.6 + 0.4 * p)
+        dk = dreamy(desk_frame(t), 1.0)
+        return wm(Image.blend(r, dk, p))
+    q = ease(min((t - ROOM_END) / CLEAR, 1.0))
+    return wm(dreamy(desk_frame(t), 1.0 - q))
 
 
 if __name__ == '__main__':
     N = int(FPS * TOTAL)
     if len(sys.argv) > 1 and sys.argv[1] == 'stills':
-        for tt in [0.3, 1.0, 2.0, 2.8, 3.2, 3.5, 4.3, 6.0, END_START + 0.9, END_START + 5.0]:
+        for tt in [0.4, 1.2, 2.2, 3.0, 3.6, 4.3, 5.0, 6.5, END_START + 0.9, END_START + 5.0]:
             frame(int(tt * FPS)).save(f'hk_{tt:.1f}.png')
         print('stills', TOTAL, starts, base, kstep, sp)
         sys.exit()
