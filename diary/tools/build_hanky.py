@@ -25,10 +25,10 @@ print(LINES)
 INK = (60, 60, 66)
 
 # ---------------- timeline (seconds, relative to start of segment 2)
-ROOM_END = 2.3      # room fully replaced by desk
-XF = 0.4            # crossfade length
+ROOM_END = 3.7      # room fully replaced by desk
+XF = 1.1            # soft dissolve length
 DESK_IN = ROOM_END - XF
-WRITE0 = ROOM_END + 0.3
+WRITE0 = ROOM_END + 0.5
 WRITE1 = WRITE0 + 5.6
 HOLD_END = WRITE1 + 0.9
 END_START = HOLD_END + 0.25
@@ -190,6 +190,20 @@ def endcard(t):
 BLACK = Image.new('RGB', (W, H), (0, 0, 0))
 
 
+def soften(im, r, br=1.0):
+    if r > 0.3: im = im.filter(ImageFilter.GaussianBlur(r))
+    if br != 1.0: im = ImageEnhance.Brightness(im).enhance(br)
+    return im
+
+
+def room_soft(t):
+    e = ease(t / 2.4)
+    return soften(room_frame(t), 5 * (1 - e), 0.8 + 0.2 * e)
+
+
+HAZE = Image.new('RGB', (W, H), (255, 226, 176))
+
+
 def frame(i):
     t = i / FPS
     if t >= END_START:
@@ -197,13 +211,17 @@ def frame(i):
     if t >= HOLD_END:
         return BLACK
     if t < DESK_IN:
-        im = room_frame(t).convert('RGBA'); im.alpha_composite(WM)
-        a = min(1, t / 0.4)
+        im = room_soft(t)
+        im = im.convert('RGBA'); im.alpha_composite(WM)
+        a = ease(t / 1.0)
         return Image.blend(BLACK, im.convert('RGB'), a)
     if t < ROOM_END:
-        r = room_frame(t).convert('RGBA'); r.alpha_composite(WM)
-        dk = desk_frame(t).convert('RGBA'); dk.alpha_composite(WM)
-        return Image.blend(r.convert('RGB'), dk.convert('RGB'), (t - DESK_IN) / XF)
+        p = ease((t - DESK_IN) / XF)
+        r = soften(room_frame(t), 9 * p, 1.0).convert('RGBA'); r.alpha_composite(WM)
+        dk = soften(desk_frame(t).convert('RGB'), 9 * (1 - p), 1.0).convert('RGBA'); dk.alpha_composite(WM)
+        out = Image.blend(r.convert('RGB'), dk.convert('RGB'), p)
+        h = 0.22 * float(np.sin(np.pi * p))
+        return Image.blend(out, HAZE, h)
     dk = desk_frame(t); dk.alpha_composite(WM)
     return dk.convert('RGB')
 
@@ -211,7 +229,7 @@ def frame(i):
 if __name__ == '__main__':
     N = int(FPS * TOTAL)
     if len(sys.argv) > 1 and sys.argv[1] == 'stills':
-        for tt in [0.1, 1.0, 2.0, 2.4, 3.2, 5.0, 8.4, 9.0, END_START + 0.9, END_START + 5.0]:
+        for tt in [0.3, 1.0, 2.0, 2.8, 3.2, 3.5, 4.3, 6.0, END_START + 0.9, END_START + 5.0]:
             frame(int(tt * FPS)).save(f'hk_{tt:.1f}.png')
         print('stills', TOTAL, starts, base, kstep, sp)
         sys.exit()
