@@ -31,7 +31,8 @@ DESK_IN = ROOM_END - XF
 WRITE0 = ROOM_END + 0.5
 WRITE1 = WRITE0 + 5.6
 HOLD_END = WRITE1 + 0.9
-END_START = HOLD_END + 0.25
+FADE = 1.5
+END_START = HOLD_END + FADE + 0.25
 P2, OUT = 2.9, 2.1
 END_TOTAL = P2 + 0.8 + 3.0
 TOTAL = END_START + END_TOTAL
@@ -163,7 +164,7 @@ def L_meet(im, d):
     f = ImageFont.truetype(em.F + 'Oswald%5Bwght%5D.ttf', 29); f.set_variation_by_axes([600]); em.spaced(d, "MEET THE GANG. FIND THE FULL STORY AT", f, 1265, 'white', 2.5)
 def L_link(im, d):
     f = ImageFont.truetype(em.F + 'Oswald%5Bwght%5D.ttf', 56); f.set_variation_by_axes([600]); em.spaced(d, "stiffcompetition.shop", f, 1329, 'white', 4.5)
-els = [(layer(L_logo), 0.12, 0.25, None), (layer(L_want1), 0.5, 0.2, OUT), (layer(L_want2), 0.75, 0.2, OUT),
+els = [(layer(L_logo), 0.12, 0.9, None), (layer(L_want1), 0.5, 0.2, OUT), (layer(L_want2), 0.75, 0.2, OUT),
        (layer(L_follow), P2 + 0.0, 0.2, None), (layer(L_tag), P2 + 0.3, 0.2, None),
        (layer(L_meet), P2 + 0.6, 0.2, None), (layer(L_link), P2 + 0.8, 0.2, None)]
 def halo(l):
@@ -226,8 +227,11 @@ def frame(i):
     t = i / FPS
     if t >= END_START:
         return endcard(t - END_START)
-    if t >= HOLD_END:
+    if t >= HOLD_END + FADE:
         return BLACK
+    if t >= HOLD_END:
+        q = ease((t - HOLD_END) / FADE)
+        return Image.blend(wm(dreamy(desk_frame(t), q)), BLACK, q)
     if t < DESK_IN:
         im = wm(dreamy(room_frame(t), room_k(t)))
         return Image.blend(BLACK, im, ease(t / 1.0))
