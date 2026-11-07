@@ -424,7 +424,15 @@ body.cb-mode #topbar{display:none}
 body.cb-mode{padding-top:0 !important}
 body.cb-mode main{padding-top:10px}
 .cb-title{font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#555;margin-right:6px}
+
+/* Embedded in the SC Dashboard Content tab (6 Nov 2026): no title bar, one compact tool row, so the content gets the room */
+html.embedded #topbar header{display:none}
+html.embedded .toolbar{padding:6px 12px;gap:6px}
+html.embedded .toolbar select, html.embedded .toolbar input[type="search"], html.embedded .tickfilter > button, html.embedded .view-toggle button, html.embedded .toolbar .btn, html.embedded .toolbar label.showposted{font-size:12px;padding:4px 8px;min-height:0}
+html.embedded .toolbar input[type="search"]{width:130px}
+html.embedded main{padding-top:12px}
 </style>
+<script>try{if(window.self!==window.top)document.documentElement.classList.add("embedded")}catch(e){document.documentElement.classList.add("embedded")}</script>
 </head>
 <body>
 
@@ -436,7 +444,6 @@ body.cb-mode main{padding-top:10px}
     <p>Plan content → brief ready → text approved (start image) → image approved (video) → approved (scheduled)</p>
   </div>
 </header>
-<div class="legend" id="typeLegend"></div>
 
 <div class="toolbar">
   <div class="view-toggle">

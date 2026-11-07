@@ -937,12 +937,18 @@ function gpHtml() {
   return h + '</div>';
 }
 
+function fitContentFrame() {
+  const f = document.getElementById('contentFrame'); if (!f) return;
+  f.style.height = Math.max(300, window.innerHeight - f.getBoundingClientRect().top - 4) + 'px';
+}
+window.addEventListener('resize', fitContentFrame);
+
 function render() {
   renderTabs();
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
   // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
-  if (view === 'Content') { $('list').innerHTML = '<iframe src="' + BASE + 'sc-dashboard" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;background:#fff"></iframe>'; return; }
+  if (view === 'Content') { $('list').innerHTML = '<iframe id="contentFrame" src="' + BASE + 'sc-dashboard" style="display:block;width:100%;height:calc(100vh - 150px);border:0;background:#fff"></iframe>'; fitContentFrame(); return; }
   if (view === 'NFT Drops') { $('list').innerHTML = '<iframe src="https://n8n-production-afc2.up.railway.app/webhook/sc-drop-tool" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;border-radius:8px;background:#111"></iframe>'; return; }
   if (view === 'Products') { renderProducts(); return; }
   if (view === 'Returns') { renderReturns(); return; }
