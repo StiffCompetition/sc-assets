@@ -3,3 +3,8 @@ clips/ = the six final clips (trimmed to 3.0 s from the free Wan takes in gifs/c
 Method: nano-banana-2.1/edit start picture from stickers/refs standing front, then free HF Wan 2.2 clip on the GitHub runner (gifs/jobs/2026-11-06-xmas-*.json hold the prompts). Drive: SC Image Library > 97 Christmas Clips.
 
 FINAL homepage cut (6 Nov 2026, approved by Andy): final/Xmas_Homepage_Cut_30s_FINAL.mp4, 30 s, 480x832, yuv420p. Order: sleigh, Major Wood, New York, Rear Admiral, London, Hammerin' Hanky, tree, The Grip, chimney, Velvet Python, snowman, Slick Willy, then the real-lights ending (MERRY CHRISTMAS, chrome logo with glow, stiffcompetition.shop). Music: ElevenLabs brass fanfare (fades 26-29 s) + 6 s sleigh-bell jingle on the ending (SC - Music Generator, n8n webhook sc-music). Scene clips: gifs/clips/2026-11-06-xmas-scene*-*.mp4, ending lights gifs/clips/2026-11-06-xmas-endlights-a.mp4. Not live on the shop yet.
+
+## FINAL (6 Nov 2026)
+- Homepage cut = xmas/final/Xmas_Homepage_Cut_31s_FINAL.mp4 (v6, 480x832).
+- Social cut = xmas/final/Xmas_Social_31s_1080_s.mp4 (1080x1872, 31.5 s, 15 MB; the 23 MB Xmas_Social_31s_1080.mp4 fails Shopify Files upload).
+- In SC Content Library as "Christmas ad 2026 (31 s)" (Shopify Files xmas_ad_social_31s_v2.mp4).
