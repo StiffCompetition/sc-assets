@@ -12,7 +12,7 @@
 </style>
 <div class="scxh">
   <div class="scxh__win">
-    <video class="scxh__v" muted loop playsinline preload="metadata" poster="{{ 'sc-xmas-hero-t1-poster.jpg' | asset_url }}" aria-label="Christmas is coming to Stiff Competition"><source src="{{ 'sc-xmas-hero-t1.mp4' | asset_url }}" type="video/mp4"></video>
+    <video class="scxh__v" muted loop playsinline preload="metadata" poster="{{ 'sc-xmas-hero-t2-poster.jpg' | asset_url }}" aria-label="Christmas is coming to Stiff Competition: Rear Admiral"><source src="{{ 'sc-xmas-hero-t2.mp4' | asset_url }}" type="video/mp4"></video>
     <button type="button" class="scxh__snd" aria-pressed="false">Tap for sound</button>
     <button type="button" class="scxh__pp" aria-label="Pause video">&#10074;&#10074;</button>
   </div>
@@ -38,6 +38,11 @@
       var ov=document.createElement('video');ov.controls=true;ov.playsInline=true;ov.preload='none';ov.poster=old.getAttribute('poster')||'';
       old.querySelectorAll('source').forEach(function(s){ov.appendChild(s.cloneNode(true));});
       t.appendChild(ov);tr.insertBefore(t,tr.firstChild);
+      var t1=document.createElement('div');t1.className='ltr__tile';
+      var v1=document.createElement('video');v1.controls=true;v1.playsInline=true;v1.preload='none';v1.poster='{{ 'sc-xmas-hero-t1-poster.jpg' | asset_url }}';
+      var s1=document.createElement('source');s1.src='{{ 'sc-xmas-hero-t1.mp4' | asset_url }}';s1.type='video/mp4';v1.appendChild(s1);
+      t1.appendChild(v1);tr.insertBefore(t1,tr.firstChild);
+      v1.addEventListener('play',function(){document.querySelectorAll('.scxh__v,.ltr__tile video').forEach(function(o){if(o!==v1&&!o.paused)o.pause();});});
       ov.addEventListener('play',function(){document.querySelectorAll('.scxh__v,.ltr__tile video').forEach(function(o){if(o!==ov&&!o.paused)o.pause();});});
     }
   }catch(e){}}
