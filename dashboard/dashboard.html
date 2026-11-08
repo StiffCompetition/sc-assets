@@ -429,6 +429,17 @@
   dialog { border-radius: 12px; border-color: var(--line); } .dlg input, .dlg select, .dlg textarea { border-radius: 8px; }
   .toast { border-radius: 999px; }
   @media (max-width: 900px) { .sitem { border-radius: 999px; } .sitem.home { font-size: 14px; } .trow2 .t1 .am { display: none; } }
+
+  .ohead h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; } .ohead .sub { color: var(--muted); margin: 2px 0 10px; }
+  .ocard { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; margin-bottom: 10px; }
+  .ocard.red { border-color: #ead4d1; background: #fbf1f0; } .ocard.done { opacity: .65; }
+  .onum { font-family: var(--display); font-size: 26px; font-weight: 600; color: var(--accent); line-height: 1; padding-top: 2px; }
+  .obody h3 { font-family: var(--display); font-weight: 600; font-size: 19px; margin: 0 0 2px; } .onotes { margin: 0 0 6px; color: var(--muted); font-size: 15px; }
+  .ometa { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; } .obar { height: 6px; background: #e6ebf0; border-radius: 3px; max-width: 360px; } .obar i { display: block; height: 100%; background: var(--good); border-radius: 3px; }
+  .oacts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 300px; } .oacts .btn { min-height: 32px; }
+  .obody input.w, .obody textarea.w { width: 100%; box-sizing: border-box; font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; } .olab { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; } .olab input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .oclosed { margin-top: 18px; } .oclosed summary { cursor: pointer; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+  @media (max-width: 760px) { .ocard { grid-template-columns: 36px minmax(0, 1fr); } .oacts { grid-column: 1 / -1; justify-content: flex-start; max-width: none; } }
 </style>
 </head>
 <body>
@@ -541,7 +552,7 @@ const TASK_TYPES = [['', 'Task'], ['topup', 'Top up credit'], ['documents', 'Sen
 const openOutcomes = () => outcomes.filter(o => o.status === 'open').sort((a, b) => Number(a.position) - Number(b.position) || Number(a.id) - Number(b.id));
 function loadOutcomes() { return fetch(OUT_LIST).then(r => r.ok ? r.json() : []).then(d => { outcomes = Array.isArray(d) ? d : []; }).catch(() => { outcomes = outcomes || []; }); }
 async function saveOutcome(o) {
-  const res = await fetch(OUT_SAVE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: o.id || '', title: o.title, day: o.day || today(), position: Number(o.position || 0), status: o.status || 'open', notes: o.notes || '' }) });
+  const res = await fetch(OUT_SAVE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: o.id || '', title: o.title, day: o.day || today(), position: Number(o.position || 0), status: o.status || 'open', notes: o.notes || '', chat_link: o.chat_link || '', target: o.target || '' }) });
   const out = await res.json(); if (!out.ok) throw new Error(out.error || 'not saved');
   await loadOutcomes(); render();
 }
@@ -571,7 +582,7 @@ let fview = 'To follow';
 let showDone = false;   // 13 Oct 2026 (Andy): lines ticked today are hidden unless asked for
 let view = 'Routine';   // 8 Nov 2026 (Andy): the day starts with the Routine, then Alerts, then Orders of the Day
 // A link can open a tab directly: .../webhook/sc-dashboard#Alerts (8 Nov 2026).
-try { const hv = decodeURIComponent(location.hash.slice(1)); if (hv && ['Routine','Alerts','Orders','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
+try { const hv = decodeURIComponent(location.hash.slice(1)); if (hv && ['Routine','Alerts','Orders','Outcomes','Overview','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
 let who = 'Everyone';
 
 const $ = id => document.getElementById(id);
@@ -606,7 +617,7 @@ const EG_LIST = BASE + 'sc-engage-list', EG_SAVE = BASE + 'sc-engage-save';
 let eg = null, egLoading = false;
 let gp = null, gpLoading = false;
 let baskets = null, bktOpen = false;
-function loadBaskets() { fetch(BASKETS_URL).then(r => r.ok ? r.json() : null).then(d => { baskets = d; if (view === 'Now' || view === 'Orders') render(); }).catch(() => {}); }
+function loadBaskets() { fetch(BASKETS_URL).then(r => r.ok ? r.json() : null).then(d => { baskets = d; if (view === 'Now' || view === 'Orders' || view === 'Overview') render(); }).catch(() => {}); }
 function basketHtml() {
   if (!baskets || !baskets.h24) return '';
   const g = v => '£' + Number(v || 0).toFixed(2);
@@ -618,7 +629,7 @@ function basketHtml() {
 // Sales channels line on the Now tab (5 Nov 2026): last result of SC - Channel Sync (daily 05:15 UK, or the button). Green = every product on that channel.
 const CHN_STATUS_URL = BASE + 'sc-channel-status', CHN_RUN_URL = BASE + 'sc-channel-sync';
 let chn = null, chnBusy = false;
-function loadChannels() { fetch(CHN_STATUS_URL).then(r => r.ok ? r.json() : null).then(d => { if (d) chn = d; if (view === 'Now' || view === 'Orders') render(); }).catch(() => {}); }
+function loadChannels() { fetch(CHN_STATUS_URL).then(r => r.ok ? r.json() : null).then(d => { if (d) chn = d; if (view === 'Now' || view === 'Orders' || view === 'Overview') render(); }).catch(() => {}); }
 function channelHtml() {
   const list = (chn && chn.channels) || [];
   const gaps = list.filter(c => c.state === 'live' && (c.missing || []).length);
@@ -649,8 +660,8 @@ async function channelRun() {
 const missions = () => rows.filter(r => r.type === 'MISSION');
 const RL_TYPES = ['BUCKET', 'GROUP', 'CHAT'];   // 6 Nov 2026: Relaunch tab rows (buckets, groups, chats); kept out of every other list
 const isRL = r => RL_TYPES.includes(r.type);
-const kids = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && r.type !== 'DAILY' && !isRL(r));
-const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && r.type !== 'SYSTEM' && !isRL(r) && !missions().some(m => String(m.id) === String(r.parent)));
+const kids = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && r.type !== 'DAILY' && !isRL(r) && !isLater(r));
+const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && r.type !== 'SYSTEM' && !isRL(r) && !isLater(r) && !missions().some(m => String(m.id) === String(r.parent)));
 const dailies = () => rows.filter(r => r.type === 'DAILY');
 const whoOk = r => who === 'Everyone' || r.owner === who;
 
@@ -670,7 +681,7 @@ function flatShown(r) {
   return false;
 }
 function tabCount(v) {
-  if (v === 'Pages') return '';
+  if (v === 'Pages' || v === 'Outcomes' || v === 'Overview') return '';
   if (v === 'Content') return '';
   if (v === 'NFT Drops') return '';
   if (v === 'Engage') return eg ? (eg.cards || []).filter(c => c.status === 'draft').length || '' : '';
@@ -694,7 +705,7 @@ function tabCount(v) {
 
 function renderTabs() {
   // 8 Nov 2026 (Andy): one board for every action (Orders of the Day); the other tabs are build tools and data.
-  const names = ['Routine', 'Alerts', 'Orders', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
+  const names = ['Routine', 'Alerts', 'Orders', 'Outcomes', 'Overview', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); });
@@ -942,7 +953,7 @@ function pagesHtml() {
 const MIGRATION_IDS = ['234', '247', '248', '249'];
 const MIGRATION_DEADLINE = '2026-11-10';
 const migMissions = () => MIGRATION_IDS.map(id => rows.find(r => String(r.id) === id)).filter(Boolean);
-const migKidsOf = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && whoOk(r));
+const migKidsOf = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && whoOk(r) && !isLater(r));
 const migKids = () => [].concat(...migMissions().map(migKidsOf));
 function migSort(a, b) { return rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id); }
 function migGroup(title, list) {
@@ -1130,6 +1141,8 @@ function render() {
   if (view === 'Engage') { renderEngage(); return; }
   if (view === 'Today' || view === 'Routine') { $('list').innerHTML = inUseHtml() + routineHtml(); wireRoutine(); return; }
   if (view === 'Now' || view === 'Orders') { renderNow(); return; }
+  if (view === 'Outcomes') { renderOutcomes(); return; }
+  if (view === 'Overview') { renderOverview(); return; }
   let html = '';
   if (view === 'Done') {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
@@ -1324,7 +1337,6 @@ function renderNow() {
       if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning orders with the Manager", or + Outcome in the sidebar.</div>';
       h += nextForYou();
       if (untied().length) h += '<div class="hint" style="border-color:#c62828;color:#c62828">' + untied().length + ' open task' + (untied().length === 1 ? ' is' : 's are') + ' untied. Open Untied in the sidebar.</div>';
-      h += channelHtml() + basketHtml();
     }
   }
   h += '</section></div>';
@@ -1355,12 +1367,96 @@ function renderNow() {
   if ($('bkt')) $('bkt').onclick = e => { if (e.target.closest('a')) return; bktOpen = !bktOpen; render(); };
 }
 
+
+// ---- Overview tab (8 Nov 2026, Andy): the figures and health lines in one place (sales channels, baskets, GIF promotion, what is in use).
+function renderOverview() {
+  loadEngage();
+  $('list').innerHTML = '<div class="ohead"><h2>Overview</h2><p class="sub">Sales channels, baskets, GIF promotion and what other chats are using right now.</p></div>' + inUseHtml() + channelHtml() + basketHtml() + gpHtml();
+  if ($('chn_run')) $('chn_run').onclick = channelRun;
+  if ($('bkt')) $('bkt').onclick = e => { if (e.target.closest('a')) return; bktOpen = !bktOpen; render(); };
+  const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; eg = null; render(); };
+}
+// ---- Outcomes tab (8 Nov 2026, Andy): every outcome on one page, in priority order, with its numbers, target date, chat and controls.
+let oEdit = null;
+function outcomeChatUrl(o) {
+  const list = tiedTo(o);
+  const q = 'Outcome chat for Andy (Stiff Competition): "' + o.title + '"' + (o.notes ? ' — ' + o.notes : '') + (o.target ? ' — target ' + o.target : '') + '. You run this one outcome end to end: you know every task under it, you keep them moving, and you answer Andy in ONE line, results only, plain words, clickable links, no ID codes, never the word honest, no hedging. FIRST read the memory file /topics/sc-manager-chat.md (the standing rule) and the SC Master Manual.'
+    + ' Save this chat\'s link on the outcome: call read_conversation with conversation_id "current" and max_turns 1; GET ' + OUT_LIST + ' and find the row with id ' + o.id + '; POST ' + OUT_SAVE + ' with that whole row (id, title, day, position, status, notes, target) plus chat_link = this chat\'s link.'
+    + ' Tasks under this outcome are rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO) with outcome = "' + o.id + '": ' + (list.length ? list.slice(0, 40).map(r => '#' + r.id + ' ' + r.title + ' (' + r.owner + ')').join('; ') : 'none yet') + '. Read each row before acting; update rows with SC - Marketing Actions API (save) (whole row); add new tasks there with outcome "' + o.id + '", owner Claude wherever Claude can do the work, a Problem line in notes, and link = the exact page where Andy acts.'
+    + ' Start: one line per task with its state and the next action, then the one thing Andy does first. Cost: state it first and wait for his yes. Never publish live, change a key or edit a workflow without his yes.';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+async function moveOutcome(o, dir) {
+  const os = openOutcomes(); const i = os.findIndex(x => String(x.id) === String(o.id)); const j = i + dir;
+  if (j < 0 || j >= os.length) return;
+  const a = os[i], b = os[j];
+  try {
+    await saveOutcome(Object.assign({}, a, { position: j + 1 }));
+    await saveOutcome(Object.assign({}, b, { position: i + 1 }));
+    // normalise every position to 1..n so the order stays clean
+    const now = openOutcomes(); for (let k = 0; k < now.length; k++) if (Number(now[k].position) !== k + 1) await saveOutcome(Object.assign({}, now[k], { position: k + 1 }));
+  } catch (e) { toast('Not saved: ' + e.message); }
+}
+function outcomeCard(o, i, n) {
+  const list = tiedTo(o), you = list.filter(needsYou), cl = list.filter(r => !needsYou(r));
+  const doneAll = rows.filter(r => !CONTAINERS.includes(r.type || '') && String(r.outcome) === String(o.id) && r.status === 'Done');
+  const total = list.length + doneAll.length, pct = total ? Math.round(doneAll.length * 100 / total) : 0;
+  const red = list.some(r => r.type === 'ALERT' && aRed(r)), late = o.target && o.target < today();
+  const link = safeUrl(o.chat_link);
+  const editing = oEdit && String(oEdit.id) === String(o.id);
+  return '<div class="ocard' + (red ? ' red' : '') + '" data-oid="' + esc(o.id) + '">'
+    + '<div class="onum">' + (i + 1) + '</div>'
+    + '<div class="obody">'
+    + (editing
+      ? '<input class="w" id="oc_title" maxlength="80" value="' + esc(o.title) + '"><textarea class="w" id="oc_notes" rows="2" placeholder="What this outcome is, in one or two lines">' + esc(o.notes || '') + '</textarea><div class="prow"><label class="olab">Target <input type="date" id="oc_target" value="' + esc(o.target || '') + '"></label><button class="btn small" data-oact="save">Save</button><button class="btn small ghost" data-oact="cancel">Cancel</button></div>'
+      : '<h3>' + esc(o.title) + '</h3>' + (o.notes ? '<p class="onotes">' + esc(o.notes) + '</p>' : '')
+        + '<div class="ometa">' + (o.target ? '<span class="chip due' + (late ? ' late' : '') + '">target ' + esc(o.target) + '</span>' : '<span class="chip">no target date</span>') + '<span class="chip" style="border-color:var(--you);color:var(--you)">' + you.length + ' for you</span><span class="chip" style="border-color:var(--cl);color:var(--cl)">' + cl.length + ' Claude</span><span class="chip" style="border-color:var(--good);color:var(--good)">' + doneAll.length + ' done</span>' + (red ? '<span class="chip late">red alert</span>' : '') + '</div>'
+        + '<div class="obar"><i style="width:' + pct + '%"></i></div>')
+    + '</div>'
+    + '<div class="oacts">'
+    + '<button class="btn small ghost" data-oact="up" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button class="btn small ghost" data-oact="down" title="Move down"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>'
+    + '<button class="btn small" data-oact="open">Open on Orders</button>'
+    + (link ? '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(link) + '">Outcome chat</a>' : '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(outcomeChatUrl(o)) + '">Start outcome chat</a>')
+    + '<button class="btn small ghost" data-oact="edit">Edit</button><button class="btn small ghost" data-oact="close">Close</button>'
+    + '</div></div>';
+}
+function renderOutcomes() {
+  const os = openOutcomes();
+  const closed = outcomes.filter(o => o.status === 'done').sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  const you = workItems().filter(r => needsYou(r) && !isLater(r) && r.outcome).length, cl = workItems().filter(r => !needsYou(r) && !isLater(r) && r.outcome).length;
+  let h = '<div class="ohead"><h2>Outcomes</h2><p class="sub">' + os.length + ' open · ' + you + ' tasks for you · ' + cl + ' with Claude · ' + untied().length + ' untied. Arrows set the priority; the order here is the order everywhere.</p>'
+    + '<div class="cleanbar mgr"><a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning orders with the Manager</a><button class="btn small ghost" id="oc_add">+ Outcome</button></div></div>';
+  if (oEdit && !oEdit.id) h += '<div class="ocard"><div class="onum">+</div><div class="obody"><input class="w" id="oc_title" maxlength="80" placeholder="Executive outcome, e.g. Card payments live"><textarea class="w" id="oc_notes" rows="2" placeholder="What this outcome is, in one or two lines"></textarea><div class="prow"><label class="olab">Target <input type="date" id="oc_target"></label><button class="btn small" data-oact="save">Save</button><button class="btn small ghost" data-oact="cancel">Cancel</button></div></div></div>';
+  h += os.map((o, i) => outcomeCard(o, i, os.length)).join('') || '<div class="empty">No outcomes yet.</div>';
+  if (closed.length) h += '<details class="oclosed"><summary>Closed outcomes (' + closed.length + ')</summary>' + closed.map(o => '<div class="ocard done" data-oid="' + esc(o.id) + '"><div class="onum">✓</div><div class="obody"><h3>' + esc(o.title) + '</h3>' + (o.notes ? '<p class="onotes">' + esc(o.notes) + '</p>' : '') + '</div><div class="oacts"><button class="btn small ghost" data-oact="reopen">Reopen</button></div></div>').join('') + '</details>';
+  $('list').innerHTML = h;
+  if ($('oc_add')) $('oc_add').onclick = () => { oEdit = { id: '' }; renderOutcomes(); const i = $('oc_title'); if (i) i.focus(); };
+  $('list').querySelectorAll('[data-oact]').forEach(b => b.onclick = async () => {
+    const card = b.closest('[data-oid]'); const o = card ? outcomes.find(x => String(x.id) === card.dataset.oid) : null; const a = b.dataset.oact;
+    try {
+      if (a === 'cancel') { oEdit = null; renderOutcomes(); return; }
+      if (a === 'save') {
+        const t = $('oc_title').value.trim(); if (!t) { toast('Give the outcome a name'); return; }
+        const base = o || { position: openOutcomes().length + 1, day: today(), status: 'open' };
+        await saveOutcome(Object.assign({}, base, { title: t, notes: $('oc_notes').value.trim(), target: $('oc_target').value })); oEdit = null; renderOutcomes(); toast('Saved'); return;
+      }
+      if (!o) return;
+      if (a === 'edit') { oEdit = o; renderOutcomes(); return; }
+      if (a === 'up') { await moveOutcome(o, -1); renderOutcomes(); return; }
+      if (a === 'down') { await moveOutcome(o, 1); renderOutcomes(); return; }
+      if (a === 'open') { view = 'Orders'; ofilter = String(o.id); focusId = null; try { history.replaceState(null, '', '#Orders'); } catch (e) {} render(); window.scrollTo(0, 0); return; }
+      if (a === 'close') { if (tiedTo(o).length && !window.confirm(tiedTo(o).length + ' open tasks are tied to this outcome; they become Untied. Close it?')) return; await saveOutcome(Object.assign({}, o, { status: 'done' })); renderOutcomes(); toast('Outcome closed'); return; }
+      if (a === 'reopen') { await saveOutcome(Object.assign({}, o, { status: 'open', position: openOutcomes().length + 1 })); renderOutcomes(); return; }
+    } catch (e) { toast('Not saved: ' + e.message); }
+  });
+}
+
 // ---- Relaunch tab (6 Nov 2026, Andy): buckets hold groups (e.g. one per sales channel); groups hold chats.
 // Rows live in SC Marketing Actions: type BUCKET / GROUP / CHAT, category Relaunch, parent = the row above.
 const CHATLINK_URL = BASE + 'sc-marketing-chatlink';
 let rlOpen = {}, rlForm = null;
 const rlBuckets = () => rows.filter(r => r.type === 'BUCKET').sort((a, b) => Number(a.id) - Number(b.id));
-const rlKids = (r, t) => rows.filter(x => x.type === t && String(x.parent) === String(r.id)).sort((a, b) => Number(a.id) - Number(b.id));
+const rlKids = (r, t) => rows.filter(x => x.type === t && String(x.parent) === String(r.id) && !isLater(x)).sort((a, b) => Number(a.id) - Number(b.id));
 const rlChatsIn = b => rlKids(b, 'GROUP').flatMap(g => rlKids(g, 'CHAT')).concat(rlKids(b, 'CHAT'));
 const rlOpenChat = r => r.status !== 'Done';
 // Master Claude (6 Nov 2026, Andy): read-only chat that reads every Relaunch chat and tells Andy what to do first. Last chat link kept on a SYSTEM row.
@@ -1440,7 +1536,7 @@ async function rlSaveForm() {
 }
 function renderRelaunch() {
   const bs = rlBuckets();
-  const waiting = rows.filter(r => r.type === 'CHAT' && r.owner === 'Andy' && ACTIVE.includes(r.status));
+  const waiting = rows.filter(r => r.type === 'CHAT' && r.owner === 'Andy' && ACTIVE.includes(r.status) && !isLater(r));
   const host = $('rlhost') || $('list');
   let h = (host.id === 'rlhost' ? '' : masterBar()) + '<div class="pbox"><button class="btn" data-rl="addbucket">Add bucket</button></div>';
   if (rlForm) h += rlFormHtml();
