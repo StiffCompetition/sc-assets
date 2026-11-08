@@ -41,7 +41,7 @@
 
   main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
   main.wide { max-width: none; padding: 0; }
-  main.board { max-width: 1480px; padding-top: 10px; }
+  main.board { max-width: 1480px; padding-top: 10px; } main.wide { max-width: 1240px; }
   .obd { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 16px; align-items: start; }
   .side { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow: auto; background: #fff; border: 1px solid var(--line); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
   .shead { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); margin: 10px 6px 4px; }
@@ -430,6 +430,18 @@
   .toast { border-radius: 999px; }
   @media (max-width: 900px) { .sitem { border-radius: 999px; } .sitem.home { font-size: 14px; } .trow2 .t1 .am { display: none; } }
 
+  .ovgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; align-items: start; }
+  .ovs { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px 10px; }
+  .ovh h3 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 0; } .ovh p { margin: 2px 0 8px; color: var(--muted); font-size: 14px; }
+  .ovhead, .ovr { display: grid; grid-template-columns: minmax(0, 1fr) 92px 96px 92px; gap: 8px; align-items: baseline; }
+  .ovhead { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 4px 0; border-bottom: 1px solid var(--line); } .ovhead span { text-align: right; } .ovhead span:first-child { text-align: left; }
+  .ovr { padding: 7px 0; border-bottom: 1px solid #eef1f4; } .ovr:last-child { border-bottom: 0; } .ovr.sub .ovl { padding-left: 14px; color: var(--muted); font-size: 14px; }
+  .ovl small { display: block; color: var(--muted); font-size: 12px; } .ovl a { color: var(--accent); text-decoration: none; }
+  .ovv { text-align: right; font-family: var(--display); font-size: 18px; font-weight: 600; } .ovt { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; } .ovc { text-align: right; font-size: 13px; white-space: nowrap; }
+  .ovd.good { color: var(--good); } .ovd.bad { color: var(--red); } .ovd.flat, .ovd.none { color: #9aa3ad; }
+  .ovnot { margin: 10px 0 4px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .ovnot b { font-weight: 600; margin-right: 2px; } .ovnot span { border: 1px dashed #cfd6dd; border-radius: 999px; padding: 2px 9px; }
+  .ovbk { margin-top: 8px; } .ovb { border-top: 1px solid #eef1f4; padding: 8px 0; font-size: 14px; } .ovb .amt { float: right; font-weight: 600; } .ovb .items { color: #444; margin: 2px 0; } .ovb .who { color: var(--muted); font-size: 13px; } .ovb a { color: var(--accent); }
+  @media (max-width: 900px) { .ovgrid { grid-template-columns: 1fr; } .ovhead, .ovr { grid-template-columns: minmax(0, 1fr) 76px 80px 70px; } }
   .ohead h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; } .ohead .sub { color: var(--muted); margin: 2px 0 10px; }
   .ocard { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; margin-bottom: 10px; }
   .ocard.red { border-color: #ead4d1; background: #fbf1f0; } .ocard.done { opacity: .65; }
@@ -1131,6 +1143,7 @@ function render() {
   renderTabs();
   $('list').classList.toggle('wide', view === 'Content');
   $('list').classList.toggle('board', view === 'Now' || view === 'Orders');
+  $('list').classList.toggle('wide', view === 'Overview');
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
   // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
@@ -1372,12 +1385,54 @@ function renderNow() {
 
 
 // ---- Overview tab (8 Nov 2026, Andy): the figures and health lines in one place (sales channels, baskets, GIF promotion, what is in use).
+// ---- Overview tab (8 Nov 2026, Andy): every statistic in one place from SC - Overview API, each as yesterday · change · running total.
+const OVERVIEW_URL = BASE + 'sc-overview';
+let ov = null, ovLoading = false, ovErr = '';
+function loadOverview(force) {
+  if (ovLoading || (ov && !force)) return;
+  ovLoading = true; ovErr = '';
+  fetch(OVERVIEW_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(d => { ov = d && d.ok ? d : null; if (!ov) ovErr = 'The Overview API gave no figures.'; }).catch(e => { ovErr = 'Could not load the figures (' + e.message + ').'; }).finally(() => { ovLoading = false; if (view === 'Overview') render(); });
+}
+function ovFmt(v, unit) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (unit === 'text' || typeof v === 'string') return esc(v);
+  const n = Number(v);
+  if (unit === '£' || unit === '$') return unit + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (unit === '%') return n.toFixed(1) + '%';
+  return n.toLocaleString('en-GB');
+}
+function ovDelta(it) {
+  if (it.unit === 'text' || typeof it.value === 'string' || it.prev === null || it.prev === undefined || it.value === null || it.value === undefined) return '<span class="ovd none" title="No earlier figure to compare">—</span>';
+  const d = Number(it.value) - Number(it.prev);
+  if (Math.abs(d) < 0.005) return '<span class="ovd flat" title="No change from the day before">— same</span>';
+  const up = d > 0;
+  const txt = (up ? '▲ ' : '▼ ') + ovFmt(Math.abs(d), it.unit === '%' ? '' : it.unit).replace(/^(£|\$)/, '$1');
+  const good = /spend|refund|missing|alert|failing|abandon|basket|value left/i.test(it.label) ? !up : up;
+  return '<span class="ovd ' + (good ? 'good' : 'bad') + '" title="Against the day before (' + ovFmt(it.prev, it.unit) + ')">' + txt + '</span>';
+}
+function ovRow(it) {
+  const sub = String(it.label).startsWith('  ');
+  const lab = it.link ? '<a href="' + esc(it.link) + '">' + esc(it.label.trim()) + '</a>' : esc(it.label.trim());
+  return '<div class="ovr' + (sub ? ' sub' : '') + '"><div class="ovl">' + lab + (it.note ? '<small>' + esc(it.note) + '</small>' : '') + '</div>'
+    + '<div class="ovv">' + ovFmt(it.value, it.unit) + '</div><div class="ovc">' + ovDelta(it) + '</div><div class="ovt">' + (it.total === null || it.total === undefined ? '' : ovFmt(it.total, it.unit)) + '</div></div>';
+}
+function ovSection(sc) {
+  let h = '<section class="ovs"><div class="ovh"><h3>' + esc(sc.title) + '</h3>' + (sc.sub ? '<p>' + esc(sc.sub) + '</p>' : '') + '</div>';
+  if (sc.items.length) h += '<div class="ovhead"><span></span><span>Yesterday</span><span>Change</span><span>Total</span></div>' + sc.items.map(ovRow).join('');
+  if (sc.headers && sc.headers.length) h += '<div class="ovnot"><b>Not measured yet</b>' + sc.headers.map(x => '<span>' + esc(x) + '</span>').join('') + '</div>';
+  if (sc.title === 'Abandoned baskets' && ov.baskets && ov.baskets.length) h += '<div class="ovbk">' + ov.baskets.map(b => '<div class="ovb"><div><b>' + esc(b.when) + ' · ' + esc(b.country) + '</b> <span class="amt">£' + Number(b.amount).toFixed(2) + '</span></div><div class="items">' + esc(b.items) + '</div><div class="who">' + esc(b.name) + ' · ' + esc(b.stage) + (safeUrl(b.url) ? ' · <a target="_blank" rel="noopener" href="' + esc(b.url) + '">Open basket</a>' : '') + '</div></div>').join('') + '</div>';
+  return h + '</section>';
+}
 function renderOverview() {
-  loadEngage();
-  $('list').innerHTML = '<div class="ohead"><h2>Overview</h2><p class="sub">Sales channels, baskets, GIF promotion and what other chats are using right now.</p></div>' + inUseHtml() + channelHtml() + basketHtml() + gpHtml();
-  if ($('chn_run')) $('chn_run').onclick = channelRun;
-  if ($('bkt')) $('bkt').onclick = e => { if (e.target.closest('a')) return; bktOpen = !bktOpen; render(); };
-  const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; eg = null; render(); };
+  loadOverview(false);
+  const when = ov ? new Date(ov.built_at).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) + ' UK' : '';
+  let h = '<div class="ohead"><h2>Overview</h2><p class="sub">Every figure we collect: yesterday, the change against the day before, and the running total.' + (ov ? ' Yesterday = ' + esc(ov.yesterday) + ' · built ' + esc(when) : '') + ' <button class="btn small ghost" id="ov_reload">Refresh</button></p></div>';
+  if (!ov && ovLoading) h += '<div class="ovs"><p style="color:var(--muted)">Collecting the figures…</p></div>';
+  else if (!ov) h += '<div class="ovs"><p style="color:var(--red)">' + esc(ovErr || 'No figures yet.') + '</p></div>';
+  else h += '<div class="ovgrid">' + ov.sections.map(ovSection).join('') + '</div>';
+  h += inUseHtml();
+  $('list').innerHTML = h;
+  const b = $('ov_reload'); if (b) b.onclick = () => { ov = null; loadOverview(true); render(); };
 }
 // ---- Outcomes tab (8 Nov 2026, Andy): every outcome on one page, in priority order, with its numbers, target date, chat and controls.
 let oEdit = null;
