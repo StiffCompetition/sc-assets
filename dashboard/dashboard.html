@@ -415,7 +415,7 @@
   .who-tag { border-radius: 999px; font-size: 11px; letter-spacing: .06em; padding: 2px 9px; } .who-tag.andy { background: var(--you); } .who-tag.claude { background: var(--cl); }
   .chip { border-radius: 999px; font-size: 12px; font-weight: 600; padding: 2px 9px; } .chip.wait { border-color: var(--amber); color: var(--amber); } .chip.late { border-color: var(--red); color: var(--red); } .chip.why { border-color: #5b4b8a; color: #5b4b8a; }
   .trow2 .t1 .am { font-size: 12px; color: var(--muted); margin-left: auto; }
-  .osel { border-radius: 8px; font-size: 13px; padding: 5px 8px; } .osel.none { border-color: var(--red); color: var(--red); }
+  .osel { border-radius: 8px; font-size: 13px; padding: 5px 8px; } .btn.goout { color: var(--accent); } .osel.none { border-color: var(--red); color: var(--red); }
   .ogroup.pinned { border: 1px solid var(--line); border-left: 4px solid var(--you); border-radius: var(--r); padding: 8px 12px 4px; background: var(--card); }
   .ogroup.pinned .group-title { font-size: 15px; margin: 2px 0 8px; color: var(--you); }
   .focus .frel { border-radius: var(--r); background: var(--card); } .focus .fmain .trow2 { border-left: 4px solid var(--accent); }
@@ -831,7 +831,8 @@ function outcomeSel(r) {
   if (r.status === 'Done') return '';
   const os = openOutcomes();
   return '<select class="osel' + (r.outcome ? '' : ' none') + '" data-act="outcome" title="Outcome"><option value="">' + (isLater(r) ? 'Later (' + esc(r.later) + ')' : 'Untied') + '</option>' + os.map(o => '<option value="' + esc(o.id) + '"' + (String(o.id) === String(r.outcome) && !isLater(r) ? ' selected' : '') + '>' + esc(o.title) + '</option>').join('') + '</select>'
-    + (isLater(r) ? '' : '<button class="btn small ghost" data-act="later" title="Back to tomorrow\'s stand-up">Later</button>');
+    + (isLater(r) ? '' : '<button class="btn small ghost" data-act="later" title="Back to tomorrow\'s stand-up">Later</button>')
+    + (r.outcome && !isLater(r) && !(view === 'Orders' && ofilter === String(r.outcome)) && os.some(o => String(o.id) === String(r.outcome)) ? '<button class="btn small ghost goout" data-act="goout" title="Open this outcome on Orders of the Day">Go to outcome →</button>' : '');
 }
 function wireOutcome(scope) {
   const els = scope.matches && scope.matches('[data-id]') ? [scope] : Array.from(scope.querySelectorAll('[data-id]'));
@@ -839,6 +840,7 @@ function wireOutcome(scope) {
     const r = rows.find(x => String(x.id) === c.dataset.id); if (!r) return;
     const s = c.querySelector('[data-act=outcome]'); if (s) s.onchange = e => save(Object.assign({}, r, { outcome: e.target.value, later: '' }));
     const l = c.querySelector('[data-act=later]'); if (l) l.onclick = () => save(Object.assign({}, r, { later: tomorrow(), outcome: '' }));
+    const go = c.querySelector('[data-act=goout]'); if (go) go.onclick = () => { view = 'Orders'; ofilter = String(r.outcome); focusId = null; try { history.replaceState(null, '', '#Orders'); } catch (e) {} render(); window.scrollTo(0, 0); };
   });
 }
 // Clean up all alerts (6 Nov 2026, Andy): one chat sorts every open alert, closes the noise, fixes each root cause, keeps what matters, and ends with a short summary.
