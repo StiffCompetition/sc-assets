@@ -560,9 +560,12 @@ async function saveOutcome(o) {
 const CONTAINERS = ['MISSION', 'DAILY', 'SYSTEM', 'BUCKET', 'GROUP'];
 const workItems = () => rows.filter(r => !CONTAINERS.includes(r.type || '') && ACTIVE.includes(r.status) && whoOk(r));
 const isLater = r => !!r.later && r.later > today();
-const untied = () => workItems().filter(r => !r.outcome && !isLater(r));
-const laterItems = () => workItems().filter(isLater);
-const tiedTo = o => workItems().filter(r => String(r.outcome) === String(o.id) && !isLater(r));
+// 8 Nov 2026 (Andy): a task blocked by another (status Waiting with a 'Starts when / Waiting on') is hidden everywhere until it is unblocked, like Later.
+const isBlocked = r => r.status === 'Waiting' && !!r.waiting_on;
+const isHidden = r => isLater(r) || isBlocked(r);
+const untied = () => workItems().filter(r => !r.outcome && !isHidden(r));
+const laterItems = () => workItems().filter(isHidden);
+const tiedTo = o => workItems().filter(r => String(r.outcome) === String(o.id) && !isHidden(r));
 const doneToday = () => rows.filter(r => !CONTAINERS.includes(r.type || '') && r.status === 'Done' && r.done_on === today());
 const needsYou = r => r.owner === 'Andy';
 // Which button a task shows (8 Nov 2026, Andy): Top up / pay only when the task is a top-up; the website in the link never decides.
@@ -580,9 +583,9 @@ let rows = [];
 let frows = [];
 let fview = 'To follow';
 let showDone = false;   // 13 Oct 2026 (Andy): lines ticked today are hidden unless asked for
-let view = 'Routine';   // 8 Nov 2026 (Andy): the day starts with the Routine, then Alerts, then Orders of the Day
+let view = 'Overview';   // 8 Nov 2026 (Andy): Overview first, then Routine, Alerts, Outcomes, Orders of the Day
 // A link can open a tab directly: .../webhook/sc-dashboard#Alerts (8 Nov 2026).
-try { const hv = decodeURIComponent(location.hash.slice(1)); if (hv && ['Routine','Alerts','Orders','Outcomes','Overview','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
+try { const hv = decodeURIComponent(location.hash.slice(1)); if (hv && ['Overview','Routine','Alerts','Outcomes','Orders','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
 let who = 'Everyone';
 
 const $ = id => document.getElementById(id);
@@ -660,8 +663,8 @@ async function channelRun() {
 const missions = () => rows.filter(r => r.type === 'MISSION');
 const RL_TYPES = ['BUCKET', 'GROUP', 'CHAT'];   // 6 Nov 2026: Relaunch tab rows (buckets, groups, chats); kept out of every other list
 const isRL = r => RL_TYPES.includes(r.type);
-const kids = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && r.type !== 'DAILY' && !isRL(r) && !isLater(r));
-const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && r.type !== 'SYSTEM' && !isRL(r) && !isLater(r) && !missions().some(m => String(m.id) === String(r.parent)));
+const kids = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && r.type !== 'DAILY' && !isRL(r) && !isHidden(r));
+const loose = () => rows.filter(r => r.type !== 'MISSION' && r.type !== 'DAILY' && r.type !== 'ALERT' && r.type !== 'SYSTEM' && !isRL(r) && !isHidden(r) && !missions().some(m => String(m.id) === String(r.parent)));
 const dailies = () => rows.filter(r => r.type === 'DAILY');
 const whoOk = r => who === 'Everyone' || r.owner === who;
 
@@ -691,8 +694,8 @@ function tabCount(v) {
   if (v === 'Returns') return rt.loaded ? (retOpen().length || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
-  if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
-  if (v === 'Orders' || v === 'Now') return (untied().length + workItems().filter(r => !isLater(r) && needsYou(r) && r.outcome).length) || '';
+  if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && !isHidden(r)).length;
+  if (v === 'Orders' || v === 'Now') return (untied().length + workItems().filter(r => !isHidden(r) && needsYou(r) && r.outcome).length) || '';
   if (v === 'Today' || v === 'Routine') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length || '';
   const keep = view; view = v; let n;
   if (v === 'Done') n = rows.filter(flatShown).length;
@@ -705,7 +708,7 @@ function tabCount(v) {
 
 function renderTabs() {
   // 8 Nov 2026 (Andy): one board for every action (Orders of the Day); the other tabs are build tools and data.
-  const names = ['Routine', 'Alerts', 'Orders', 'Outcomes', 'Overview', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
+  const names = ['Overview', 'Routine', 'Alerts', 'Outcomes', 'Orders', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); });
@@ -719,7 +722,7 @@ function chatUrl(r) {
     + ' You can edit rows yourself: to update or close this row, call the n8n workflow SC - Marketing Actions API (save) (webhook sc-marketing-save) with this row\'s id and the WHOLE row, because it overwrites every field.'
     + (daily ? ' This is a daily routine line: keep status Today and type DAILY; when today\'s step is done set done_on today (YYYY-MM-DD) only.' : ' When the work is done set status Done, next_step none, done_on today (YYYY-MM-DD), and put the cause, the fix and the test in notes.')
     + ' If Andy has an action, set link to the exact page where he does it (never a playbook).'
-    + ' Keep notes as three lines: Problem: ... / Proposed solution: ... / Notes: ... (a short summary); the save workflow refuses an open task without a Problem. If it now needs Andy, set status Waiting, owner Andy and waiting_on instead. Then read the row back to check it saved.';
+    + ' Keep notes as three lines: Problem: ... / Proposed solution: ... / Notes: ... (a short summary); the save workflow refuses an open task without a Problem. If it now needs Andy, set status Today and owner Andy instead (status Waiting with waiting_on hides the task until the blocker is done). Then read the row back to check it saved.';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
 
@@ -808,7 +811,7 @@ function ago(iso) {
   const h = Math.floor(ms / 3600000); if (h < 1) return 'just now'; if (h < 24) return h + 'h ago';
   const d = Math.floor(h / 24); return d === 1 ? 'yesterday' : d + ' days ago';
 }
-function openAlerts() { return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r) && !isLater(r)); }
+function openAlerts() { return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r) && !isHidden(r)); }
 function alertStrip(list) {
   const counts = { red: list.filter(aRed).length };
   AGROUPS.slice(1).forEach(g => counts[g[0]] = list.filter(r => aGroup(r) === g[0]).length);
@@ -841,9 +844,9 @@ function chatBtn(r) {
 function outcomeSel(r) {
   if (r.status === 'Done') return '';
   const os = openOutcomes();
-  return '<select class="osel' + (r.outcome ? '' : ' none') + '" data-act="outcome" title="Outcome"><option value="">' + (isLater(r) ? 'Later (' + esc(r.later) + ')' : 'Untied') + '</option>' + os.map(o => '<option value="' + esc(o.id) + '"' + (String(o.id) === String(r.outcome) && !isLater(r) ? ' selected' : '') + '>' + esc(o.title) + '</option>').join('') + '</select>'
+  return '<select class="osel' + (r.outcome ? '' : ' none') + '" data-act="outcome" title="Outcome"><option value="">' + (isLater(r) ? 'Later (' + esc(r.later) + ')' : 'Untied') + '</option>' + os.map(o => '<option value="' + esc(o.id) + '"' + (String(o.id) === String(r.outcome) && !isHidden(r) ? ' selected' : '') + '>' + esc(o.title) + '</option>').join('') + '</select>'
     + (isLater(r) ? '' : '<button class="btn small ghost" data-act="later" title="Back to tomorrow\'s stand-up">Later</button>')
-    + (r.outcome && !isLater(r) && !(view === 'Orders' && ofilter === String(r.outcome)) && os.some(o => String(o.id) === String(r.outcome)) ? '<button class="btn small ghost goout" data-act="goout" title="Open this outcome on Orders of the Day">Go to outcome →</button>' : '');
+    + (r.outcome && !isHidden(r) && !(view === 'Orders' && ofilter === String(r.outcome)) && os.some(o => String(o.id) === String(r.outcome)) ? '<button class="btn small ghost goout" data-act="goout" title="Open this outcome on Orders of the Day">Go to outcome →</button>' : '');
 }
 function wireOutcome(scope) {
   const els = scope.matches && scope.matches('[data-id]') ? [scope] : Array.from(scope.querySelectorAll('[data-id]'));
@@ -953,7 +956,7 @@ function pagesHtml() {
 const MIGRATION_IDS = ['234', '247', '248', '249'];
 const MIGRATION_DEADLINE = '2026-11-10';
 const migMissions = () => MIGRATION_IDS.map(id => rows.find(r => String(r.id) === id)).filter(Boolean);
-const migKidsOf = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && whoOk(r) && !isLater(r));
+const migKidsOf = m => rows.filter(r => String(r.parent) === String(m.id) && r.type !== 'MISSION' && whoOk(r) && !isHidden(r));
 const migKids = () => [].concat(...migMissions().map(migKidsOf));
 function migSort(a, b) { return rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id); }
 function migGroup(title, list) {
@@ -1258,7 +1261,7 @@ const words = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').sp
 function linkKey(u) { try { const x = new URL(u); return x.host + x.pathname.split('/').slice(0, 4).join('/'); } catch (e) { return ''; } }
 function related(r) {
   const rw = new Set(words(r.title + ' ' + (r.next_step || ''))), rl = linkKey(r.link), rc = safeUrl(r.chat_link);
-  const pool = rows.filter(x => String(x.id) !== String(r.id) && !CONTAINERS.includes(x.type || '') && x.status !== 'Removed' && !isLater(x) && (ACTIVE.includes(x.status) || x.done_on === today()));
+  const pool = rows.filter(x => String(x.id) !== String(r.id) && !CONTAINERS.includes(x.type || '') && x.status !== 'Removed' && !isHidden(x) && (ACTIVE.includes(x.status) || x.done_on === today()));
   return pool.map(x => {
     let s = 0, why = [];
     if (r.parent && String(x.parent) === String(r.parent)) { s += 3; why.push('same group'); }
@@ -1306,7 +1309,7 @@ function workingStrip() {
 }
 function nextForYou() {
   const os = openOutcomes(); const pos = o => { const i = os.findIndex(x => String(x.id) === String(o)); return i < 0 ? 99 : i; };
-  const list = workItems().filter(r => needsYou(r) && !isLater(r) && r.outcome).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : (a.due || '9') > (b.due || '9') ? 1 : pos(a.outcome) - pos(b.outcome) || lineSort(a, b)).slice(0, 3);
+  const list = workItems().filter(r => needsYou(r) && !isHidden(r) && r.outcome).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : (a.due || '9') > (b.due || '9') ? 1 : pos(a.outcome) - pos(b.outcome) || lineSort(a, b)).slice(0, 3);
   if (!list.length) return '';
   return '<div class="ogroup"><div class="group-title">Next for you</div>' + list.map(r => line(r, { compact: true })).join('') + '</div>';
 }
@@ -1423,7 +1426,7 @@ function outcomeCard(o, i, n) {
 function renderOutcomes() {
   const os = openOutcomes();
   const closed = outcomes.filter(o => o.status === 'done').sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
-  const you = workItems().filter(r => needsYou(r) && !isLater(r) && r.outcome).length, cl = workItems().filter(r => !needsYou(r) && !isLater(r) && r.outcome).length;
+  const you = workItems().filter(r => needsYou(r) && !isHidden(r) && r.outcome).length, cl = workItems().filter(r => !needsYou(r) && !isHidden(r) && r.outcome).length;
   let h = '<div class="ohead"><h2>Outcomes</h2><p class="sub">' + os.length + ' open · ' + you + ' tasks for you · ' + cl + ' with Claude · ' + untied().length + ' untied. Arrows set the priority; the order here is the order everywhere.</p>'
     + '<div class="cleanbar mgr"><a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning orders with the Manager</a><button class="btn small ghost" id="oc_add">+ Outcome</button></div></div>';
   if (oEdit && !oEdit.id) h += '<div class="ocard"><div class="onum">+</div><div class="obody"><input class="w" id="oc_title" maxlength="80" placeholder="Executive outcome, e.g. Card payments live"><textarea class="w" id="oc_notes" rows="2" placeholder="What this outcome is, in one or two lines"></textarea><div class="prow"><label class="olab">Target <input type="date" id="oc_target"></label><button class="btn small" data-oact="save">Save</button><button class="btn small ghost" data-oact="cancel">Cancel</button></div></div></div>';
@@ -1456,7 +1459,7 @@ function renderOutcomes() {
 const CHATLINK_URL = BASE + 'sc-marketing-chatlink';
 let rlOpen = {}, rlForm = null;
 const rlBuckets = () => rows.filter(r => r.type === 'BUCKET').sort((a, b) => Number(a.id) - Number(b.id));
-const rlKids = (r, t) => rows.filter(x => x.type === t && String(x.parent) === String(r.id) && !isLater(x)).sort((a, b) => Number(a.id) - Number(b.id));
+const rlKids = (r, t) => rows.filter(x => x.type === t && String(x.parent) === String(r.id) && !isHidden(x)).sort((a, b) => Number(a.id) - Number(b.id));
 const rlChatsIn = b => rlKids(b, 'GROUP').flatMap(g => rlKids(g, 'CHAT')).concat(rlKids(b, 'CHAT'));
 const rlOpenChat = r => r.status !== 'Done';
 // Master Claude (6 Nov 2026, Andy): read-only chat that reads every Relaunch chat and tells Andy what to do first. Last chat link kept on a SYSTEM row.
@@ -1536,7 +1539,7 @@ async function rlSaveForm() {
 }
 function renderRelaunch() {
   const bs = rlBuckets();
-  const waiting = rows.filter(r => r.type === 'CHAT' && r.owner === 'Andy' && ACTIVE.includes(r.status) && !isLater(r));
+  const waiting = rows.filter(r => r.type === 'CHAT' && r.owner === 'Andy' && ACTIVE.includes(r.status) && !isHidden(r));
   const host = $('rlhost') || $('list');
   let h = (host.id === 'rlhost' ? '' : masterBar()) + '<div class="pbox"><button class="btn" data-rl="addbucket">Add bucket</button></div>';
   if (rlForm) h += rlFormHtml();
@@ -1968,7 +1971,7 @@ function missedOn(r) {
   if (made && made > last) return '';
   return (r.done_on || '') < last ? last : '';
 }
-const routineDue = () => dailies().filter(r => whoOk(r) && (r.status === 'Today' || r.status === 'Waiting') && dueOn(r, new Date()));
+const routineDue = () => dailies().filter(r => whoOk(r) && (r.status === 'Today' || (r.status === 'Waiting' && !r.waiting_on)) && dueOn(r, new Date()));
 function dayName(s) { return DAYS[new Date(s + 'T12:00:00').getDay()]; }
 
 function todaysClips() {
