@@ -430,6 +430,14 @@
   .toast { border-radius: 999px; }
   @media (max-width: 900px) { .sitem { border-radius: 999px; } .sitem.home { font-size: 14px; } .trow2 .t1 .am { display: none; } }
 
+  .nylist { display: grid; gap: 10px; margin-bottom: 16px; }
+  .ny { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-left-width: 6px; border-radius: var(--r); padding: 14px 16px; }
+  .ny-red { border-left-color: var(--red); background: #fcf3f1; } .ny-amber { border-left-color: #c47f17; background: #fdf7ea; } .ny-green { border-left-color: var(--good); background: #eef7f0; margin-bottom: 16px; }
+  .nydot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 4px rgba(0,0,0,.05) inset; } .ny-red .nydot { background: var(--red); } .ny-amber .nydot { background: #c47f17; } .ny-green .nydot { background: var(--good); }
+  .nyh { font-family: var(--display); font-weight: 600; font-size: 19px; line-height: 1.25; } .nyt { color: #4a5560; font-size: 15px; margin-top: 2px; line-height: 1.4; }
+  .nya { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; } .nya .btn { min-height: 36px; }
+  .ovall { margin-top: 6px; } .ovall > summary .ss { white-space: normal; } .ovall .ovtiles { margin-top: 12px; }
+  @media (max-width: 900px) { .ny { grid-template-columns: 14px minmax(0, 1fr); } .nya { grid-column: 1 / -1; justify-content: flex-start; } }
   .ovlist { display: grid; gap: 10px; }
   .ovtiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
   .ovtile { display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; text-decoration: none; color: inherit; min-width: 0; font: inherit; cursor: pointer; } .ovtile:hover { border-color: var(--accent); }
@@ -1491,18 +1499,79 @@ function ovSection(sc, open) {
   if (sc.title === 'Abandoned baskets' && ov.baskets && ov.baskets.length) h += '<div class="ovbk">' + ov.baskets.map(b => '<div class="ovb"><div><b>' + esc(b.when) + ' · ' + esc(b.country) + '</b> <span class="amt">£' + Number(b.amount).toFixed(2) + '</span></div><div class="items">' + esc(b.items) + '</div><div class="who">' + esc(b.name) + ' · ' + esc(b.stage) + (safeUrl(b.url) ? ' · <a target="_blank" rel="noopener" href="' + esc(b.url) + '">Open basket</a>' : '') + '</div></div>').join('') + '</div>';
   return h + '</details>';
 }
+// Needs you (8 Nov 2026, Andy): the Overview is an action list. A figure appears only when a rule fires; each line has the direct action and Ask Claude.
+function askFigureUrl(title, facts, task) {
+  const q = 'Andy\'s SC dashboard (Stiff Competition) flagged: ' + title + '. Facts: ' + facts + '. FIRST read the memory file /topics/sc-manager-chat.md and the SC Master Manual. Your job: ' + task + ' Research first (data tables, Shopify, the chats via conversation_search), then act where Claude can act and tell Andy in ONE line what was done or the one thing he must do, with a clickable link. Results only, plain words, no ID codes, never the word honest, no hedging. Cost: state it first and wait for his yes. Never publish live, change a key or edit a workflow without his yes.';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+function actionList() {
+  const out = [];
+  const f = (sec, label) => ovFind(sec, label);
+  const n = (it) => it ? Number(it.value) : null;
+  const act = (level, head, text, buttons) => out.push({ level, head, text, buttons });
+  const tabBtn = (label, tab) => '<button type="button" class="btn small" data-tab="' + tab + '">' + label + '</button>';
+  const ask = (title, facts, task) => '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(askFigureUrl(title, facts, task)) + '">Ask Claude</a>';
+  // Alerts (same list as the Alerts tab)
+  const al = openAlerts(), reds = al.filter(aRed), ambers = al.filter(a => !aRed(a));
+  if (reds.length) act('red', reds.length + ' red alert' + (reds.length === 1 ? '' : 's'), reds.slice(0, 3).map(a => esc(a.title)).join(' · ') + (reds.length > 3 ? ' · and more' : ''), tabBtn('Open alerts', 'Alerts') + ask('red alerts open', reds.map(a => '#' + a.id + ' ' + a.title).join('; '), 'fix every red alert at the root cause and close the rows.'));
+  if (ambers.length) act('amber', ambers.length + ' amber alert' + (ambers.length === 1 ? '' : 's'), ambers.slice(0, 3).map(a => esc(a.title)).join(' · ') + (ambers.length > 3 ? ' · and more' : ''), tabBtn('Open alerts', 'Alerts') + ask('amber alerts open', ambers.map(a => '#' + a.id + ' ' + a.title).join('; '), 'review the alerts, fix the real ones at the root cause, close the noise, and give Andy a two-line summary.'));
+  // Workflows failing
+  const wf = f('Systems', 'Workflows failing');
+  if (n(wf) > 0) act('red', n(wf) + ' workflow' + (n(wf) === 1 ? '' : 's') + ' failing', esc(wf.note || ''), tabBtn('Open alerts', 'Alerts') + ask('workflows failing', wf.note || '', 'find why each is failing, fix it, re-run, and close the alert.'));
+  // Abandoned baskets
+  const bk = f('Abandoned baskets', 'Baskets left'), bv = f('Abandoned baskets', 'Value left');
+  if (bk && Number(bk.total) > 0) { const first = (ov.baskets || [])[0]; act('amber', Number(bk.total) + ' abandoned basket' + (Number(bk.total) === 1 ? '' : 's') + ' worth ' + ovFmt(bv ? bv.total : 0, '£'), first ? esc(first.when + ' · ' + first.country + ' · ' + first.items) : 'left in the last 7 days', (first && safeUrl(first.url) ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(first.url) + '">Open basket</a>' : '') + ask('abandoned baskets', (ov.baskets || []).map(b => b.when + ' ' + b.country + ' £' + b.amount + ' ' + b.items + ' (' + b.stage + ')').join('; '), 'work out why each basket was left (payment stage, shipping, price) and what recovers it; set up the recovery email with a small code if Shopify allows it without a paid app.')); }
+  // Renewals due
+  (ov.sections.find(x => x.title === 'Money') || { items: [] }).items.filter(i => /^Renewal: /.test(i.label)).forEach(i => act(i.value <= today() ? 'red' : 'amber', esc(i.label.replace('Renewal: ', '')) + ' renews ' + esc(i.value), esc(i.note), ask('renewal due', i.label + ' ' + i.value + ' ' + i.note, 'check the SC Renewals and SC Bills tables and the vendor: is it still used? If yes confirm the card will pay; if no, cancel it before the date and tell Andy.')));
+  // Channel gaps
+  const gap = f('Sales channels', 'Products missing on a channel');
+  if (n(gap) > 0) act('amber', n(gap) + ' product' + (n(gap) === 1 ? '' : 's') + ' missing on a sales channel', (ov.sections.find(x => x.title === 'Sales channels') || { items: [] }).items.filter(i => /missing$/.test(i.note) && !/^Products/.test(i.label)).map(i => esc(i.label + ': ' + i.note)).join(' · '), '<button type="button" class="btn small" id="ny_sync"' + (chnBusy ? ' disabled' : '') + '>' + (chnBusy ? 'Checking…' : 'Run channel sync') + '</button>' + ask('products missing on a sales channel', gap.note, 'run SC - Channel Sync, then list what is still missing per channel and fix each (TeePublic uploads by hand are Andy\'s; tell him exactly which).'));
+  // Spend spike
+  const sp = f('Money', 'Spend yesterday');
+  if (sp && sp.prev !== null && Number(sp.value) > 2 * Number(sp.prev) && Number(sp.value) > 1) act('amber', 'Spend yesterday ' + ovFmt(sp.value, '$') + ', normal day ' + ovFmt(sp.prev, '$'), (ov.sections.find(x => x.title === 'Money') || { items: [] }).items.filter(i => /^  /.test(i.label)).slice(0, 3).map(i => esc(i.label.trim() + ' ' + ovFmt(i.value, '$'))).join(' · '), ask('AI spend spike', 'yesterday $' + sp.value + ' against a normal $' + sp.prev, 'find which workflow or chat spent it, whether it was planned, and stop anything running away.'));
+  // Visitors down
+  const v = f('Shop', 'Visitors');
+  if (v && v.prev !== null && Number(v.prev) >= 20 && Number(v.value) < 0.7 * Number(v.prev)) act('amber', 'Shop visitors down to ' + ovFmt(v.value) + ' from ' + ovFmt(v.prev), 'a drop of ' + Math.round(100 - 100 * Number(v.value) / Number(v.prev)) + '% on the day before', ask('shop visitors dropped', 'yesterday ' + v.value + ' against ' + v.prev + ' the day before', 'check what changed: posts published, ads running, a broken link, Google Search Console; say what to do about it.'));
+  // No sales
+  const ds = f('Shop', 'Days since last sale');
+  if (ds && Number(ds.value) >= 3) act('amber', 'No sale for ' + Number(ds.value) + ' days', 'last order ' + Number(ds.value) + ' days ago', ask('no sales for ' + ds.value + ' days', 'days since last sale ' + ds.value, 'check the shop still takes payment end to end, then say what single promotion or post would most likely bring a sale this week.'));
+  // Followers flat
+  const fg = f('Audience', 'Followers gained, 7 days');
+  if (fg && Number(fg.value) <= 0) act('amber', 'Followers flat for 7 days (' + ovFmt(fg.total) + ' total)', esc(fg.note || ''), ask('followers flat for 7 days', 'total ' + fg.total + ', change ' + fg.value + ' ' + fg.note, 'read the Follower Growth playbook and the Grow the audience outcome, then name the one zero-cost action for this week and set it up.'));
+  // Returns
+  const rt = f('Systems', 'Returns open');
+  if (n(rt) > 0) act('amber', n(rt) + ' return' + (n(rt) === 1 ? '' : 's') + ' open', 'a customer is waiting', tabBtn('Open returns', 'Returns'));
+  // Outcomes past target
+  openOutcomes().filter(o => o.target && o.target < today()).forEach(o => act('amber', 'Past target: ' + esc(o.title), 'target was ' + esc(o.target), tabBtn('Open outcomes', 'Outcomes')));
+  // Untied tasks
+  const un = untied().length;
+  if (un) act('amber', un + ' task' + (un === 1 ? '' : 's') + ' untied', 'not tied to any outcome, so at risk of being forgotten', '<a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning orders</a>' + tabBtn('Open orders', 'Orders'));
+  const order = { red: 0, amber: 1 };
+  return out.sort((a, b) => order[a.level] - order[b.level]);
+}
+function needsYouHtml() {
+  const list = actionList();
+  if (!list.length) return '<div class="ny ny-green"><span class="nydot"></span><div class="nyb"><div class="nyh">Nothing needs you today</div><div class="nyt">Every figure is inside its normal range and every alert is closed.</div></div></div>';
+  return '<div class="nylist">' + list.map(x => '<div class="ny ny-' + x.level + '"><span class="nydot"></span><div class="nyb"><div class="nyh">' + x.head + '</div>' + (x.text ? '<div class="nyt">' + x.text + '</div>' : '') + '</div><div class="nya">' + x.buttons + '</div></div>').join('') + '</div>';
+}
 function renderOverview() {
   loadOverview(false);
   const when = ov ? new Date(ov.built_at).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) + ' UK' : '';
-  let h = '<div class="ohead"><h2>Overview</h2><p class="sub">' + (ov ? 'Yesterday ' + esc(ov.yesterday) + ' against the day before · built ' + esc(when) : 'The headline numbers, what moved, and every figure in the sections below.') + ' <button class="btn small ghost" id="ov_reload">Refresh</button></p></div>';
+  let h = '<div class="ohead"><h2>Needs you</h2><p class="sub">Only what needs an action. Red today, amber this week.' + (ov ? ' Figures to ' + esc(ov.yesterday) + ', built ' + esc(when) : '') + ' <button class="btn small ghost" id="ov_reload">Refresh</button></p></div>';
   if (!ov && ovLoading) h += '<div class="ovs"><p style="color:var(--muted)">Collecting the figures…</p></div>';
   else if (!ov) h += '<div class="ovs"><p style="color:var(--red)">' + esc(ovErr || 'No figures yet.') + '</p></div>';
-  else { const open = ovOpenSet(); h += ovTiles() + ovMoved(open.has('What moved')) + '<div class="ovlist">' + ov.sections.map(sc => ovSection(sc, open.has(sc.title))).join('') + '</div>'; }
+  else {
+    const open = ovOpenSet();
+    h += needsYouHtml();
+    h += '<details class="ovs ovd2 ovall" data-sec="All figures"' + (open.has('All figures') ? ' open' : '') + '><summary><span class="st">All figures</span><span class="ss">Headline numbers, what moved, and every statistic by section</span><span class="sn">' + ov.sections.reduce((t, sc) => t + sc.items.length, 0) + ' figures</span></summary>'
+      + ovTiles() + ovMoved(open.has('What moved')) + '<div class="ovlist">' + ov.sections.map(sc => ovSection(sc, open.has(sc.title))).join('') + '</div></details>';
+  }
   h += inUseHtml();
   $('list').innerHTML = h;
   const b = $('ov_reload'); if (b) b.onclick = () => { ov = null; loadOverview(true); render(); };
+  const sy = $('ny_sync'); if (sy) sy.onclick = () => { channelRun().then(() => { ov = null; loadOverview(true); }); };
   $('list').querySelectorAll('[data-tab]').forEach(el => el.onclick = e => { e.preventDefault(); goTab(el.dataset.tab); });
-  $('list').querySelectorAll('[data-sec]:not(details)').forEach(el => el.onclick = () => { const d = $('list').querySelector('details.ovd2[data-sec="' + el.dataset.sec.replace(/"/g, '\\"') + '"]'); if (!d) return; d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $('list').querySelectorAll('[data-sec]:not(details)').forEach(el => el.onclick = () => { const all = $('list').querySelector('details.ovall'); if (all) all.open = true; const d = $('list').querySelector('details.ovd2[data-sec="' + el.dataset.sec.replace(/"/g, '\\"') + '"]'); if (!d) return; d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   $('list').querySelectorAll('details.ovd2').forEach(d => d.addEventListener('toggle', () => { const set = ovOpenSet(); if (d.open) set.add(d.dataset.sec); else set.delete(d.dataset.sec); try { localStorage.setItem(OV_OPEN_KEY, JSON.stringify([...set])); } catch (e) {} }));
 }
 // ---- Outcomes tab (8 Nov 2026, Andy): every outcome on one page, in priority order, with its numbers, target date, chat and controls.
