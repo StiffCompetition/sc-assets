@@ -430,6 +430,14 @@
   .toast { border-radius: 999px; }
   @media (max-width: 900px) { .sitem { border-radius: 999px; } .sitem.home { font-size: 14px; } .trow2 .t1 .am { display: none; } }
 
+  .mark { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; margin-right: 6px; vertical-align: middle; font-size: 14px; line-height: 1; }
+  .mark.hand { background: #ffd54a; color: #5a3d00; font-size: 15px; box-shadow: 0 0 0 3px rgba(255, 213, 74, .35); animation: handpulse 1.6s ease-in-out infinite; }
+  .mark.busy { background: #d9eef1; color: var(--cl); animation: spin 6s linear infinite; } .mark.idle { background: #eef1f4; color: #9aa3ad; font-size: 12px; }
+  @keyframes handpulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(255, 213, 74, .35); } 50% { box-shadow: 0 0 0 7px rgba(255, 213, 74, .12); } } @keyframes spin { to { transform: rotate(360deg); } }
+  .tnum { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); margin-right: 8px; vertical-align: middle; }
+  .trow2.you:has(.mark.hand) { background: #fff8dc; border-color: #ead78a; }
+  .sitem.hand .sn { background: #ffd54a; color: #5a3d00; } .light.hand { background: #fff8dc; border-color: #ead78a; } .light.hand .ld { background: #ffd54a; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 0 0 3px rgba(255, 213, 74, .35); }
+  .ogroup.hand .group-title { color: #8a6100; }
   .lights { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
   .light { display: grid; grid-template-columns: 22px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; font: inherit; color: inherit; cursor: pointer; min-width: 0; }
   .light:hover { border-color: var(--accent); } .light.on { outline: 2px solid var(--accent); outline-offset: -1px; }
@@ -736,7 +744,7 @@ function tabCount(v) {
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && !isHidden(r)).length;
-  if (v === 'Orders' || v === 'Now') return (untied().length + workItems().filter(r => !isHidden(r) && needsYou(r) && r.outcome).length) || '';
+  if (v === 'Orders' || v === 'Now') return (handedItems().length ? '✋' + handedItems().length + ' · ' : '') + ((untied().length + workItems().filter(r => !isHidden(r) && needsYou(r) && r.outcome).length) || '');
   if (v === 'Today' || v === 'Routine') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length || '';
   const keep = view; view = v; let n;
   if (v === 'Done') n = rows.filter(flatShown).length;
@@ -759,7 +767,8 @@ function renderTabs() {
 
 function chatUrl(r) {
   const daily = r.type === 'DAILY';
-  const q = 'Marketing dashboard task #' + r.id + ': ' + r.title + '. Next step: ' + (r.next_step || '') + '. Reply to Andy in one line, results only. Read this row in the n8n data table SC Marketing Actions and work only on this task.'
+  const q = 'SC dashboard task #' + r.id + ': ' + r.title + '. Next step: ' + (r.next_step || '') + '. Reply to Andy in one line, results only, and start every reply with the task number #' + r.id + '. Read this row (id ' + r.id + ') in the n8n data table SC Marketing Actions and work only on this task.'
+    + ' HAND-BACK RULE: while you work, the row is owner Claude. The moment you need Andy to do or decide something, save the row with owner Andy, next_step = exactly what he must do in one line, and handed_at = "now" (that shows a yellow hand on his dashboard); when he answers and you carry on, save owner Claude and handed_at = "". When the task is finished save status Done, done_on today and handed_at = "".'
     + ' First, save this chat\'s link on the row: get it by calling read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink) with id ' + r.id + ' and that chat_link.'
     + ' You can edit rows yourself: to update or close this row, call the n8n workflow SC - Marketing Actions API (save) (webhook sc-marketing-save) with this row\'s id and the WHOLE row, because it overwrites every field.'
     + (daily ? ' This is a daily routine line: keep status Today and type DAILY; when today\'s step is done set done_on today (YYYY-MM-DD) only.' : ' When the work is done set status Done, next_step none, done_on today (YYYY-MM-DD), and put the cause, the fix and the test in notes.')
@@ -864,7 +873,7 @@ function alertRow(r) {
   const p = parseNotes(r.notes);
   const problem = p ? p.problem : String(r.notes || '');
   return '<div class="arow' + (red ? ' red' : '') + '" style="--ac:' + colour + '" data-id="' + esc(r.id) + '">'
-    + '<div class="ahead" data-act="toggle"><span class="ag">' + esc(red ? 'Red' : AG[g].label) + '</span><div class="at">' + esc(r.title) + '</div><span class="am">' + (Number(r.alert_count) > 1 ? esc(r.alert_count) + '× · ' : '') + esc(ago(r.last_seen || r.createdAt)) + '</span></div>'
+    + '<div class="ahead" data-act="toggle">' + stateMark(r) + '<span class="ag">' + esc(red ? 'Red' : AG[g].label) + '</span>' + num(r) + '<div class="at">' + esc(r.title) + '</div><span class="am">' + (Number(r.alert_count) > 1 ? esc(r.alert_count) + '× · ' : '') + esc(ago(r.last_seen || r.createdAt)) + '</span></div>'
     + '<div class="abtns">'
     + taskBtn(r)
     + chatBtn(r)
@@ -1234,7 +1243,7 @@ function managerUrl(mode) {
   const os = openOutcomes(), un = untied(), lt = laterItems();
   const q = 'You are the Manager for Andy\'s SC dashboard (Stiff Competition). FIRST read your standing rule in the memory file /topics/sc-manager-chat.md and follow it for the whole chat; then read the SC Master Manual. Reply in ONE line per answer, results only, plain words, clickable links, no ID codes in replies, never the word honest, no hedging, no research shown. Andy works through hundreds of tasks fast: when he asks "where is the chat about X", "what is the status of Y" or "find Z", answer with the one line and the link, nothing else.'
     + (sys ? ' Save this chat\'s link first: call read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink, triggerNodeName "Chat Link Webhook") with id ' + sys.id + ' and that chat_link.' : '')
-    + ' Data: tasks are rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO); open = status Today, Next or Waiting; containers (type MISSION, DAILY, SYSTEM, BUCKET, GROUP) are not tasks. Each task has owner (Andy or Claude), next_step, link (where Andy does it), chat_link, outcome (id of a row in the SC Outcomes table), later (a date it comes back on) and task_type. Outcomes: GET ' + OUT_LIST + ' lists them; POST ' + OUT_SAVE + ' with {id (empty for new), title, day YYYY-MM-DD, position, status open or done, notes, target, status_line} adds or changes one (status_line = the one-sentence executive status shown on the Outcomes tab; leave it out to keep the current one). To tie a task: read the row, then POST ' + SAVE_URL + ' with the WHOLE row plus outcome = the outcome id and later = "" (it overwrites every field it is given); to defer it set later = tomorrow and outcome = "". Chats: Relaunch CHAT rows hold chat_link per chat; conversation_search and recent_chats find any chat; Todoist holds each chat\'s task.'
+    + ' Data: tasks are rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO); open = status Today, Next or Waiting; containers (type MISSION, DAILY, SYSTEM, BUCKET, GROUP) are not tasks. Each task has owner (Andy or Claude), next_step, link (where Andy does it), chat_link, outcome (id of a row in the SC Outcomes table), later (a date it comes back on) and task_type. Outcomes: GET ' + OUT_LIST + ' lists them; POST ' + OUT_SAVE + ' with {id (empty for new), title, day YYYY-MM-DD, position, status open or done, notes, target, status_line} adds or changes one (status_line = the one-sentence executive status shown on the Outcomes tab; leave it out to keep the current one). To tie a task: read the row, then POST ' + SAVE_URL + ' with the WHOLE row plus outcome = the outcome id and later = "" (it overwrites every field it is given); to defer it set later = tomorrow and outcome = "". Chats: Relaunch CHAT rows hold chat_link per chat; conversation_search and recent_chats find any chat; Todoist holds each chat\'s task. Always quote the task number #id when you mention a task. Hand-back rule for every task: while Claude works it is owner Claude; when Andy must do or decide something, save the row with owner Andy, next_step = exactly what he must do, handed_at = "now" (yellow hand on the dashboard); when he has answered, save owner Claude and handed_at = ""; Done clears it.'
     + ' Today\'s outcomes now: ' + (os.length ? os.map(o => '[' + o.id + '] ' + o.title).join('; ') : 'none set yet') + '. Untied open tasks: ' + un.length + (un.length ? ' (' + un.slice(0, 40).map(r => '#' + r.id + ' ' + r.title).join('; ') + (un.length > 40 ? '; and more' : '') + ')' : '') + '. Deferred to later: ' + lt.length + '.'
     + (mode === 'standup'
       ? ' MORNING STAND-UP, do it now, one question at a time: (1) Show today\'s outcomes as a numbered list and ask Andy to confirm, rename, add or drop any; save his changes with the Outcomes API (dropped = status done). (2) Scan for forgotten work: recent_chats for the last 7 days and the Relaunch rows; any chat with no row gets a CHAT row (type CHAT, category Relaunch, parent = the right group, owner, next_step, chat_link) via the save API. (3) Go through every untied task in batches of ten: for each, one line "#id title: owner, next step" and your proposed outcome number or Later; Andy answers with corrections only; then save the batch. (4) Repeat until Untied is zero. (5) For every open outcome write its executive status: ONE sentence under 30 words saying where it stands, what blocks it and what happens next (with a date where there is one), saved with POST ' + OUT_SAVE + ' as the whole row plus status_line; it shows on the Outcomes tab. (6) End with the board: one line per outcome (its status sentence and counts needs you / Claude running), the Later count, and the first three things he does. Never add work to Andy that Claude can do; set owner Claude and go yes where Claude can run it.'
@@ -1274,6 +1283,8 @@ function sideHtml() {
   h += '<div class="shead">Outcomes</div>';
   h += os.map(o => { const l = tiedTo(o), y = l.filter(needsYou).length, red = l.some(r => r.type === 'ALERT' && aRed(r)); return item(String(o.id), o.title, l.length, red ? 'red' : '', y ? y + ' for you' : ''); }).join('');
   h += '<div class="shead">Lists</div>';
+  const hd = handedItems().length;
+  h += item('handed', '✋ Back to you', hd, hd ? 'hand' : '', hd ? 'Claude needs you' : '');
   h += item('untied', 'Untied', un, un ? 'red' : '', un ? 'tie or defer' : '');
   h += item('done', 'Done today', dn, 'green', '');
   h += item('workstreams', 'Workstreams', rlBuckets().length, 'grey', '');
@@ -1318,6 +1329,17 @@ function related(r) {
     return { x, s, why: Array.from(new Set(why)).slice(0, 3).join(' · ') };
   }).filter(o => o.s >= 2).sort((a, b) => b.s - a.s || lineSort(a.x, b.x)).slice(0, 20);
 }
+// Task state marks (8 Nov 2026, Andy): a yellow hand = a Claude chat handed the task back and needs him; teal cog = Claude is busy on it (Claude owns it, a chat is running); grey dot = nothing is happening.
+const handed = r => !!r.handed_at && r.owner === 'Andy' && r.status !== 'Done';
+const claudeBusy = r => r.owner === 'Claude' && r.status !== 'Done' && !!r.chat_link && r.go !== 'no';
+function stateMark(r) {
+  if (r.status === 'Done') return '';
+  if (handed(r)) return '<span class="mark hand" title="Claude handed this back to you at ' + esc(String(r.handed_at).slice(5, 16)) + '">✋</span>';
+  if (claudeBusy(r)) return '<span class="mark busy" title="Claude is working on this">⚙</span>';
+  return '<span class="mark idle" title="Nothing is running on this">○</span>';
+}
+const num = r => '<span class="tnum">#' + esc(r.id) + '</span>';
+const handedItems = () => workItems().filter(r => handed(r) && !isHidden(r));
 function line(r, opts) {
   opts = opts || {};
   const isA = needsYou(r), red = r.type === 'ALERT' && aRed(r);
@@ -1325,7 +1347,7 @@ function line(r, opts) {
   const late = r.due && r.due < today();
   const o = r.outcome && openOutcomes().find(x => String(x.id) === String(r.outcome));
   return '<div class="trow2' + (isA ? ' you' : ' cl') + (red ? ' red' : '') + (r.status === 'Done' ? ' done' : '') + (opts.compact ? ' compact' : '') + '" data-id="' + esc(r.id) + '">'
-    + '<div class="t1"><span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isA ? 'You' : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b class="ttl" data-act="focus" title="Open with everything related">' + esc(r.title) + '</b>'
+    + '<div class="t1">' + stateMark(r) + num(r) + '<span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isA ? (handed(r) ? 'Back to you' : 'You') : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b class="ttl" data-act="focus" title="Open with everything related">' + esc(r.title) + '</b>'
     + (r.waiting_on ? '<span class="chip wait">waiting: ' + esc(r.waiting_on) + '</span>' : '') + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
     + (opts.why ? '<span class="chip why">' + esc(opts.why) + '</span>' : '') + (!opts.compact && o && !ofilter ? '<span class="chip">' + esc(o.title) + '</span>' : '')
     + '<span class="am">' + esc(funcOf(r)) + '</span></div>'
@@ -1372,6 +1394,7 @@ function renderNow() {
   if (fr) h += focusHtml(fr);
   else {
     if (outForm) h += outcomeFormHtml();
+    if (ofilter === 'handed') h += lineGroup('Back to you: Claude is waiting on your answer', handedItems().sort((a, b) => String(b.handed_at).localeCompare(String(a.handed_at))), 'hand');
     if (ofilter === 'untied') h += lineGroup('Untied: tie each one to an outcome, or Later', untied(), 'red');
     else if (ofilter === 'alerts') h += '<div class="ogroup"><div class="group-title">Alerts</div>' + alertsHtml(false) + '</div>';
     else if (ofilter === 'routine') h += routineHtml();
@@ -1572,8 +1595,10 @@ function lightsHtml(open) {
     return { sc, mine, level, why, isOpen };
   });
   // Orders and Outcomes lights come from the task board, not the API sections.
+  const hd = handedItems().length;
+  const handLight = '<button type="button" class="light ' + (hd ? 'hand' : 'green') + '" data-tab="Orders" data-of="handed"><span class="ld">' + (hd ? '✋' : '') + '</span><span class="ln">Back to you</span><span class="lw">' + (hd ? hd + ' task' + (hd === 1 ? '' : 's') + ' where Claude needs your answer' : 'Claude is not waiting on you') + '</span></button>';
   const extra = ['Outcomes', 'Orders'].map(t => { const mine = acts.filter(a => a.area === t); return { tab: t, mine, level: mine.length ? 'amber' : 'green', why: mine.length ? mine.map(a => a.head.replace(/<[^>]+>/g, '')).join(' · ') : (t === 'Orders' ? 'Everything tied to an outcome' : 'Every outcome on track') }; });
-  let h = '<div class="lights">' + lights.map(l => '<button type="button" class="light ' + l.level + (l.isOpen ? ' on' : '') + '" ' + (l.sc.title === 'Systems' ? 'data-tab="Alerts"' : 'data-light="' + esc(l.sc.title) + '"') + '><span class="ld"></span><span class="ln">' + esc(l.sc.title) + '</span><span class="lw">' + esc(l.why) + '</span></button>').join('')
+  let h = '<div class="lights">' + handLight + lights.map(l => '<button type="button" class="light ' + l.level + (l.isOpen ? ' on' : '') + '" ' + (l.sc.title === 'Systems' ? 'data-tab="Alerts"' : 'data-light="' + esc(l.sc.title) + '"') + '><span class="ld"></span><span class="ln">' + esc(l.sc.title) + '</span><span class="lw">' + esc(l.why) + '</span></button>').join('')
     + extra.map(l => '<button type="button" class="light ' + l.level + '" data-tab="' + l.tab + '"><span class="ld"></span><span class="ln">' + l.tab + '</span><span class="lw">' + esc(l.why) + '</span></button>').join('') + '</div>';
   lights.filter(l => l.isOpen).forEach(l => {
     const askBtn = l.mine.length ? '<div class="lacts">' + l.mine.map(a => '<div class="lrule ' + a.level + '"><span>' + a.head + '</span>' + a.buttons + '</div>').join('') + '</div>' : '';
@@ -1596,7 +1621,7 @@ function renderOverview() {
   $('list').innerHTML = h;
   const b = $('ov_reload'); if (b) b.onclick = () => { ov = null; loadOverview(true); render(); };
   const sy = $('ny_sync'); if (sy) sy.onclick = () => { channelRun().then(() => { ov = null; loadOverview(true); }); };
-  $('list').querySelectorAll('[data-tab]').forEach(el => el.onclick = e => { e.preventDefault(); goTab(el.dataset.tab); });
+  $('list').querySelectorAll('[data-tab]').forEach(el => el.onclick = e => { e.preventDefault(); if (el.dataset.of !== undefined) ofilter = el.dataset.of; goTab(el.dataset.tab); });
   $('list').querySelectorAll('[data-light]').forEach(el => el.onclick = () => { const set = ovOpenSet(); const k = el.dataset.light; if (set.has(k)) set.delete(k); else set.add(k); try { localStorage.setItem(OV_OPEN_KEY, JSON.stringify([...set])); } catch (e) {} render(); const sec = $('list').querySelector('.lopen[data-lsec="' + k.replace(/"/g, '\\"') + '"]'); if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 }
 // ---- Outcomes tab (8 Nov 2026, Andy): every outcome on one page, in priority order, with its numbers, target date, chat and controls.
@@ -1605,7 +1630,7 @@ function outcomeChatUrl(o) {
   const list = tiedTo(o);
   const q = 'Outcome chat for Andy (Stiff Competition): "' + o.title + '"' + (o.notes ? ' — ' + o.notes : '') + (o.target ? ' — target ' + o.target : '') + '. You run this one outcome end to end: you know every task under it, you keep them moving, and you answer Andy in ONE line, results only, plain words, clickable links, no ID codes, never the word honest, no hedging. FIRST read the memory file /topics/sc-manager-chat.md (the standing rule) and the SC Master Manual.'
     + ' Save this chat\'s link on the outcome: call read_conversation with conversation_id "current" and max_turns 1; GET ' + OUT_LIST + ' and find the row with id ' + o.id + '; POST ' + OUT_SAVE + ' with that whole row (id, title, day, position, status, notes, target) plus chat_link = this chat\'s link.'
-    + ' Tasks under this outcome are rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO) with outcome = "' + o.id + '": ' + (list.length ? list.slice(0, 40).map(r => '#' + r.id + ' ' + r.title + ' (' + r.owner + ')').join('; ') : 'none yet') + '. Read each row before acting; update rows with SC - Marketing Actions API (save) (whole row); add new tasks there with outcome "' + o.id + '", owner Claude wherever Claude can do the work, a Problem line in notes, and link = the exact page where Andy acts.'
+    + ' Tasks under this outcome are rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO) with outcome = "' + o.id + '": ' + (list.length ? list.slice(0, 40).map(r => '#' + r.id + ' ' + r.title + ' (' + r.owner + ')').join('; ') : 'none yet') + '. Read each row before acting; update rows with SC - Marketing Actions API (save) (whole row); add new tasks there with outcome "' + o.id + '", owner Claude wherever Claude can do the work, a Problem line in notes, and link = the exact page where Andy acts. Always quote the task number #id when you mention a task. Hand-back rule for every task: while Claude works it is owner Claude; when Andy must do or decide something, save the row with owner Andy, next_step = exactly what he must do, handed_at = "now" (yellow hand on the dashboard); when he has answered, save owner Claude and handed_at = ""; Done clears it.'
     + ' Start: one line per task with its state and the next action, then the one thing Andy does first. Cost: state it first and wait for his yes. Never publish live, change a key or edit a workflow without his yes.';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
@@ -1825,7 +1850,7 @@ async function save(r) {
   if (i >= 0) rows[i] = r;
   render();
   try {
-    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes, waiting_on: r.waiting_on || '', go: r.go || '', parent: r.parent || '', type: r.type || '', repeat: r.repeat || '', done_on: r.done_on || '', outcome: r.outcome || '', task_type: r.task_type || '', later: r.later || '' }) });
+    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes, waiting_on: r.waiting_on || '', go: r.go || '', parent: r.parent || '', type: r.type || '', repeat: r.repeat || '', done_on: r.done_on || '', outcome: r.outcome || '', task_type: r.task_type || '', later: r.later || '', handed_at: r.status === 'Done' ? '' : (r.handed_at || '') }) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const out = await res.json();
     if (!out.ok) throw new Error(out.error || 'not saved');
