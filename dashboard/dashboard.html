@@ -797,7 +797,7 @@ function ago(iso) {
   const h = Math.floor(ms / 3600000); if (h < 1) return 'just now'; if (h < 24) return h + 'h ago';
   const d = Math.floor(h / 24); return d === 1 ? 'yesterday' : d + ' days ago';
 }
-function openAlerts() { return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r)); }
+function openAlerts() { return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r) && !isLater(r)); }
 function alertStrip(list) {
   const counts = { red: list.filter(aRed).length };
   AGROUPS.slice(1).forEach(g => counts[g[0]] = list.filter(r => aGroup(r) === g[0]).length);
@@ -839,7 +839,7 @@ function wireOutcome(scope) {
   els.forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id); if (!r) return;
     const s = c.querySelector('[data-act=outcome]'); if (s) s.onchange = e => save(Object.assign({}, r, { outcome: e.target.value, later: '' }));
-    const l = c.querySelector('[data-act=later]'); if (l) l.onclick = () => save(Object.assign({}, r, { later: tomorrow(), outcome: '' }));
+    const l = c.querySelector('[data-act=later]'); if (l) l.onclick = () => { const d = window.prompt('Hide this until (YYYY-MM-DD). It comes back as Untied on that day.', tomorrow()); if (!d) return; if (!/^\d{4}-\d{2}-\d{2}$/.test(d.trim()) || d.trim() <= today()) { toast('Give a date after today, like ' + tomorrow()); return; } save(Object.assign({}, r, { later: d.trim(), outcome: '' })); };
     const go = c.querySelector('[data-act=goout]'); if (go) go.onclick = () => { view = 'Orders'; ofilter = String(r.outcome); focusId = null; try { history.replaceState(null, '', '#Orders'); } catch (e) {} render(); window.scrollTo(0, 0); };
   });
 }
@@ -1216,7 +1216,6 @@ function sideHtml() {
   h += os.map(o => { const l = tiedTo(o), y = l.filter(needsYou).length, red = l.some(r => r.type === 'ALERT' && aRed(r)); return item(String(o.id), o.title, l.length, red ? 'red' : '', y ? y + ' for you' : ''); }).join('');
   h += '<div class="shead">Lists</div>';
   h += item('untied', 'Untied', un, un ? 'red' : '', un ? 'tie or defer' : '');
-  h += item('later', 'Later', lt, 'grey', '');
   h += item('done', 'Done today', dn, 'green', '');
   h += item('workstreams', 'Workstreams', rlBuckets().length, 'grey', '');
   h += '<button class="sitem add" data-of="+"><span class="sl">+ Outcome</span></button>';
@@ -1246,7 +1245,7 @@ const words = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').sp
 function linkKey(u) { try { const x = new URL(u); return x.host + x.pathname.split('/').slice(0, 4).join('/'); } catch (e) { return ''; } }
 function related(r) {
   const rw = new Set(words(r.title + ' ' + (r.next_step || ''))), rl = linkKey(r.link), rc = safeUrl(r.chat_link);
-  const pool = rows.filter(x => String(x.id) !== String(r.id) && !CONTAINERS.includes(x.type || '') && x.status !== 'Removed' && (ACTIVE.includes(x.status) || x.done_on === today()));
+  const pool = rows.filter(x => String(x.id) !== String(r.id) && !CONTAINERS.includes(x.type || '') && x.status !== 'Removed' && !isLater(x) && (ACTIVE.includes(x.status) || x.done_on === today()));
   return pool.map(x => {
     let s = 0, why = [];
     if (r.parent && String(x.parent) === String(r.parent)) { s += 3; why.push('same group'); }
