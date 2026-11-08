@@ -493,7 +493,7 @@
 <body>
 <header>
   <img class="logo-img" src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/cl_SCSMAuto_sc_letters_logo_header_v1.png" alt="SC" onerror="this.outerHTML='<div class=&quot;logo&quot;>SC</div>'">
-  <div><h1>SC Dashboard</h1><p>Orders of the Day</p></div>
+  <div><h1>SC Dashboard</h1><p>Tasks of the Day</p></div>
   <div class="spacer"></div>
   <button class="btn ghost" id="giftBtn">Gift NFT</button>
   <button class="btn" id="addBtn">+ Add</button>
@@ -632,9 +632,9 @@ let rows = [];
 let frows = [];
 let fview = 'To follow';
 let showDone = false;   // 13 Oct 2026 (Andy): lines ticked today are hidden unless asked for
-let view = 'Overview';   // 8 Nov 2026 (Andy): Overview first, then Routine, Alerts, Outcomes, Orders of the Day
+let view = 'Overview';   // 8 Nov 2026 (Andy): Overview first, then Routine, Alerts, Outcomes, Tasks of the Day
 // A link can open a tab directly: .../webhook/sc-dashboard#Alerts (8 Nov 2026).
-try { const hv = decodeURIComponent(location.hash.slice(1)); if (hv && ['Overview','Routine','Alerts','Outcomes','Orders','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
+try { let hv = decodeURIComponent(location.hash.slice(1)); if (hv === 'Orders') hv = 'Tasks'; if (hv && ['Overview','Routine','Alerts','Outcomes','Tasks','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
 let who = 'Everyone';
 
 const $ = id => document.getElementById(id);
@@ -669,7 +669,7 @@ const EG_LIST = BASE + 'sc-engage-list', EG_SAVE = BASE + 'sc-engage-save';
 let eg = null, egLoading = false;
 let gp = null, gpLoading = false;
 let baskets = null, bktOpen = false;
-function loadBaskets() { fetch(BASKETS_URL).then(r => r.ok ? r.json() : null).then(d => { baskets = d; if (view === 'Now' || view === 'Orders' || view === 'Overview') render(); }).catch(() => {}); }
+function loadBaskets() { fetch(BASKETS_URL).then(r => r.ok ? r.json() : null).then(d => { baskets = d; if (view === 'Now' || view === 'Tasks' || view === 'Overview') render(); }).catch(() => {}); }
 function basketHtml() {
   if (!baskets || !baskets.h24) return '';
   const g = v => '£' + Number(v || 0).toFixed(2);
@@ -681,7 +681,7 @@ function basketHtml() {
 // Sales channels line on the Now tab (5 Nov 2026): last result of SC - Channel Sync (daily 05:15 UK, or the button). Green = every product on that channel.
 const CHN_STATUS_URL = BASE + 'sc-channel-status', CHN_RUN_URL = BASE + 'sc-channel-sync';
 let chn = null, chnBusy = false;
-function loadChannels() { fetch(CHN_STATUS_URL).then(r => r.ok ? r.json() : null).then(d => { if (d) chn = d; if (view === 'Now' || view === 'Orders' || view === 'Overview') render(); }).catch(() => {}); }
+function loadChannels() { fetch(CHN_STATUS_URL).then(r => r.ok ? r.json() : null).then(d => { if (d) chn = d; if (view === 'Now' || view === 'Tasks' || view === 'Overview') render(); }).catch(() => {}); }
 function channelHtml() {
   const list = (chn && chn.channels) || [];
   const gaps = list.filter(c => c.state === 'live' && (c.missing || []).length);
@@ -744,7 +744,7 @@ function tabCount(v) {
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && !isHidden(r)).length;
-  if (v === 'Orders' || v === 'Now') return (handedItems().length ? '✋' + handedItems().length + ' · ' : '') + ((untied().length + workItems().filter(r => !isHidden(r) && needsYou(r) && r.outcome).length) || '');
+  if (v === 'Tasks' || v === 'Now') return (handedItems().length ? '✋' + handedItems().length + ' · ' : '') + ((untied().length + workItems().filter(r => !isHidden(r) && needsYou(r) && r.outcome).length) || '');
   if (v === 'Today' || v === 'Routine') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length || '';
   const keep = view; view = v; let n;
   if (v === 'Done') n = rows.filter(flatShown).length;
@@ -757,8 +757,8 @@ function tabCount(v) {
 
 function goTab(name) { view = name; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); window.scrollTo(0, 0); }
 function renderTabs() {
-  // 8 Nov 2026 (Andy): one board for every action (Orders of the Day); the other tabs are build tools and data.
-  const names = ['Overview', 'Routine', 'Alerts', 'Outcomes', 'Orders', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
+  // 8 Nov 2026 (Andy): one board for every action (Tasks of the Day); the other tabs are build tools and data.
+  const names = ['Overview', 'Routine', 'Alerts', 'Outcomes', 'Tasks', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); });
@@ -897,7 +897,7 @@ function outcomeSel(r) {
   const os = openOutcomes();
   return '<select class="osel' + (r.outcome ? '' : ' none') + '" data-act="outcome" title="Outcome"><option value="">' + (isLater(r) ? 'Later (' + esc(r.later) + ')' : 'Untied') + '</option>' + os.map(o => '<option value="' + esc(o.id) + '"' + (String(o.id) === String(r.outcome) && !isHidden(r) ? ' selected' : '') + '>' + esc(o.title) + '</option>').join('') + '</select>'
     + (isLater(r) ? '' : '<button class="btn small ghost" data-act="later" title="Back to tomorrow\'s stand-up">Later</button>')
-    + (r.outcome && !isHidden(r) && !(view === 'Orders' && ofilter === String(r.outcome)) && os.some(o => String(o.id) === String(r.outcome)) ? '<button class="btn small ghost goout" data-act="goout" title="Open this outcome on Orders of the Day">Go to outcome →</button>' : '');
+    + (r.outcome && !isHidden(r) && !(view === 'Tasks' && ofilter === String(r.outcome)) && os.some(o => String(o.id) === String(r.outcome)) ? '<button class="btn small ghost goout" data-act="goout" title="Open this outcome on Tasks of the Day">Go to outcome →</button>' : '');
 }
 function wireOutcome(scope) {
   const els = scope.matches && scope.matches('[data-id]') ? [scope] : Array.from(scope.querySelectorAll('[data-id]'));
@@ -905,7 +905,7 @@ function wireOutcome(scope) {
     const r = rows.find(x => String(x.id) === c.dataset.id); if (!r) return;
     const s = c.querySelector('[data-act=outcome]'); if (s) s.onchange = e => save(Object.assign({}, r, { outcome: e.target.value, later: '' }));
     const l = c.querySelector('[data-act=later]'); if (l) l.onclick = () => { const d = window.prompt('Hide this until (YYYY-MM-DD). It comes back as Untied on that day.', tomorrow()); if (!d) return; if (!/^\d{4}-\d{2}-\d{2}$/.test(d.trim()) || d.trim() <= today()) { toast('Give a date after today, like ' + tomorrow()); return; } save(Object.assign({}, r, { later: d.trim(), outcome: '' })); };
-    const go = c.querySelector('[data-act=goout]'); if (go) go.onclick = () => { view = 'Orders'; ofilter = String(r.outcome); focusId = null; try { history.replaceState(null, '', '#Orders'); } catch (e) {} render(); window.scrollTo(0, 0); };
+    const go = c.querySelector('[data-act=goout]'); if (go) go.onclick = () => { view = 'Tasks'; ofilter = String(r.outcome); focusId = null; try { history.replaceState(null, '', '#Tasks'); } catch (e) {} render(); window.scrollTo(0, 0); };
   });
 }
 // Clean up all alerts (6 Nov 2026, Andy): one chat sorts every open alert, closes the noise, fixes each root cause, keeps what matters, and ends with a short summary.
@@ -934,7 +934,7 @@ function cleanupBar(list) {
 // In use line (6 Nov 2026, Andy): what one chat at a time may use (browser, Shopify theme, shared files), and which chat holds it. From SC - File Lock (list).
 const LOCK_URL = BASE + 'sc-file-lock';
 let locks = null;
-function loadLocks() { fetch(LOCK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).then(d => { locks = (d && d.locks) || []; if (view === 'Orders' || view === 'Now' || view === 'Alerts' || view === 'Today' || view === 'Routine') render(); }).catch(() => {}); }
+function loadLocks() { fetch(LOCK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).then(d => { locks = (d && d.locks) || []; if (view === 'Tasks' || view === 'Now' || view === 'Alerts' || view === 'Today' || view === 'Routine') render(); }).catch(() => {}); }
 function inUseHtml() {
   if (!locks || !locks.length) return '';
   return '<div class="inuse"><b>In use</b>' + locks.map(l => '<span class="iu">' + esc(l.file) + (safeUrl(l.holder) ? ' · <a target="_blank" rel="noopener" href="' + esc(l.holder) + '">chat</a>' : '') + ' · until ' + esc(new Date(l.expires_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + '</span>').join('') + '</div>';
@@ -1181,7 +1181,7 @@ window.addEventListener('resize', fitContentFrame);
 function render() {
   renderTabs();
   $('list').classList.toggle('wide', view === 'Content');
-  $('list').classList.toggle('board', view === 'Now' || view === 'Orders');
+  $('list').classList.toggle('board', view === 'Now' || view === 'Tasks');
   $('list').classList.toggle('wide', view === 'Overview');
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
@@ -1195,7 +1195,7 @@ function render() {
   if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Engage') { renderEngage(); return; }
   if (view === 'Today' || view === 'Routine') { $('list').innerHTML = inUseHtml() + routineHtml(); wireRoutine(); return; }
-  if (view === 'Now' || view === 'Orders') { renderNow(); return; }
+  if (view === 'Now' || view === 'Tasks') { renderNow(); return; }
   if (view === 'Outcomes') { renderOutcomes(); return; }
   if (view === 'Overview') { renderOverview(); return; }
   let html = '';
@@ -1252,7 +1252,7 @@ function managerUrl(mode) {
 }
 function managerBar() {
   const sys = managerRow(), last = sys && safeUrl(sys.chat_link);
-  return '<div class="cleanbar mgr"><a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning orders with the Manager</a>'
+  return '<div class="cleanbar mgr"><a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning tasks with the Manager</a>'
     + '<a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('ask')) + '">Ask the Manager</a>'
     + (last ? '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(last) + '">Open today\'s Manager chat</a>' : '')
     + '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(winsUrl()) + '">End of day report</a></div>';
@@ -1267,7 +1267,7 @@ function outcomeStrip() {
   h += tile('alerts', al.length, 'Alerts', alRed ? '#c62828' : '#e49b0f', alRed ? alRed + ' red' : (al.length ? 'none red' : 'all clear'));
   const rt = routineDue(), rtOpen = rt.filter(r => r.status === 'Today' && r.done_on !== today()).length;
   h += tile('routine', rtOpen, 'Routine', '#e8453c', rtOpen ? 'to tick today' : 'all ticked');
-  h += tile('later', lt, 'Later', '#8a8f98', 'back at morning orders');
+  h += tile('later', lt, 'Later', '#8a8f98', 'back at morning tasks');
   h += tile('done', dn, 'Done today', '#2e9e5b', '');
   h += '<button class="atile otile' + (ofilter === 'workstreams' ? ' on' : '') + '" style="--ac:#1a1a1a" data-of="workstreams"><div class="n">' + rlBuckets().length + '</div><div class="l">Workstreams</div><div class="s">buckets, groups, chats</div></button>';
   h += '<button class="atile otile add" style="--ac:#1a1a1a" data-of="+"><div class="n">+</div><div class="l">Outcome</div></button></div>';
@@ -1279,7 +1279,7 @@ function sideHtml() {
   const al = openAlerts(), alRed = al.filter(aRed).length;
   const rt = routineDue(), rtOpen = rt.filter(r => r.status === 'Today' && r.done_on !== today()).length;
   const item = (key, label, n, cls, sub) => '<button class="sitem' + (ofilter === key ? ' on' : '') + (cls ? ' ' + cls : '') + (n === 0 || n === '' ? ' zero' : '') + '" data-of="' + esc(key) + '"><span class="sl">' + esc(label) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><span class="sn">' + n + '</span></button>';
-  let h = '<button class="sitem home' + (!ofilter ? ' on' : '') + '" data-of=""><span class="sl">Orders of the Day</span><span class="sn">' + (os.length) + '</span></button>';
+  let h = '<button class="sitem home' + (!ofilter ? ' on' : '') + '" data-of=""><span class="sl">Tasks of the Day</span><span class="sn">' + (os.length) + '</span></button>';
   h += '<div class="shead">Outcomes</div>';
   h += os.map(o => { const l = tiedTo(o), y = l.filter(needsYou).length, hd = l.filter(handed).length, red = l.some(r => r.type === 'ALERT' && aRed(r)); return item(String(o.id), (hd ? '✋ ' : '') + o.title, l.length, red ? 'red' : (hd ? 'hand' : ''), hd ? hd + ' back to you' : (y ? y + ' for you' : '')); }).join('');
   h += '<div class="shead">Lists</div>';
@@ -1399,11 +1399,11 @@ function renderNow() {
     else if (ofilter === 'alerts') h += '<div class="ogroup"><div class="group-title">Alerts</div>' + alertsHtml(false) + '</div>';
     else if (ofilter === 'routine') h += routineHtml();
     else if (ofilter === 'workstreams') h += '<div id="rlhost"></div>';
-    else if (ofilter === 'later') h += lineGroup('Later: comes back at the next morning orders', laterItems());
+    else if (ofilter === 'later') h += lineGroup('Later: comes back at the next morning tasks', laterItems());
     else if (ofilter === 'done') h += lineGroup('Done today', doneToday());
     else if (ofilter) { const o = os.find(x => String(x.id) === ofilter); if (o) h += '<div class="prow" style="margin:0 0 6px"><h2 style="margin:0;font-size:18px;flex:1">' + esc(o.title) + '</h2><button class="btn small ghost" id="of_edit">Rename or close</button></div>' + byFunction(tiedTo(o)) + (/audience/i.test(o.title) ? egHtml() + gpHtml() : ''); else ofilter = ''; }
     if (!ofilter) {
-      if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning orders with the Manager", or + Outcome in the sidebar.</div>';
+      if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning tasks with the Manager", or + Outcome in the sidebar.</div>';
       h += nextForYou();
       if (untied().length) h += '<div class="hint" style="border-color:#c62828;color:#c62828">' + untied().length + ' open task' + (untied().length === 1 ? ' is' : 's are') + ' untied. Open Untied in the sidebar.</div>';
     }
@@ -1578,12 +1578,12 @@ function actionList() {
   openOutcomes().filter(o => o.target && o.target < today()).forEach(o => act('amber', 'Past target: ' + esc(o.title), 'target was ' + esc(o.target), tabBtn('Open outcomes', 'Outcomes')));
   // Untied tasks
   const un = untied().length;
-  if (un) act('amber', un + ' task' + (un === 1 ? '' : 's') + ' untied', 'not tied to any outcome, so at risk of being forgotten', '<a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning orders</a>' + tabBtn('Open orders', 'Orders'));
+  if (un) act('amber', un + ' task' + (un === 1 ? '' : 's') + ' untied', 'not tied to any outcome, so at risk of being forgotten', '<a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning tasks</a>' + tabBtn('Open tasks', 'Tasks'));
   const order = { red: 0, amber: 1 };
   return out.sort((a, b) => order[a.level] - order[b.level]);
 }
 // Traffic lights (8 Nov 2026, Andy): one light per area; the colour comes from the rules in actionList; click a light to open that area's figures. Alerts are never repeated here: the Systems light points at the Alerts tab.
-const AREA_OF = { 'red alert': 'Systems', 'amber alert': 'Systems', 'workflow': 'Systems', 'abandoned basket': 'Abandoned baskets', 'renews': 'Money', 'Spend': 'Money', 'missing on a sales channel': 'Sales channels', 'visitors': 'Shop', 'No sale': 'Shop', 'Followers': 'Audience', 'return': 'Systems', 'Past target': 'Outcomes', 'untied': 'Orders' };
+const AREA_OF = { 'red alert': 'Systems', 'amber alert': 'Systems', 'workflow': 'Systems', 'abandoned basket': 'Abandoned baskets', 'renews': 'Money', 'Spend': 'Money', 'missing on a sales channel': 'Sales channels', 'visitors': 'Shop', 'No sale': 'Shop', 'Followers': 'Audience', 'return': 'Systems', 'Past target': 'Outcomes', 'untied': 'Tasks' };
 function areaOf(head) { const k = Object.keys(AREA_OF).find(k => head.indexOf(k) !== -1); return k ? AREA_OF[k] : 'Systems'; }
 function lightsHtml(open) {
   const acts = actionList().map(a => Object.assign({ area: areaOf(a.head.replace(/<[^>]+>/g, '')) }, a));
@@ -1596,8 +1596,8 @@ function lightsHtml(open) {
   });
   // Orders and Outcomes lights come from the task board, not the API sections.
   const hd = handedItems().length;
-  const handLight = '<button type="button" class="light ' + (hd ? 'hand' : 'green') + '" data-tab="Orders" data-of="handed"><span class="ld">' + (hd ? '✋' : '') + '</span><span class="ln">Back to you</span><span class="lw">' + (hd ? hd + ' task' + (hd === 1 ? '' : 's') + ' where Claude needs your answer' : 'Claude is not waiting on you') + '</span></button>';
-  const extra = ['Outcomes', 'Orders'].map(t => { const mine = acts.filter(a => a.area === t); return { tab: t, mine, level: mine.length ? 'amber' : 'green', why: mine.length ? mine.map(a => a.head.replace(/<[^>]+>/g, '')).join(' · ') : (t === 'Orders' ? 'Everything tied to an outcome' : 'Every outcome on track') }; });
+  const handLight = '<button type="button" class="light ' + (hd ? 'hand' : 'green') + '" data-tab="Tasks" data-of="handed"><span class="ld">' + (hd ? '✋' : '') + '</span><span class="ln">Back to you</span><span class="lw">' + (hd ? hd + ' task' + (hd === 1 ? '' : 's') + ' where Claude needs your answer' : 'Claude is not waiting on you') + '</span></button>';
+  const extra = ['Outcomes', 'Tasks'].map(t => { const mine = acts.filter(a => a.area === t); return { tab: t, mine, level: mine.length ? 'amber' : 'green', why: mine.length ? mine.map(a => a.head.replace(/<[^>]+>/g, '')).join(' · ') : (t === 'Tasks' ? 'Everything tied to an outcome' : 'Every outcome on track') }; });
   let h = '<div class="lights">' + handLight + lights.map(l => '<button type="button" class="light ' + l.level + (l.isOpen ? ' on' : '') + '" ' + (l.sc.title === 'Systems' ? 'data-tab="Alerts"' : 'data-light="' + esc(l.sc.title) + '"') + '><span class="ld"></span><span class="ln">' + esc(l.sc.title) + '</span><span class="lw">' + esc(l.why) + '</span></button>').join('')
     + extra.map(l => '<button type="button" class="light ' + l.level + '" data-tab="' + l.tab + '"><span class="ld"></span><span class="ln">' + l.tab + '</span><span class="lw">' + esc(l.why) + '</span></button>').join('') + '</div>';
   lights.filter(l => l.isOpen).forEach(l => {
@@ -1682,7 +1682,7 @@ function outcomeCard(o, i, n) {
     + '</div>'
     + '<div class="oacts">'
     + '<button class="btn small ghost" data-oact="up" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button class="btn small ghost" data-oact="down" title="Move down"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>'
-    + '<button class="btn small" data-oact="open">Open on Orders</button>'
+    + '<button class="btn small" data-oact="open">Open on Tasks</button>'
     + (link ? '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(link) + '">Outcome chat</a>' : '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(outcomeChatUrl(o)) + '">Start outcome chat</a>')
     + '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(outcomeStatusUrl(o)) + '" title="Opens a chat that researches this outcome and writes its one-line status">Status</a>'
     + '<button class="btn small ghost" data-oact="edit">Edit</button><button class="btn small ghost" data-oact="close">Close</button>'
@@ -1693,7 +1693,7 @@ function renderOutcomes() {
   const closed = outcomes.filter(o => o.status === 'done').sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
   const you = workItems().filter(r => needsYou(r) && !isHidden(r) && r.outcome).length, cl = workItems().filter(r => !needsYou(r) && !isHidden(r) && r.outcome).length;
   let h = '<div class="ohead"><h2>Outcomes</h2><p class="sub">' + os.length + ' open · ' + you + ' tasks for you · ' + cl + ' with Claude · ' + untied().length + ' untied. Arrows set the priority; the order here is the order everywhere.</p>'
-    + '<div class="cleanbar mgr"><a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning orders with the Manager</a><button class="btn small ghost" id="oc_add">+ Outcome</button></div></div>';
+    + '<div class="cleanbar mgr"><a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning tasks with the Manager</a><button class="btn small ghost" id="oc_add">+ Outcome</button></div></div>';
   if (oEdit && !oEdit.id) h += '<div class="ocard"><div class="onum">+</div><div class="obody"><input class="w" id="oc_title" maxlength="80" placeholder="Executive outcome, e.g. Card payments live"><textarea class="w" id="oc_notes" rows="2" placeholder="What this outcome is, in one or two lines"></textarea><div class="prow"><label class="olab">Target <input type="date" id="oc_target"></label><button class="btn small" data-oact="save">Save</button><button class="btn small ghost" data-oact="cancel">Cancel</button></div></div></div>';
   h += os.map((o, i) => outcomeCard(o, i, os.length)).join('') || '<div class="empty">No outcomes yet.</div>';
   if (closed.length) h += '<details class="oclosed"><summary>Closed outcomes (' + closed.length + ')</summary>' + closed.map(o => '<div class="ocard done" data-oid="' + esc(o.id) + '"><div class="onum">✓</div><div class="obody"><h3>' + esc(o.title) + '</h3>' + (o.notes ? '<p class="onotes">' + esc(o.notes) + '</p>' : '') + '</div><div class="oacts"><button class="btn small ghost" data-oact="reopen">Reopen</button></div></div>').join('') + '</details>';
@@ -1712,7 +1712,7 @@ function renderOutcomes() {
       if (a === 'edit') { oEdit = o; renderOutcomes(); return; }
       if (a === 'up') { await moveOutcome(o, -1); renderOutcomes(); return; }
       if (a === 'down') { await moveOutcome(o, 1); renderOutcomes(); return; }
-      if (a === 'open') { view = 'Orders'; ofilter = String(o.id); focusId = null; try { history.replaceState(null, '', '#Orders'); } catch (e) {} render(); window.scrollTo(0, 0); return; }
+      if (a === 'open') { view = 'Tasks'; ofilter = String(o.id); focusId = null; try { history.replaceState(null, '', '#Tasks'); } catch (e) {} render(); window.scrollTo(0, 0); return; }
       if (a === 'close') { if (tiedTo(o).length && !window.confirm(tiedTo(o).length + ' open tasks are tied to this outcome; they become Untied. Close it?')) return; await saveOutcome(Object.assign({}, o, { status: 'done' })); renderOutcomes(); toast('Outcome closed'); return; }
       if (a === 'reopen') { await saveOutcome(Object.assign({}, o, { status: 'open', position: openOutcomes().length + 1 })); renderOutcomes(); return; }
     } catch (e) { toast('Not saved: ' + e.message); }
@@ -2940,7 +2940,7 @@ function journalChatBar() {
   const sys = journalRow(), last = sys && safeUrl(sys.chat_link);
   return '<div class="cleanbar mgr">' + (last ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(last) + '">Open the journal chat</a>' : '')
     + '<a class="btn small' + (last ? ' ghost' : '') + '" target="_blank" rel="noopener" href="' + esc(journalChatUrl()) + '">' + (last ? 'Start a fresh journal chat' : 'Open the journal chat') + '</a>'
-    + '<a class="btn small ghost" target="_blank" rel="noopener" href="https://n8n-production-afc2.up.railway.app/webhook/sc-dashboard#Orders">Journal tasks on Orders</a></div>';
+    + '<a class="btn small ghost" target="_blank" rel="noopener" href="https://n8n-production-afc2.up.railway.app/webhook/sc-dashboard#Tasks">Journal tasks</a></div>';
 }
 function renderJournal() {
   renderTabs();
