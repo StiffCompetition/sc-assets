@@ -537,6 +537,9 @@ function fmtDate(raw) {
   return d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 // Colour coding (9 Oct 2026): each post type has its own colour on the card edge; each character his Roll Call colour.
+// Post type names (Playbook 1.2.1, Andy 8 Nov 2026): what is shown on screen. The stored values (calendar format, planner keys) stay as they are.
+const FDISP = { 'Product': 'Product: Shopping Channel', 'Dare to Buy': 'Product: Dare to Buy', 'Gift Guide': 'Product: Gift Guide', 'Brand Lore (Movie Poster)': 'Brand Lore: Movie Poster', 'Brand Lore (Poster Wall)': 'Brand Lore: Movie Poster', 'Brand Lore (Roll Call)': 'Brand Lore: Roll Call Characters', 'Brand Lore (Roll Call cartoon flick)': 'Brand Lore: Roll Call Comic', 'Character Lore (Poster Wall)': 'Character Lore: Movie Poster' };
+function fdisp(f) { return FDISP[f] || f; }
 const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60', 'Gift Guide': '#1B8A3A', 'Salute': '#5E35B1', 'Campaign': '#F5B800', 'Launch': '#2081E2' };
 const CHAR_COLOR = { 'Major Wood': '#556B2F', 'The Rear Admiral': '#1E3A8A', "Hammerin' Hanky": '#FF7A00', 'The Grip': '#1E5BD8', 'Slick Willy': '#111111', 'The Velvet Python': '#6B2FA0', 'SC Logo': '#555555' };
 // Brand posts are filed under "SC Logo" for the pipeline; on screen they read "All 6" (Roll Call) or "Brand".
@@ -569,7 +572,7 @@ function postTimeKey(r) { try { return r._press ? '99:99' : londonHm(slotDue(r))
 function londonHm(d) { return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).format(d); }
 
 function isRollCall(notes) { return /Roll:\s*call/i.test(String(notes || '')); }
-function renderLegend() { const el = document.getElementById('typeLegend'); if (el) el.innerHTML = Object.keys(FORMAT_COLOR).map(f => '<span>' + typeDot(f) + escapeHtml(f) + '</span>').join('') + '<span><span class="type-dot" style="background:#fff4dc;border:1px solid #e0b860"></span>needs you</span>'; }
+function renderLegend() { const el = document.getElementById('typeLegend'); if (el) el.innerHTML = Object.keys(FORMAT_COLOR).map(f => '<span>' + typeDot(f) + escapeHtml(fdisp(f)) + '</span>').join('') + '<span><span class="type-dot" style="background:#fff4dc;border:1px solid #e0b860"></span>needs you</span>'; }
 document.addEventListener('DOMContentLoaded', renderLegend);
 function isoDate(raw) {
   const d = new Date(raw);
@@ -749,7 +752,7 @@ function render() {
       tr.innerHTML =
         '<td>' + fmtDate(r.post_date) + '</td>' +
         '<td>' + dayName(r) + '<br>' + charTag(r.character, r) + '</td>' +
-        '<td>' + typeDot(r.format) + r.format + '</td>' +
+        '<td>' + typeDot(r.format) + escapeHtml(fdisp(r.format)) + '</td>' +
         '<td class="text-cell">' + (r.text_content ? escapeHtml(r.text_content) : '<span class="snippet empty">no text yet</span>') + '</td>' +
         '<td>' + (r.platforms || '') + '</td>' +
         '<td>' + (st => '<span class="badge" style="border-color:' + st.color + ';color:' + st.color + '">' + escapeHtml(st.label) + '</span>')(cardStage(r)) + '</td>' +
@@ -765,12 +768,12 @@ function render() {
   }
 }
 
-// 23 Oct 2026 (Andy): the clip a post uses is named wherever it is shown. Brand Lore: Roll Call portraits, Roll Call comic pages, Movie Poster,
+// 23 Oct 2026 (Andy): the clip a post uses is named wherever it is shown. Brand Lore: Roll Call Characters, Roll Call Comic, Movie Poster,
 // or an action clip named by its on-screen line.
 function clipName(r) {
   const n = String(r.notes || '');
   if (/Clip:\s*posterwall/i.test(n)) return 'Movie Poster';
-  if (isRollCall(n)) return /RollVO:[^|]*\s\/\s/i.test(n) ? 'Roll Call portraits' : 'Roll Call comic pages';
+  if (isRollCall(n)) return /RollVO:[^|]*\s\/\s/i.test(n) ? 'Roll Call Characters' : 'Roll Call Comic';
   const os = extractOnScreen(n);
   if (!os.hasText) return 'Action clip';
   return 'Action clip "' + ((os.isSplit ? os.setupText + ' ' : '') + os.deliveryText).replace(/\*/g, '').toUpperCase() + '"';
@@ -818,7 +821,7 @@ function makeCard(r) {
   card.innerHTML =
     '<div class="date">' + fmtDate(r.post_date) + ' &middot; ' + londonHm(slotDue(r)) + ' <span class="postno">#' + r.id + '</span></div>' +
     charTag(r.character, r) +
-    '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + r.format + '</div>' +
+    '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + escapeHtml(fdisp(r.format)) + '</div>' +
     osLine +
     (r.format === 'Brand Lore' ? '<div class="clip-line">Clip: ' + escapeHtml(clipName(r)) + '</div>' : '') +
     '<span class="badge" style="border-color:' + st.color + ';color:' + st.color + ';margin-top:6px">' + escapeHtml(st.label) + '</span>';
@@ -1137,11 +1140,11 @@ function openDrawer(r) {
     r.format === 'NFT' ? panelBox(r) + (r.notes ? '<div class="field"><label>NFT (from the shop)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
     // Roll Call (Playbook 7.12): a locked master clip; the announcer voice-over is the only part made per post.
     isRollCall(r.notes) ? panelBox(r) +
-      '<div class="field"><label>Video</label><div class="clip-info"><b>' + escapeHtml(clipName(r)) + '</b> - ' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie poster clip: the six-character poster wall.' : /RollVO:[^|]*\s\/\s/i.test(r.notes || '') ? 'Roll Call portrait clip: the six animated portraits with name tags (crew introduction).' : 'Roll Call comic-page clip: comic pages turning, the six characters in colour.') + ' Fixed clip, ends on the logo.</div></div>' +
+      '<div class="field"><label>Video</label><div class="clip-info"><b>' + escapeHtml(clipName(r)) + '</b> - ' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie Poster clip: the six-character poster, image only.' : /RollVO:[^|]*\s\/\s/i.test(r.notes || '') ? 'Roll Call Characters clip: the six characters with name tags (crew introduction).' : 'Roll Call Comic clip: comic sketch pages moving quickly, page by page.') + ' Fixed clip, ends on the logo.</div></div>' +
       rollVoEdit(r.notes) : (
     conceptPicker(r) +
     panelBox(r) +
-    (r.format === 'Brand Lore' ? '<div class="field"><label>Clip</label><div class="clip-info"><b>' + escapeHtml(clipName(r)) + '</b> - ' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie poster clip: the six-character poster wall.' : 'Made-to-order clip: a new start image (Gemini) animated by the motion below (Kling). Not a fixed clip.') + '</div></div>' : '') +
+    (r.format === 'Brand Lore' ? '<div class="field"><label>Clip</label><div class="clip-info"><b>' + escapeHtml(clipName(r)) + '</b> - ' + (/Clip:\s*posterwall/i.test(r.notes || '') ? 'Movie Poster clip: the six-character poster, image only.' : 'Made-to-order clip: a new start image (Gemini) animated by the motion below (Kling). Not a fixed clip.') + '</div></div>' : '') +
     '<div class="field"><label>On-Screen Text (what actually renders in the video)</label></div>' +
     onScreenPreviewHtml(r.notes) +
     previewTextButtonHtml(r) +
@@ -1223,7 +1226,7 @@ function slidesPreview(r) {
   const img = (u, label) => '<div style="flex:1 1 0;min-width:0"><div style="font-size:12px;margin-bottom:4px">' + label + '</div><a href="' + u.replace(/"/g, '&quot;') + '" target="_blank"><img src="' + u.replace(/"/g, '&quot;') + '" style="display:block;width:100%;border:1px solid var(--line)"></a></div>';
   const names = r.format === 'Dare to Buy' ? ['The dare', 'The product', 'Get yours'] : [];
   const cells = d.slides.map((u, i) => img(u, (i + 1) + (names[i] ? '. ' + names[i] : ''))).join('');
-  return '<div class="field"><label>' + escapeHtml(r.format) + ' slides (Instagram carousel and Facebook, in order) and the X image. Check them, then set "approved" to schedule.</label>' +
+  return '<div class="field"><label>' + escapeHtml(fdisp(r.format)) + ' slides (Instagram carousel and Facebook, in order) and the X image. Check them, then set "approved" to schedule.</label>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' + cells + img(d.x, 'X image') + '</div></div>';
 }
 function imagePreview(r) {
@@ -1300,7 +1303,7 @@ const FLOW = {
   travel: { opts: ['draft', 'text approved', 'image ready', 'image approved', 'approved', 'posted', 'paused'],
     help: '"text approved" prepares the start image: the NFT artwork extended to fill the frame, back as "image ready". "image approved" makes the video from it (one clip spend). "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
   rollcall: { opts: ['draft', 'text approved', 'approved', 'posted', 'paused'],
-    help: 'Roll Call: "text approved" makes the video straight away from the fixed Roll Call clip and the announcer voice-over (about 5-15 min, no start image), back as "clip ready for your approval". "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
+    help: 'Roll Call Characters and Roll Call Comic: "text approved" makes the video straight away from the fixed clip and the announcer voice-over (about 5-15 min, no start image), back as "clip ready for your approval". "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
   nft: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'NFT: the clip is made whole when the post is planned (the character\'s NFT template, the NFT and its ticker). "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' },
   salute: { opts: ['draft', 'approved', 'posted', 'paused'],
@@ -1308,7 +1311,7 @@ const FLOW = {
   repost: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'Repost (Library tab): the clip is already made, so nothing is generated. Check the captions and platforms, then "approved" schedules it for its date and time. "draft" holds it back.' },
   dtb: { opts: ['draft', 'approved', 'posted', 'paused'],
-    help: 'Dare to Buy and Gift Guide: the carousel slides and the X image are already made; there is no video. "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' }
+    help: 'Product: Dare to Buy and Product: Gift Guide: the carousel slides and the X image are already made; there is no video. "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' }
 };
 function statusField(current, r) {
   // 9 Oct 2026 (Andy): one final-approval button. "approved" saves the post as scheduled, which the scheduler posts at its slot.
@@ -1497,7 +1500,7 @@ async function submitRecreate(r, ctx) {
   const warns = [];
   if (due.getTime() < Date.now() - 60 * 60000) warns.push('That time has already passed.');
   const clash = f === 'Dare to Buy' ? null : ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && x.panel_status !== 'rejected' && (slotOfFormat(x.format) === slotOfFormat(f) || (time && x.post_time === time)));
-  if (clash) warns.push('That slot already has a post (' + clash.character + ', ' + clash.format + ').');
+  if (clash) warns.push('That slot already has a post (' + clash.character + ', ' + fdisp(clash.format) + ').');
   const cost = recreateCost(r);
   if (!confirm((warns.length ? warns.join('\n') + '\n\n' : '') + 'Recreate this post? About ' + cost + '. It makes a new brief, image and clip for your approval.' + (warns.length ? '\n\nDo it anyway?' : ''))) { msg.textContent = 'Not recreated. Nothing was spent.'; return; }
   const DAY_TITLE = { 1: 'Major Wood Monday', 2: "Hammerin' Tuesday", 3: 'White-Knuckle Wednesday', 4: 'Thrusting Thursday', 5: 'Full-Friction Friday', 6: 'Sailor Saturday', 0: 'Standing Tall Sunday' };
@@ -1636,7 +1639,7 @@ function postedPlatforms(r) {
 function libraryItems() {
   const items = [];
   ROWS.filter(r => !repostKey(r) && r.video_url && r.format !== 'Dare to Buy' && r.format !== 'Gift Guide' && ['approved', 'scheduled', 'posted'].indexOf(r.status) !== -1)
-    .forEach(r => items.push({ key: '#' + r.id, src: 'calendar', title: r.format + ' · post #' + r.id, character: r.character, format: r.format, video_url: r.video_url,
+    .forEach(r => items.push({ key: '#' + r.id, src: 'calendar', title: fdisp(r.format) + ' · post #' + r.id, character: r.character, format: r.format, video_url: r.video_url,
       image_url: r.image_url || '', caption_instagram: r.caption_instagram || r.text_content || '', caption_facebook: r.caption_facebook || r.text_content || '',
       caption_x: r.caption_x || r.text_content || '', made: isoDate(r.post_date), row: r }));
   (LIB || []).filter(l => l.video_url || (l.kind === 'campaign' && l.image_url)).forEach(l => items.push({ key: 'LIB:' + l.id, src: 'library', title: l.title || ('Library ' + l.id), character: l.character || '',
@@ -2004,7 +2007,7 @@ function openReschedule(r) {
     if (due.getTime() < Date.now() - 60 * 60000) warns.push('That time has already passed.');
     // The day must not already hold a post of the same slot type (any time), nor any post at the exact custom time.
     const clash = (r.format === 'Dare to Buy' || r.format === 'Gift Guide') ? null : ROWS.find(x => x.id !== r.id && londonYmd(x.post_date) === date && (slotOfFormat(x.format) === slotOfFormat(r.format) || (time && x.post_time === time)));
-    if (clash) warns.push('That slot already has a post (' + clash.character + ', ' + clash.format + ').');
+    if (clash) warns.push('That slot already has a post (' + clash.character + ', ' + fdisp(clash.format) + ').');
     if (warns.length && !confirm(warns.join('\n') + '\n\nDo it anyway?')) { msg.textContent = 'Not moved.'; return; }
     const post_date = date + (slot === '6am' ? 'T06:00:00.000Z' : (slot === '7am' ? 'T07:00:00.000Z' : 'T12:00:00.000Z'));
     const DAY_TITLE = { 1: 'Major Wood Monday', 2: "Hammerin' Tuesday", 3: 'White-Knuckle Wednesday', 4: 'Thrusting Thursday', 5: 'Full-Friction Friday', 6: 'Sailor Saturday', 0: 'Standing Tall Sunday' };
@@ -2112,7 +2115,7 @@ function stateTag(row, time) {
   const st = slotState(row);
   if (!row) return '<span class="pempty">EMPTY</span>';
   const who = row.format === 'Day Greeting' || row.character === 'SC Logo' ? '' : ' ' + charTag(row.character);
-  return '<div class="pchip" style="border-left-color:' + (FORMAT_COLOR[row.format] || '#999') + '">' + (time ? '<b>' + escapeHtml(time) + '</b> ' : '') + '<b style="color:' + (FORMAT_COLOR[row.format] || '#333') + '">' + escapeHtml(row.format) + '</b>' + who + '<span class="pst" style="color:' + st.color + '">' + st.label + '</span></div>';
+  return '<div class="pchip" style="border-left-color:' + (FORMAT_COLOR[row.format] || '#999') + '">' + (time ? '<b>' + escapeHtml(time) + '</b> ' : '') + '<b style="color:' + (FORMAT_COLOR[row.format] || '#333') + '">' + escapeHtml(fdisp(row.format)) + '</b>' + who + '<span class="pst" style="color:' + st.color + '">' + st.label + '</span></div>';
 }
 function shortTitle(t) { t = String(t || ''); return t.length > 44 ? t.slice(0, 42).trim() + '…' : t; }
 // A product's approved clip (Product rows that reached approved/scheduled/posted with a video), for reuse.
@@ -2267,7 +2270,7 @@ function addExtraLine(box) {
   line.className = 'extra-line';
   line.style.cssText = 'margin-top:4px;padding:4px;border:1px solid var(--line);border-radius:6px';
   line.innerHTML = '<input type="time" class="ex-time" value="18:00" step="900" style="width:95px"> ' +
-    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = (f.indexOf('Brand Lore') === 0 || dow === 0) ? leftFor('SC Logo', f) : (f === 'Day Greeting' ? leftFor(ch, f) : leftOther(ch, f)); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + f + (n === null || f === 'Product' || f === 'Dare to Buy' ? '' : ' (' + n + ' left)') + '</option>'; }).join('') + '</select> ' +
+    '<select class="ex-format">' + extraTypes(dow).map(f => { const n = (f.indexOf('Brand Lore') === 0 || dow === 0) ? leftFor('SC Logo', f) : (f === 'Day Greeting' ? leftFor(ch, f) : leftOther(ch, f)); return '<option value="' + f + '"' + (n === 0 ? ' disabled' : '') + '>' + fdisp(f) + (n === null || f === 'Product' || f === 'Dare to Buy' ? '' : ' (' + n + ' left)') + '</option>'; }).join('') + '</select> ' +
     '<span class="ex-prod" style="display:none"><select class="ex-product">' + productOptions('') + '</select> <select class="ex-char">' + charOptions('', ch) + '</select></span> ' +
     '<button type="button" class="btn secondary ex-remove" style="padding:0 8px;font-size:12px">x</button>';
   box.appendChild(line);
@@ -2397,7 +2400,7 @@ async function openAdhoc() {
     '<h2>Add a post</h2><div class="sub">One extra post at a time you choose (London time). It gets one brief like any other post.</div>' +
     '<div class="field"><label>Date</label><input type="date" id="adDate" value="' + ymd(t) + '"></div>' +
     '<div class="field"><label>Time (London, 24h)</label><input type="time" id="adTime" value="18:00" step="900"></div>' +
-    '<div class="field"><label>Post type</label><select id="adFormat"><option>Day Greeting</option><option>Wisdom</option><option>Character Lore</option><option>Character Lore (Poster Wall)</option><option>Travel the World</option><option>Brand Lore (Movie Poster)</option><option>Brand Lore (Roll Call)</option><option>Brand Lore (Roll Call cartoon flick)</option><option>Product</option><option>NFT</option><option>Dare to Buy</option><option>Salute</option></select></div>' +
+    '<div class="field"><label>Post type</label><select id="adFormat"><option value="Day Greeting">Day Greeting</option><option value="Wisdom">Wisdom</option><option value="Character Lore">Character Lore</option><option value="Character Lore (Poster Wall)">Character Lore: Movie Poster</option><option value="Travel the World">Travel the World</option><option value="Brand Lore (Movie Poster)">Brand Lore: Movie Poster</option><option value="Brand Lore (Roll Call)">Brand Lore: Roll Call Characters</option><option value="Brand Lore (Roll Call cartoon flick)">Brand Lore: Roll Call Comic</option><option value="Product">Product: Shopping Channel</option><option value="NFT">NFT</option><option value="Dare to Buy">Product: Dare to Buy</option><option value="Salute">Salute</option></select></div>' +
     '<div class="field" id="adSaluteBox" style="display:none"><label>Major Wood Salute</label><select id="adSalute"></select><div class="brief-part" id="adSaluteInfo" style="margin-top:8px"></div><button class="btn secondary" id="adSaluteAll" style="margin-top:8px">Add all upcoming salutes not yet on the calendar</button></div>' +
     '<div class="field" id="adProductBox" style="display:none"><label>Product</label><select id="adProduct"></select><label style="margin-top:8px">Character</label><select id="adChar">' + charOptions('') + '</select></div>' +
     '<div class="field"><label>Character</label><div id="adCharInfo" class="brief-part"></div></div>' +
