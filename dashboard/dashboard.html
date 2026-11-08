@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SC Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #1a1a1a;
@@ -371,6 +374,61 @@
   .rl-form { border: 2px solid var(--ink); background: #fff; padding: 10px 12px; margin-bottom: 12px; }
   .rl-form input, .rl-form select { padding: 6px; margin: 3px 6px 3px 0; font-size: 14px; max-width: 100%; }
   .rl-form input.w { width: 100%; box-sizing: border-box; }
+
+  /* ---- Design pass (8 Nov 2026, Andy): calm, one accent, rounded cards, serif headings; same language as the Oz dashboard ---- */
+  :root { --bg:#f3f5f7; --card:#ffffff; --ink:#15212b; --muted:#5f6f7a; --line:#dbe2e7; --accent:#1f4e79; --accent-ink:#fff; --you:#b4570f; --cl:#0b6e7f; --red:#b3261e; --amber:#9a6a00; --good:#1d7a46;
+    --display:'Fraunces',Georgia,serif; --body:'Source Sans 3',system-ui,-apple-system,'Segoe UI',sans-serif; --r:10px;
+    --paper: var(--bg); --panel: var(--card); --grey: var(--muted); --c-next: var(--accent); --c-andy: var(--you); --c-claude: var(--cl); --c-today: var(--red); --c-wait: var(--amber); --c-done: var(--good); --c-idea:#5b4b8a; --c-park:#aab4bc; }
+  body { font-family: var(--body); font-size: 16px; line-height: 1.45; color: var(--ink); background: var(--bg); }
+  header { border-top: 0; padding: 12px 24px; gap: 14px; background: var(--card); border-bottom: 1px solid var(--line); }
+  header h1 { font-family: var(--display); font-size: 24px; font-weight: 600; letter-spacing: 0; }
+  header p { display: block; margin: 0; color: var(--muted); font-size: 14px; }
+  header .logo { border-radius: 8px; }
+  button, .btn, input, select, textarea { font-family: var(--body); }
+  .btn { border-radius: 8px; font-weight: 600; } .btn.small { padding: 5px 11px; font-size: 13.5px; }
+  .btn.ghost { color: var(--accent); border-color: var(--line); background: var(--card); } .btn.ghost:hover { background: #f0f4f8; }
+  .btn.go { background: var(--cl); border-color: var(--cl); } .btn.done { background: var(--card); color: var(--good); border-color: var(--line); } .btn.done:hover { background: #e9f5ee; }
+  .btn.warn { background: var(--you); border-color: var(--you); } .btn.doit { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tabs { padding: 8px 24px; gap: 6px; background: var(--bg); border-bottom: 0; }
+  .tab { border-radius: 999px; padding: 6px 14px; font-size: 14px; font-weight: 600; color: var(--muted); border-color: transparent; background: transparent; }
+  .tab:hover { background: #e6ebf0; } .tab.on { background: var(--accent); color: #fff; border-color: var(--accent); } .tab .n { opacity: .8; }
+  .tab.alerttab, .tab.alerttab.on { background: var(--red); border-color: var(--red); color: #fff; }
+  .tabs select { border-radius: 8px; }
+  main { padding-top: 16px; } main.board { padding-top: 14px; }
+  .side { border-radius: var(--r); padding: 10px 8px; border-color: var(--line); }
+  .sitem { border-radius: 8px; border-left: 0; padding: 8px 10px; font-size: 14px; }
+  .sitem.red .sl::before, .sitem.amber .sl::before, .sitem.routine .sl::before, .sitem.green .sl::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+  .sitem.red .sl::before { background: var(--red); } .sitem.amber .sl::before { background: var(--amber); } .sitem.routine .sl::before { background: var(--you); } .sitem.green .sl::before { background: var(--good); }
+  .sitem.on { background: var(--accent); } .sitem.home { font-family: var(--display); font-size: 17px; font-weight: 600; padding-bottom: 10px; }
+  .shead { font-family: var(--body); letter-spacing: .08em; font-size: 11px; }
+  .cleanbar { gap: 8px; } .cleanbar .btn { border-radius: 999px; }
+  .cleanbar.mgr { margin-bottom: 14px; } .cleanbar.mgr .btn { min-height: 36px; padding: 6px 16px; }
+  .work h2 { font-family: var(--display); font-weight: 600; font-size: 24px !important; }
+  .group-title, .ftitle { font-family: var(--display); text-transform: none; letter-spacing: 0; font-size: 18px; font-weight: 600; color: var(--ink); margin: 18px 0 8px; } .ogroup.red .group-title { color: var(--red); }
+  .group-title .cnt, .ftitle .cnt { font-family: var(--body); font-size: 13px; color: var(--muted); font-weight: 600; margin-left: 4px; }
+  .ftitle { font-size: 15px; color: var(--muted); }
+  .trow2 { border-radius: var(--r); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 1px 0 rgba(21,33,43,.03); }
+  .trow2.you, .trow2.cl { border-left: 1px solid var(--line); } .trow2.red { background: #fbf1f0; border-color: #ead4d1; } .trow2.done { opacity: .6; }
+  .trow2 .t1 { font-size: 16px; gap: 8px; } .trow2 .t1 b { font-weight: 600; } .trow2 .t2 { color: var(--muted); font-size: 15px; margin-top: 2px; }
+  .trow2 .tb { margin-top: 10px; gap: 6px; } .trow2 .tb .btn, .trow2 .tb select { min-height: 32px; }
+  .trow2.compact { padding: 9px 12px; } .trow2.compact .t1 { font-size: 15px; }
+  .who-tag { border-radius: 999px; font-size: 11px; letter-spacing: .06em; padding: 2px 9px; } .who-tag.andy { background: var(--you); } .who-tag.claude { background: var(--cl); }
+  .chip { border-radius: 999px; font-size: 12px; font-weight: 600; padding: 2px 9px; } .chip.wait { border-color: var(--amber); color: var(--amber); } .chip.late { border-color: var(--red); color: var(--red); } .chip.why { border-color: #5b4b8a; color: #5b4b8a; }
+  .trow2 .t1 .am { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .osel { border-radius: 8px; font-size: 13px; padding: 5px 8px; } .osel.none { border-color: var(--red); color: var(--red); }
+  .ogroup.pinned { border: 1px solid var(--line); border-left: 4px solid var(--you); border-radius: var(--r); padding: 8px 12px 4px; background: var(--card); }
+  .ogroup.pinned .group-title { font-size: 15px; margin: 2px 0 8px; color: var(--you); }
+  .focus .frel { border-radius: var(--r); background: var(--card); } .focus .fmain .trow2 { border-left: 4px solid var(--accent); }
+  .pf { border-radius: var(--r) !important; }
+  .hint { border-radius: var(--r); background: var(--card); }
+  .chn, .bkt, .inuse, .eg, .gp, .rl-bucket, .rl-wait, .rl-form, .pbox, .routine, .card, .mission, .arow, .atile, .tracker, .nextbox, .empty, .error-state { border-radius: var(--r); }
+  .chn { border-left-width: 4px; } .routine { border-top-width: 1px; border-left: 4px solid var(--you); padding: 16px 18px; }
+  .routine h2 { font-family: var(--display); font-weight: 600; } .dline { padding: 12px 0; } .dline .action { font-size: 16px; }
+  .arow { border-left-width: 4px; margin-bottom: 8px; } .arow .abtns .btn { min-height: 34px; flex: 0 1 auto; }
+  .astrip { gap: 8px; } .atile { border-top-width: 1px; border-left: 4px solid var(--ac); }
+  dialog { border-radius: 12px; border-color: var(--line); } .dlg input, .dlg select, .dlg textarea { border-radius: 8px; }
+  .toast { border-radius: 999px; }
+  @media (max-width: 900px) { .sitem { border-radius: 999px; } .sitem.home { font-size: 14px; } .trow2 .t1 .am { display: none; } }
 </style>
 </head>
 <body>
@@ -511,7 +569,9 @@ let rows = [];
 let frows = [];
 let fview = 'To follow';
 let showDone = false;   // 13 Oct 2026 (Andy): lines ticked today are hidden unless asked for
-let view = 'Orders';   // 8 Nov 2026 (Andy): Orders of the Day is the one board
+let view = 'Routine';   // 8 Nov 2026 (Andy): the day starts with the Routine, then Alerts, then Orders of the Day
+// A link can open a tab directly: .../webhook/sc-dashboard#Alerts (8 Nov 2026).
+try { const hv = decodeURIComponent(location.hash.slice(1)); if (hv && ['Routine','Alerts','Orders','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
 let who = 'Everyone';
 
 const $ = id => document.getElementById(id);
@@ -622,7 +682,7 @@ function tabCount(v) {
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
   if (v === 'Orders' || v === 'Now') return (untied().length + workItems().filter(r => !isLater(r) && needsYou(r) && r.outcome).length) || '';
-  if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
+  if (v === 'Today' || v === 'Routine') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length || '';
   const keep = view; view = v; let n;
   if (v === 'Done') n = rows.filter(flatShown).length;
   else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length + rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length : 0);
@@ -634,10 +694,10 @@ function tabCount(v) {
 
 function renderTabs() {
   // 8 Nov 2026 (Andy): one board for every action (Orders of the Day); the other tabs are build tools and data.
-  const names = ['Orders', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
+  const names = ['Routine', 'Alerts', 'Orders', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
-  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; render(); });
+  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); });
   $('whoSel').onchange = e => { who = e.target.value; render(); };
 }
 
@@ -807,7 +867,7 @@ function cleanupBar(list) {
 // In use line (6 Nov 2026, Andy): what one chat at a time may use (browser, Shopify theme, shared files), and which chat holds it. From SC - File Lock (list).
 const LOCK_URL = BASE + 'sc-file-lock';
 let locks = null;
-function loadLocks() { fetch(LOCK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).then(d => { locks = (d && d.locks) || []; if (view === 'Orders' || view === 'Now' || view === 'Alerts' || view === 'Today') render(); }).catch(() => {}); }
+function loadLocks() { fetch(LOCK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).then(d => { locks = (d && d.locks) || []; if (view === 'Orders' || view === 'Now' || view === 'Alerts' || view === 'Today' || view === 'Routine') render(); }).catch(() => {}); }
 function inUseHtml() {
   if (!locks || !locks.length) return '';
   return '<div class="inuse"><b>In use</b>' + locks.map(l => '<span class="iu">' + esc(l.file) + (safeUrl(l.holder) ? ' · <a target="_blank" rel="noopener" href="' + esc(l.holder) + '">chat</a>' : '') + ' · until ' + esc(new Date(l.expires_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + '</span>').join('') + '</div>';
@@ -1066,7 +1126,7 @@ function render() {
   if (view === 'Pricing') { renderPricing(); return; }
   if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Engage') { renderEngage(); return; }
-  if (view === 'Today') { $('list').innerHTML = inUseHtml() + routineHtml(); wireRoutine(); return; }
+  if (view === 'Today' || view === 'Routine') { $('list').innerHTML = inUseHtml() + routineHtml(); wireRoutine(); return; }
   if (view === 'Now' || view === 'Orders') { renderNow(); return; }
   let html = '';
   if (view === 'Done') {
@@ -1154,8 +1214,6 @@ function sideHtml() {
   h += os.map(o => { const l = tiedTo(o), y = l.filter(needsYou).length, red = l.some(r => r.type === 'ALERT' && aRed(r)); return item(String(o.id), o.title, l.length, red ? 'red' : '', y ? y + ' for you' : ''); }).join('');
   h += '<div class="shead">Lists</div>';
   h += item('untied', 'Untied', un, un ? 'red' : '', un ? 'tie or defer' : '');
-  h += item('alerts', 'Alerts', al.length, alRed ? 'red' : 'amber', alRed ? alRed + ' red' : '');
-  h += item('routine', 'Routine', rtOpen, 'routine', rtOpen ? 'to tick' : '');
   h += item('later', 'Later', lt, 'grey', '');
   h += item('done', 'Done today', dn, 'green', '');
   h += item('workstreams', 'Workstreams', rlBuckets().length, 'grey', '');
