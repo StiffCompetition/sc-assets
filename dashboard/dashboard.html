@@ -430,6 +430,15 @@
   .toast { border-radius: 999px; }
   @media (max-width: 900px) { .sitem { border-radius: 999px; } .sitem.home { font-size: 14px; } .trow2 .t1 .am { display: none; } }
 
+  .lights { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .light { display: grid; grid-template-columns: 22px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; font: inherit; color: inherit; cursor: pointer; min-width: 0; }
+  .light:hover { border-color: var(--accent); } .light.on { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .light .ld { grid-row: 1 / span 2; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 -3px 6px rgba(0,0,0,.18), 0 0 0 3px rgba(0,0,0,.04); }
+  .light.red .ld { background: #c62828; } .light.amber .ld { background: #e0a21b; } .light.green .ld { background: #2e8b57; }
+  .light.red { background: #fcf3f1; } .light.amber { background: #fdf7ea; } .light.green { background: #f0f8f2; }
+  .light .ln { font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.15; } .light .lw { font-size: 13px; color: #4a5560; line-height: 1.3; margin-top: 2px; }
+  .lopen { margin-bottom: 10px; } .lhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; } .lacts { display: grid; gap: 6px; } .lrule { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; } .lrule > span { padding-left: 10px; border-left: 4px solid #e0a21b; } .lrule.red > span { border-left-color: #c62828; }
+  @media (max-width: 900px) { .lights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .nylist { display: grid; gap: 10px; margin-bottom: 16px; }
   .ny { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-left-width: 6px; border-radius: var(--r); padding: 14px 16px; }
   .ny-red { border-left-color: var(--red); background: #fcf3f1; } .ny-amber { border-left-color: #c47f17; background: #fdf7ea; } .ny-green { border-left-color: var(--good); background: #eef7f0; margin-bottom: 16px; }
@@ -1550,30 +1559,45 @@ function actionList() {
   const order = { red: 0, amber: 1 };
   return out.sort((a, b) => order[a.level] - order[b.level]);
 }
-function needsYouHtml() {
-  const list = actionList();
-  if (!list.length) return '<div class="ny ny-green"><span class="nydot"></span><div class="nyb"><div class="nyh">Nothing needs you today</div><div class="nyt">Every figure is inside its normal range and every alert is closed.</div></div></div>';
-  return '<div class="nylist">' + list.map(x => '<div class="ny ny-' + x.level + '"><span class="nydot"></span><div class="nyb"><div class="nyh">' + x.head + '</div>' + (x.text ? '<div class="nyt">' + x.text + '</div>' : '') + '</div><div class="nya">' + x.buttons + '</div></div>').join('') + '</div>';
+// Traffic lights (8 Nov 2026, Andy): one light per area; the colour comes from the rules in actionList; click a light to open that area's figures. Alerts are never repeated here: the Systems light points at the Alerts tab.
+const AREA_OF = { 'red alert': 'Systems', 'amber alert': 'Systems', 'workflow': 'Systems', 'abandoned basket': 'Abandoned baskets', 'renews': 'Money', 'Spend': 'Money', 'missing on a sales channel': 'Sales channels', 'visitors': 'Shop', 'No sale': 'Shop', 'Followers': 'Audience', 'return': 'Systems', 'Past target': 'Outcomes', 'untied': 'Orders' };
+function areaOf(head) { const k = Object.keys(AREA_OF).find(k => head.indexOf(k) !== -1); return k ? AREA_OF[k] : 'Systems'; }
+function lightsHtml(open) {
+  const acts = actionList().map(a => Object.assign({ area: areaOf(a.head.replace(/<[^>]+>/g, '')) }, a));
+  const lights = ov.sections.map(sc => {
+    const mine = acts.filter(a => a.area === sc.title);
+    const level = mine.some(a => a.level === 'red') ? 'red' : (mine.length ? 'amber' : 'green');
+    const why = mine.length ? mine.map(a => a.head.replace(/<[^>]+>/g, '')).slice(0, 2).join(' · ') + (mine.length > 2 ? ' · +' + (mine.length - 2) : '') : (sc.items.length ? (sc.title === 'Systems' ? 'Alerts clear' : 'Normal') : 'Not measured yet');
+    const isOpen = open.has(sc.title);
+    return { sc, mine, level, why, isOpen };
+  });
+  // Orders and Outcomes lights come from the task board, not the API sections.
+  const extra = ['Outcomes', 'Orders'].map(t => { const mine = acts.filter(a => a.area === t); return { tab: t, mine, level: mine.length ? 'amber' : 'green', why: mine.length ? mine.map(a => a.head.replace(/<[^>]+>/g, '')).join(' · ') : (t === 'Orders' ? 'Everything tied to an outcome' : 'Every outcome on track') }; });
+  let h = '<div class="lights">' + lights.map(l => '<button type="button" class="light ' + l.level + (l.isOpen ? ' on' : '') + '" ' + (l.sc.title === 'Systems' ? 'data-tab="Alerts"' : 'data-light="' + esc(l.sc.title) + '"') + '><span class="ld"></span><span class="ln">' + esc(l.sc.title) + '</span><span class="lw">' + esc(l.why) + '</span></button>').join('')
+    + extra.map(l => '<button type="button" class="light ' + l.level + '" data-tab="' + l.tab + '"><span class="ld"></span><span class="ln">' + l.tab + '</span><span class="lw">' + esc(l.why) + '</span></button>').join('') + '</div>';
+  lights.filter(l => l.isOpen).forEach(l => {
+    const askBtn = l.mine.length ? '<div class="lacts">' + l.mine.map(a => '<div class="lrule ' + a.level + '"><span>' + a.head + '</span>' + a.buttons + '</div>').join('') + '</div>' : '';
+    h += '<section class="ovs lopen" data-lsec="' + esc(l.sc.title) + '"><div class="ovh lhead"><div><h3>' + esc(l.sc.title) + '</h3>' + (l.sc.sub ? '<p>' + esc(l.sc.sub) + '</p>' : '') + '</div>' + askBtn + '</div>'
+      + (l.sc.items.length ? '<div class="ovhead"><span></span><span>Yesterday</span><span>Change</span><span>Total</span></div>' + l.sc.items.map(ovRow).join('') : '')
+      + (l.sc.headers && l.sc.headers.length ? '<div class="ovnot"><b>Not measured yet</b>' + l.sc.headers.map(x => '<span>' + esc(x) + '</span>').join('') + '</div>' : '')
+      + (l.sc.title === 'Abandoned baskets' && ov.baskets && ov.baskets.length ? '<div class="ovbk">' + ov.baskets.map(b => '<div class="ovb"><div><b>' + esc(b.when) + ' · ' + esc(b.country) + '</b> <span class="amt">£' + Number(b.amount).toFixed(2) + '</span></div><div class="items">' + esc(b.items) + '</div><div class="who">' + esc(b.name) + ' · ' + esc(b.stage) + (safeUrl(b.url) ? ' · <a target="_blank" rel="noopener" href="' + esc(b.url) + '">Open basket</a>' : '') + '</div></div>').join('') + '</div>' : '')
+      + '</section>';
+  });
+  return h;
 }
 function renderOverview() {
   loadOverview(false);
   const when = ov ? new Date(ov.built_at).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) + ' UK' : '';
-  let h = '<div class="ohead"><h2>Needs you</h2><p class="sub">Only what needs an action. Red today, amber this week.' + (ov ? ' Figures to ' + esc(ov.yesterday) + ', built ' + esc(when) : '') + ' <button class="btn small ghost" id="ov_reload">Refresh</button></p></div>';
+  let h = '<div class="ohead"><h2>Overview</h2><p class="sub">Red acts today, amber this week, green is normal. Click a light for its figures.' + (ov ? ' Figures to ' + esc(ov.yesterday) + ', built ' + esc(when) : '') + ' <button class="btn small ghost" id="ov_reload">Refresh</button></p></div>';
   if (!ov && ovLoading) h += '<div class="ovs"><p style="color:var(--muted)">Collecting the figures…</p></div>';
   else if (!ov) h += '<div class="ovs"><p style="color:var(--red)">' + esc(ovErr || 'No figures yet.') + '</p></div>';
-  else {
-    const open = ovOpenSet();
-    h += needsYouHtml();
-    h += '<details class="ovs ovd2 ovall" data-sec="All figures"' + (open.has('All figures') ? ' open' : '') + '><summary><span class="st">All figures</span><span class="ss">Headline numbers, what moved, and every statistic by section</span><span class="sn">' + ov.sections.reduce((t, sc) => t + sc.items.length, 0) + ' figures</span></summary>'
-      + ovTiles() + ovMoved(open.has('What moved')) + '<div class="ovlist">' + ov.sections.map(sc => ovSection(sc, open.has(sc.title))).join('') + '</div></details>';
-  }
+  else h += lightsHtml(ovOpenSet());
   h += inUseHtml();
   $('list').innerHTML = h;
   const b = $('ov_reload'); if (b) b.onclick = () => { ov = null; loadOverview(true); render(); };
   const sy = $('ny_sync'); if (sy) sy.onclick = () => { channelRun().then(() => { ov = null; loadOverview(true); }); };
   $('list').querySelectorAll('[data-tab]').forEach(el => el.onclick = e => { e.preventDefault(); goTab(el.dataset.tab); });
-  $('list').querySelectorAll('[data-sec]:not(details)').forEach(el => el.onclick = () => { const all = $('list').querySelector('details.ovall'); if (all) all.open = true; const d = $('list').querySelector('details.ovd2[data-sec="' + el.dataset.sec.replace(/"/g, '\\"') + '"]'); if (!d) return; d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-  $('list').querySelectorAll('details.ovd2').forEach(d => d.addEventListener('toggle', () => { const set = ovOpenSet(); if (d.open) set.add(d.dataset.sec); else set.delete(d.dataset.sec); try { localStorage.setItem(OV_OPEN_KEY, JSON.stringify([...set])); } catch (e) {} }));
+  $('list').querySelectorAll('[data-light]').forEach(el => el.onclick = () => { const set = ovOpenSet(); const k = el.dataset.light; if (set.has(k)) set.delete(k); else set.add(k); try { localStorage.setItem(OV_OPEN_KEY, JSON.stringify([...set])); } catch (e) {} render(); const sec = $('list').querySelector('.lopen[data-lsec="' + k.replace(/"/g, '\\"') + '"]'); if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 }
 // ---- Outcomes tab (8 Nov 2026, Andy): every outcome on one page, in priority order, with its numbers, target date, chat and controls.
 let oEdit = null;
