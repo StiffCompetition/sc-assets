@@ -196,9 +196,31 @@
   .gpool img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #eee; }
   .gpick { display: flex; gap: 10px; align-items: center; font-size: 14px; }
   .gpick img { width: 64px; height: 64px; object-fit: cover; }
+  /* Today board (8 Nov 2026, Andy): one row shape for every task, outcome tiles on top, mobile first */
+  .ostrip { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 641px) { .ostrip { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
+  .otile .l { font-size: 13px; color: var(--ink); font-weight: 600; line-height: 1.25; } .otile .s { font-size: 11px; color: var(--grey); margin-top: 2px; }
+  .otile.on .l, .otile.on .s { color: #fff; } .otile.add { border-style: dashed; } .otile.add .n { color: var(--ink); }
+  .ogroup { margin-bottom: 14px; } .ogroup .group-title { margin: 14px 0 6px; } .ogroup.red .group-title { color: #c62828; } .group-title .cnt { font-weight: 400; opacity: .7; }
+  .trow2 { background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--c-claude); padding: 8px 10px; margin-bottom: 6px; }
+  .trow2.you { border-left-color: var(--c-andy); } .trow2.red { border-left-color: #c62828; background: #fdecea; } .trow2.done { border-left-color: var(--c-done); opacity: .7; }
+  .trow2 .t1 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 15px; line-height: 1.3; } .trow2 .t1 b { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+  .trow2 .t1 .am { font-size: 12px; color: var(--grey); }
+  .trow2 .t2 { font-size: 14px; color: #333; margin-top: 3px; overflow-wrap: anywhere; }
+  .trow2 .tb { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  .trow2 .tb .btn, .trow2 .tb select { min-height: 36px; }
+  .osel { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); background: #fff; max-width: 220px; }
+  .osel.none { border-color: #c62828; color: #c62828; }
+  .acts .osel { max-width: none; }
   @media (max-width: 640px) {
     header { padding: 5px 12px; } .tabs { padding: 5px 12px; } .tabs .who { margin-left: 0; width: 100%; }
-    .card { flex-direction: column; } .acts { flex-direction: row; width: 100%; }
+    .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; } .tabs::-webkit-scrollbar { display: none; } .tab { white-space: nowrap; flex: 0 0 auto; padding: 7px 12px; font-size: 14px; }
+    .tabs .who { width: auto; flex: 0 0 auto; }
+    main { padding: 12px 10px 80px; }
+    .card { flex-direction: column; } .acts { flex-direction: row; flex-wrap: wrap; width: 100%; }
+    .trow2 .tb .btn, .trow2 .tb select, .abtns .btn, .acts .btn, .acts select { min-height: 42px; flex: 1 1 auto; }
+    .cleanbar .btn { font-size: 14px; }
+    .trow2 .t1 .am { display: none; }
   }
   /* Products tab (18 Oct 2026): template-driven product runs */
   .flow .fstep { border-top: 1px solid var(--line); padding: 10px 0; } .flow .fstep:first-of-type { border-top: 0; }
@@ -354,6 +376,10 @@
       <label>Who <select id="f_owner"><option>Andy</option><option>Claude</option></select></label>
       <label>Due <input id="f_due" type="date"></label>
     </div>
+    <div class="row">
+      <label>Outcome <select id="f_outcome"></select></label>
+      <label>Kind <select id="f_tasktype"></select></label>
+    </div>
     <label>Waiting on <input id="f_wait" maxlength="60" placeholder="Leave empty if nothing is holding it up"></label>
     <label>Link <input id="f_link" type="url" placeholder="https://…"></label>
     <label>Problem (required for a task) <textarea id="f_problem" rows="3" maxlength="1000" placeholder="What is wrong or what needs doing, and why it matters"></textarea></label>
@@ -423,6 +449,37 @@ const clipFiles = {};
 const CATEGORIES = ['Influencers', 'Press and media','Posts and boosts', 'Shop', 'Systems', 'Ideas'];
 const STATUSES = ['Today', 'Next', 'Waiting', 'Idea', 'Done'];
 const ACTIVE = ['Today', 'Next', 'Waiting'];
+// Day outcomes (8 Nov 2026, Andy): every open task is tied to one of today's executive outcomes, or it shows as Untied.
+// Outcomes live in the n8n data table SC Outcomes (SC - Outcomes API); each task row carries outcome (the outcome id), task_type and later (a date it comes back on).
+const OUT_LIST = BASE + 'sc-outcomes-list', OUT_SAVE = BASE + 'sc-outcomes-save';
+let outcomes = [], ofilter = '', outForm = false, outEdit = null;
+const TASK_TYPES = [['', 'Task'], ['topup', 'Top up credit'], ['documents', 'Send documents'], ['credential', 'Key or login'], ['bill', 'Bill or renewal'], ['decision', 'Decision'], ['build', 'Build'], ['fix', 'Fix'], ['post', 'Post or content']];
+const openOutcomes = () => outcomes.filter(o => o.status === 'open').sort((a, b) => Number(a.position) - Number(b.position) || Number(a.id) - Number(b.id));
+function loadOutcomes() { return fetch(OUT_LIST).then(r => r.ok ? r.json() : []).then(d => { outcomes = Array.isArray(d) ? d : []; }).catch(() => { outcomes = outcomes || []; }); }
+async function saveOutcome(o) {
+  const res = await fetch(OUT_SAVE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: o.id || '', title: o.title, day: o.day || today(), position: Number(o.position || 0), status: o.status || 'open', notes: o.notes || '' }) });
+  const out = await res.json(); if (!out.ok) throw new Error(out.error || 'not saved');
+  await loadOutcomes(); render();
+}
+// A work item is any open task a person or Claude acts on: alerts, steps, loose tasks and Relaunch chats. Missions, daily lines, buckets, groups and system rows are containers.
+const CONTAINERS = ['MISSION', 'DAILY', 'SYSTEM', 'BUCKET', 'GROUP'];
+const workItems = () => rows.filter(r => !CONTAINERS.includes(r.type || '') && ACTIVE.includes(r.status) && whoOk(r));
+const isLater = r => !!r.later && r.later > today();
+const untied = () => workItems().filter(r => !r.outcome && !isLater(r));
+const laterItems = () => workItems().filter(isLater);
+const tiedTo = o => workItems().filter(r => String(r.outcome) === String(o.id) && !isLater(r));
+const doneToday = () => rows.filter(r => !CONTAINERS.includes(r.type || '') && r.status === 'Done' && r.done_on === today());
+const needsYou = r => r.owner === 'Andy';
+// Which button a task shows (8 Nov 2026, Andy): Top up / pay only when the task is a top-up; the website in the link never decides.
+const isTopUp = r => r.task_type === 'topup' || (!r.task_type && r.type === 'ALERT' && (/^(usage|cost|spend)/.test(String(r.alert_key || '')) || /top.?up|credit (is )?(low|running out|out)|balance (is )?low|out of credit|insufficient funds|ran out of|locked.*TOP_UP/i.test(String(r.title || ''))));
+function taskBtn(r) {
+  const link = safeUrl(r.link); if (!link) return '';
+  if (isTopUp(r)) return '<a class="btn small warn" target="_blank" rel="noopener" href="' + esc(link) + '">Top up / pay</a>';
+  if (/mail\.google\.com/.test(link)) return '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(link) + '">Open email</a>';
+  if (r.owner === 'Andy' && !isDocLink(link)) return '<a class="btn small go doit" target="_blank" rel="noopener" href="' + esc(link) + '">Do it</a>';
+  return '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(link) + '">' + (isDocLink(link) ? 'Notes' : 'Open') + '</a>';
+}
+function tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return ymd(d); }
 
 let rows = [];
 let frows = [];
@@ -444,6 +501,7 @@ async function load() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     rows = (Array.isArray(data) ? data : []).filter(r => r.status !== 'Removed');
+    await loadOutcomes();
     try { const fr = await fetch(FOLLOW_LIST_URL); if (fr.ok) { const fd = await fr.json(); frows = Array.isArray(fd) ? fd : []; } } catch (e2) { frows = []; }
     render();
     loadBaskets();
@@ -537,6 +595,7 @@ function tabCount(v) {
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length;
+  if (v === 'Now') return (untied().length + workItems().filter(r => !isLater(r) && needsYou(r) && r.outcome).length) || '';
   if (v === 'Today') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length;
   const keep = view; view = v; let n;
   if (v === 'Done') n = rows.filter(flatShown).length;
@@ -605,7 +664,7 @@ function card(r, showMission) {
     + (r.type === 'ALERT' && Number(r.alert_count) > 1 ? '<span class="chip due late">' + esc(r.alert_count) + ' times</span>' : '')
     + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
     + (showMission ? '<span class="chip">' + esc(r.category || '') + '</span>' : '')
-    + actLink(r)
+    + taskBtn(r)
     + '</div>'
     + notesHtml(r)
     + '</div>'
@@ -614,6 +673,7 @@ function card(r, showMission) {
     + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
     + (safeUrl(r.chat_link) ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(safeUrl(r.chat_link)) + '">Open chat</a>' : '')
     + '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">New chat</a>'
+    + outcomeSel(r)
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
 
@@ -658,15 +718,15 @@ function alertStrip(list) {
 }
 function alertRow(r) {
   const g = aGroup(r), red = aRed(r), colour = red ? AG.red.colour : AG[g].colour;
-  const link = safeUrl(r.link), pay = isPayLink(link);
   const p = parseNotes(r.notes);
   const problem = p ? p.problem : String(r.notes || '');
   return '<div class="arow' + (red ? ' red' : '') + '" style="--ac:' + colour + '" data-id="' + esc(r.id) + '">'
     + '<div class="ahead" data-act="toggle"><span class="ag">' + esc(red ? 'Red' : AG[g].label) + '</span><div class="at">' + esc(r.title) + '</div><span class="am">' + (Number(r.alert_count) > 1 ? esc(r.alert_count) + '× · ' : '') + esc(ago(r.last_seen || r.createdAt)) + '</span></div>'
     + '<div class="abtns">'
-    + (link ? '<a class="btn small' + (pay ? ' warn' : ' ghost') + '" target="_blank" rel="noopener" href="' + esc(link) + '">' + (pay ? 'Top up / pay' : /mail\.google\.com/.test(link) ? 'Open email' : 'Open') + '</a>' : '')
+    + taskBtn(r)
     + chatBtn(r)
     + '<button class="btn small done" data-act="done">Done</button>'
+    + outcomeSel(r)
     + '</div>'
     + '<div class="adet">' + (problem ? '<b>Problem</b>' + esc(problem) : '') + (p && p.solution ? '<b>Proposed solution</b>' + esc(p.solution) : '') + (r.next_step ? '<b>Next step</b>' + esc(r.next_step) : '') + (p && p.notes ? '<b>Notes</b>' + esc(p.notes) : '') + (r.waiting_on ? '<b>Waiting on</b>' + esc(r.waiting_on) : '')
     + '<div class="acts2"><select data-act="status">' + STATUSES.map(s => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select><button class="btn small ghost" data-act="edit">Edit</button><span class="am">#' + esc(r.id) + '</span></div></div>'
@@ -678,6 +738,21 @@ function chatBtn(r) {
   return safeUrl(r.chat_link)
     ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(safeUrl(r.chat_link)) + '">Open chat</a>'
     : '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">Ask Claude</a>';
+}
+// Outcome picker and Later button on every open task (8 Nov 2026, Andy): one tap ties a task to today's outcome or puts it back for tomorrow's stand-up.
+function outcomeSel(r) {
+  if (r.status === 'Done') return '';
+  const os = openOutcomes();
+  return '<select class="osel' + (r.outcome ? '' : ' none') + '" data-act="outcome" title="Outcome"><option value="">' + (isLater(r) ? 'Later (' + esc(r.later) + ')' : 'Untied') + '</option>' + os.map(o => '<option value="' + esc(o.id) + '"' + (String(o.id) === String(r.outcome) && !isLater(r) ? ' selected' : '') + '>' + esc(o.title) + '</option>').join('') + '</select>'
+    + (isLater(r) ? '' : '<button class="btn small ghost" data-act="later" title="Back to tomorrow\'s stand-up">Later</button>');
+}
+function wireOutcome(scope) {
+  const els = scope.matches && scope.matches('[data-id]') ? [scope] : Array.from(scope.querySelectorAll('[data-id]'));
+  els.forEach(c => {
+    const r = rows.find(x => String(x.id) === c.dataset.id); if (!r) return;
+    const s = c.querySelector('[data-act=outcome]'); if (s) s.onchange = e => save(Object.assign({}, r, { outcome: e.target.value, later: '' }));
+    const l = c.querySelector('[data-act=later]'); if (l) l.onclick = () => save(Object.assign({}, r, { later: tomorrow(), outcome: '' }));
+  });
 }
 // Clean up all alerts (6 Nov 2026, Andy): one chat sorts every open alert, closes the noise, fixes each root cause, keeps what matters, and ends with a short summary.
 const cleanupRow = () => rows.find(r => r.type === 'SYSTEM' && r.title === 'Alert clean-up chat');
@@ -727,6 +802,7 @@ function wireAlerts() {
     c.querySelector('[data-act=done]').onclick = () => save(Object.assign({}, r, { status: 'Done', done_on: today(), next_step: 'none' }));
     c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
     c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
+    wireOutcome(c);
   });
 }
 
@@ -802,6 +878,7 @@ function migCard(r) {
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
     + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
     + chatBtn(r)
+    + outcomeSel(r)
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
 function migStream(m, n) {
@@ -959,6 +1036,7 @@ function render() {
   if (view === 'Journal') { renderJournal(); return; }
   if (view === 'Engage') { renderEngage(); return; }
   if (view === 'Today') { $('list').innerHTML = inUseHtml() + routineHtml(); wireRoutine(); return; }
+  if (view === 'Now') { renderNow(); return; }
   let html = '';
   if (view === 'Done') {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
@@ -985,8 +1063,9 @@ function render() {
     const r = rows.find(x => String(x.id) === c.dataset.id);
     c.querySelector('[data-act=status]').onchange = e => save(Object.assign({}, r, { status: e.target.value }));
     const g = c.querySelector('[data-act=go]'); if (g) g.onclick = () => save(Object.assign({}, r, { go: r.go === 'yes' ? '' : 'yes' }));
-    const d = c.querySelector('[data-act=done]'); if (d) d.onclick = () => save(Object.assign({}, r, { status: 'Done' }));
+    const d = c.querySelector('[data-act=done]'); if (d) d.onclick = () => save(Object.assign({}, r, { status: 'Done', done_on: today() }));
     c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
+    wireOutcome(c);
   });
   $('list').querySelectorAll('.mission').forEach(c => {
     const m = rows.find(x => String(x.id) === c.dataset.mid);
@@ -995,6 +1074,95 @@ function render() {
   });
 }
 
+
+// ---- Now tab = today's board (8 Nov 2026, Andy): outcome tiles on top, every open task in one row shape under its outcome, Untied and Later tiles so nothing is forgotten.
+const managerRow = () => rows.find(r => r.type === 'SYSTEM' && r.title === 'Manager chat');
+function managerUrl(mode) {
+  const sys = managerRow();
+  const os = openOutcomes(), un = untied(), lt = laterItems();
+  const q = 'You are the Manager for Andy\'s SC dashboard (Stiff Competition). FIRST read your standing rule in the memory file /topics/sc-manager-chat.md and follow it for the whole chat; then read the SC Master Manual. Reply in ONE line per answer, results only, plain words, clickable links, no ID codes in replies, never the word honest, no hedging, no research shown. Andy works through hundreds of tasks fast: when he asks "where is the chat about X", "what is the status of Y" or "find Z", answer with the one line and the link, nothing else.'
+    + (sys ? ' Save this chat\'s link first: call read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink, triggerNodeName "Chat Link Webhook") with id ' + sys.id + ' and that chat_link.' : '')
+    + ' Data: tasks are rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO); open = status Today, Next or Waiting; containers (type MISSION, DAILY, SYSTEM, BUCKET, GROUP) are not tasks. Each task has owner (Andy or Claude), next_step, link (where Andy does it), chat_link, outcome (id of a row in the SC Outcomes table), later (a date it comes back on) and task_type. Outcomes: GET ' + OUT_LIST + ' lists them; POST ' + OUT_SAVE + ' with {id (empty for new), title, day YYYY-MM-DD, position, status open or done} adds or changes one. To tie a task: read the row, then POST ' + SAVE_URL + ' with the WHOLE row plus outcome = the outcome id and later = "" (it overwrites every field it is given); to defer it set later = tomorrow and outcome = "". Chats: Relaunch CHAT rows hold chat_link per chat; conversation_search and recent_chats find any chat; Todoist holds each chat\'s task.'
+    + ' Today\'s outcomes now: ' + (os.length ? os.map(o => '[' + o.id + '] ' + o.title).join('; ') : 'none set yet') + '. Untied open tasks: ' + un.length + (un.length ? ' (' + un.slice(0, 40).map(r => '#' + r.id + ' ' + r.title).join('; ') + (un.length > 40 ? '; and more' : '') + ')' : '') + '. Deferred to later: ' + lt.length + '.'
+    + (mode === 'standup'
+      ? ' MORNING STAND-UP, do it now, one question at a time: (1) Show today\'s outcomes as a numbered list and ask Andy to confirm, rename, add or drop any; save his changes with the Outcomes API (dropped = status done). (2) Scan for forgotten work: recent_chats for the last 7 days and the Relaunch rows; any chat with no row gets a CHAT row (type CHAT, category Relaunch, parent = the right group, owner, next_step, chat_link) via the save API. (3) Go through every untied task in batches of ten: for each, one line "#id title: owner, next step" and your proposed outcome number or Later; Andy answers with corrections only; then save the batch. (4) Repeat until Untied is zero. (5) End with the board: one line per outcome with counts (needs you / Claude running), the Later count, and the first three things he does. Never add work to Andy that Claude can do; set owner Claude and go yes where Claude can run it.'
+      : ' Start by answering whatever Andy asks. If he asks for the stand-up, run it: confirm outcomes, find forgotten chats, tie every untied task in batches of ten with one line each, until Untied is zero.');
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+function managerBar() {
+  const sys = managerRow(), last = sys && safeUrl(sys.chat_link);
+  return '<div class="cleanbar"><a class="btn" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning stand-up with the Manager</a>'
+    + '<a class="btn" target="_blank" rel="noopener" href="' + esc(managerUrl('ask')) + '">Ask the Manager</a>'
+    + (last ? '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(last) + '">Open today\'s Manager chat</a>' : '')
+    + '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(winsUrl()) + '">End of day report</a></div>';
+}
+function outcomeStrip() {
+  const os = openOutcomes(), un = untied().length, lt = laterItems().length, dn = doneToday().length;
+  const tile = (key, n, label, colour, sub) => '<button class="atile otile' + (ofilter === key ? ' on' : '') + (n ? '' : ' zero') + '" style="--ac:' + colour + '" data-of="' + esc(key) + '"><div class="n">' + n + '</div><div class="l">' + esc(label) + '</div>' + (sub ? '<div class="s">' + esc(sub) + '</div>' : '') + '</button>';
+  let h = '<div class="astrip ostrip">';
+  h += os.map(o => { const l = tiedTo(o), y = l.filter(needsYou).length; return tile(String(o.id), l.length, o.title, '#2f6fed', y ? y + ' for you' : (l.length ? 'Claude' : 'nothing open')); }).join('');
+  h += tile('untied', un, 'Untied', un ? '#c62828' : '#8a8f98', un ? 'tie or defer' : 'all tied');
+  h += tile('later', lt, 'Later', '#8a8f98', 'back at stand-up');
+  h += tile('done', dn, 'Done today', '#2e9e5b', '');
+  h += '<button class="atile otile add" style="--ac:#1a1a1a" data-of="+"><div class="n">+</div><div class="l">Outcome</div></button></div>';
+  return h;
+}
+function outcomeFormHtml() {
+  const o = outEdit || {};
+  return '<div class="rl-form"><h3 style="margin:0 0 6px;font-size:15px">' + (outEdit ? 'Edit outcome' : 'New outcome for today') + '</h3>'
+    + '<input class="w" id="of_title" maxlength="60" placeholder="Executive outcome, e.g. Card payments live" value="' + esc(o.title || '') + '">'
+    + '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="of_save">Save</button>' + (outEdit ? '<button class="btn done" id="of_done">Outcome done</button>' : '') + '<button class="btn ghost" id="of_cancel">Cancel</button></div></div>';
+}
+function line(r) {
+  const isA = needsYou(r), red = r.type === 'ALERT' && aRed(r);
+  const act = r.next_step && r.next_step !== 'none' && r.next_step !== r.title ? r.next_step : '';
+  const late = r.due && r.due < today();
+  return '<div class="trow2' + (isA ? ' you' : ' cl') + (red ? ' red' : '') + (r.status === 'Done' ? ' done' : '') + '" data-id="' + esc(r.id) + '">'
+    + '<div class="t1"><span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isA ? 'You' : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b>' + esc(r.title) + '</b>'
+    + (r.waiting_on ? '<span class="chip wait">waiting: ' + esc(r.waiting_on) + '</span>' : '') + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '') + '<span class="am">' + esc(r.type === 'CHAT' ? 'chat' : r.type === 'ALERT' ? 'alert' : (r.category || '')) + '</span></div>'
+    + (act ? '<div class="t2">' + esc(act) + '</div>' : '')
+    + '<div class="tb">' + taskBtn(r) + chatBtn(r)
+    + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
+    + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
+    + outcomeSel(r) + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
+}
+const lineSort = (a, b) => ((b.type === 'ALERT' && aRed(b)) ? 1 : 0) - ((a.type === 'ALERT' && aRed(a)) ? 1 : 0) || (needsYou(b) ? 1 : 0) - (needsYou(a) ? 1 : 0) || rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id);
+function lineGroup(title, list, cls) {
+  return '<div class="ogroup' + (cls ? ' ' + cls : '') + '"><div class="group-title">' + esc(title) + ' <span class="cnt">' + list.length + '</span></div>' + (list.length ? list.slice().sort(lineSort).map(line).join('') : '<div class="empty" style="padding:10px 0">Nothing here.</div>') + '</div>';
+}
+function renderNow() {
+  let h = inUseHtml() + managerBar() + outcomeStrip();
+  if (outForm) h += outcomeFormHtml();
+  const os = openOutcomes();
+  if (ofilter === 'untied') h += lineGroup('Untied: tie each one to an outcome, or Later', untied(), 'red');
+  else if (ofilter === 'later') h += lineGroup('Later: comes back at the next stand-up', laterItems());
+  else if (ofilter === 'done') h += lineGroup('Done today', doneToday());
+  else if (ofilter) { const o = os.find(x => String(x.id) === ofilter); if (o) h += '<div class="prow" style="margin:0 0 6px"><button class="btn small ghost" id="of_edit">Rename or close this outcome</button></div>' + lineGroup(o.title, tiedTo(o)); else ofilter = ''; }
+  if (!ofilter) {
+    if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning stand-up with the Manager", or tap + Outcome.</div>';
+    h += os.map(o => lineGroup(o.title, tiedTo(o))).join('');
+    if (untied().length) h += lineGroup('Untied: tie each one to an outcome, or Later', untied(), 'red');
+  }
+  h += channelHtml() + basketHtml();
+  $('list').innerHTML = h;
+  $('list').querySelectorAll('.otile').forEach(b => b.onclick = () => { const k = b.dataset.of; if (k === '+') { outForm = true; outEdit = null; render(); const i = $('of_title'); if (i) i.focus(); return; } ofilter = ofilter === k ? '' : k; render(); });
+  if ($('of_edit')) $('of_edit').onclick = () => { outEdit = os.find(x => String(x.id) === ofilter) || null; outForm = true; render(); };
+  if ($('of_save')) {
+    $('of_save').onclick = async () => { const t = $('of_title').value.trim(); if (!t) { toast('Give the outcome a name'); return; } try { await saveOutcome(Object.assign({}, outEdit || { position: os.length + 1, day: today(), status: 'open' }, { title: t })); outForm = false; outEdit = null; render(); toast('Saved'); } catch (e) { toast('Not saved: ' + e.message); } };
+    $('of_cancel').onclick = () => { outForm = false; outEdit = null; render(); };
+    if ($('of_done')) $('of_done').onclick = async () => { try { await saveOutcome(Object.assign({}, outEdit, { status: 'done' })); outForm = false; outEdit = null; ofilter = ''; render(); toast('Outcome closed'); } catch (e) { toast('Not saved: ' + e.message); } };
+    $('of_title').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('of_save').click(); } };
+  }
+  $('list').querySelectorAll('.trow2').forEach(c => {
+    const r = rows.find(x => String(x.id) === c.dataset.id); if (!r) return;
+    const g = c.querySelector('[data-act=go]'); if (g) g.onclick = () => save(Object.assign({}, r, { go: r.go === 'yes' ? '' : 'yes' }));
+    const d = c.querySelector('[data-act=done]'); if (d) d.onclick = () => save(Object.assign({}, r, { status: 'Done', done_on: today(), next_step: 'none' }));
+    c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
+    wireOutcome(c);
+  });
+  if ($('chn_run')) $('chn_run').onclick = channelRun;
+  if ($('bkt')) $('bkt').onclick = e => { if (e.target.closest('a')) return; bktOpen = !bktOpen; render(); };
+}
 
 // ---- Relaunch tab (6 Nov 2026, Andy): buckets hold groups (e.g. one per sales channel); groups hold chats.
 // Rows live in SC Marketing Actions: type BUCKET / GROUP / CHAT, category Relaunch, parent = the row above.
@@ -1132,7 +1300,7 @@ async function save(r) {
   if (i >= 0) rows[i] = r;
   render();
   try {
-    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes, waiting_on: r.waiting_on || '', go: r.go || '', parent: r.parent || '', type: r.type || '', repeat: r.repeat || '', done_on: r.done_on || '' }) });
+    const res = await fetch(SAVE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id || '', title: r.title, category: r.category, status: r.status, next_step: r.next_step, owner: r.owner, due: r.due, link: r.link, notes: r.notes, waiting_on: r.waiting_on || '', go: r.go || '', parent: r.parent || '', type: r.type || '', repeat: r.repeat || '', done_on: r.done_on || '', outcome: r.outcome || '', task_type: r.task_type || '', later: r.later || '' }) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const out = await res.json();
     if (!out.ok) throw new Error(out.error || 'not saved');
@@ -1158,6 +1326,10 @@ function openDlg(r, parentMission) {
   $('f_due').value = r ? r.due || '' : '';
   $('f_link').value = r ? r.link || '' : '';
   $('f_wait').value = r ? r.waiting_on || '' : '';
+  $('f_outcome').innerHTML = '<option value="">(untied)</option>' + openOutcomes().map(o => '<option value="' + esc(o.id) + '">' + esc(o.title) + '</option>').join('');
+  $('f_outcome').value = r && r.outcome && openOutcomes().some(o => String(o.id) === String(r.outcome)) ? String(r.outcome) : (ofilter && ofilter !== 'untied' && ofilter !== 'later' && !r ? ofilter : '');
+  $('f_tasktype').innerHTML = TASK_TYPES.map(t => '<option value="' + t[0] + '">' + esc(t[1]) + '</option>').join('');
+  $('f_tasktype').value = r ? (TASK_TYPES.some(t => t[0] === (r.task_type || '')) ? (r.task_type || '') : '') : '';
   const pn = r ? parseNotes(r.notes) : null;
   $('f_problem').value = pn ? pn.problem : '';
   $('f_solution').value = pn ? pn.solution : '';
@@ -1478,7 +1650,7 @@ $('cancel').onclick = () => $('dlg').close();
 $('removeBtn').onclick = () => { if (editing) { const e = editing; save(Object.assign({}, e, { status: 'Removed' })); rows = rows.filter(x => String(x.id) !== String(e.id)); render(); } $('dlg').close(); };
 $('form').onsubmit = e => {
   e.preventDefault();
-  const r = Object.assign({}, editing || {}, { title: $('f_title').value.trim(), next_step: $('f_next').value.trim(), category: $('f_cat').value, status: $('f_status').value, owner: $('f_owner').value, due: $('f_due').value, link: $('f_link').value.trim(), waiting_on: $('f_wait').value.trim(), notes: composeNotes($('f_problem').value.trim(), $('f_solution').value.trim(), $('f_notes').value.trim()), type: $('f_type').value, parent: $('f_parent').value });
+  const r = Object.assign({}, editing || {}, { title: $('f_title').value.trim(), next_step: $('f_next').value.trim(), category: $('f_cat').value, status: $('f_status').value, owner: $('f_owner').value, due: $('f_due').value, link: $('f_link').value.trim(), waiting_on: $('f_wait').value.trim(), notes: composeNotes($('f_problem').value.trim(), $('f_solution').value.trim(), $('f_notes').value.trim()), type: $('f_type').value, parent: $('f_parent').value, outcome: $('f_outcome').value, task_type: $('f_tasktype').value, later: $('f_outcome').value ? '' : ((editing && editing.later) || '') });
   if (r.type !== 'MISSION' && r.type !== 'DAILY' && r.status !== 'Done' && !$('f_problem').value.trim()) { toast('Say what the problem is'); return; }
   if (r.type === 'DAILY') {
     const days = Array.from($('f_repeat').querySelectorAll('input:checked')).map(x => x.value);
