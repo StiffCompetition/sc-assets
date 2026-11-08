@@ -38,6 +38,7 @@
 
   main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
   main.wide { max-width: none; padding: 0; }
+  main.board { max-width: 1240px; }
   .group-title { margin: 22px 0 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); }
   .card { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
   .card { border-left: 5px solid var(--c-park); }
@@ -212,6 +213,15 @@
   .osel { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); background: #fff; max-width: 220px; }
   .osel.none { border-color: #c62828; color: #c62828; }
   .acts .osel { max-width: none; }
+  .trow2 .ttl { cursor: pointer; } .trow2 .ttl:hover { text-decoration: underline; }
+  .trow2.compact { padding: 6px 10px; } .trow2.compact .t1 { font-size: 14px; } .trow2.compact .tb { margin-top: 5px; } .trow2.compact .tb .btn { min-height: 30px; padding: 2px 8px; font-size: 12px; }
+  .chip.why { border-color: #8a4fd6; color: #8a4fd6; }
+  .ogroup.pinned { border: 2px solid var(--ink); padding: 6px 10px 2px; background: #fff; } .ogroup.pinned .group-title { margin-top: 2px; color: var(--ink); }
+  .fgroup { margin-bottom: 10px; } .ftitle { font-size: 13px; font-weight: 700; color: var(--grey); margin: 12px 0 6px; } .ftitle .cnt { font-weight: 400; opacity: .7; }
+  .focus { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+  .focus .fmain .trow2 { border-width: 2px; } .focus .frel { background: #f6f7f9; border: 1px solid var(--line); padding: 8px 10px; max-height: calc(100vh - 170px); overflow: auto; }
+  .focus .frel .group-title { margin-top: 2px; }
+  @media (max-width: 900px) { .focus { grid-template-columns: 1fr; } .focus .frel { max-height: none; } }
   @media (max-width: 640px) {
     header { padding: 5px 12px; } .tabs { padding: 5px 12px; } .tabs .who { margin-left: 0; width: 100%; }
     .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; } .tabs::-webkit-scrollbar { display: none; } .tab { white-space: nowrap; flex: 0 0 auto; padding: 7px 12px; font-size: 14px; }
@@ -1024,6 +1034,7 @@ window.addEventListener('resize', fitContentFrame);
 function render() {
   renderTabs();
   $('list').classList.toggle('wide', view === 'Content');
+  $('list').classList.toggle('board', view === 'Now');
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
   // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
@@ -1113,40 +1124,107 @@ function outcomeFormHtml() {
     + '<input class="w" id="of_title" maxlength="60" placeholder="Executive outcome, e.g. Card payments live" value="' + esc(o.title || '') + '">'
     + '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="of_save">Save</button>' + (outEdit ? '<button class="btn done" id="of_done">Outcome done</button>' : '') + '<button class="btn ghost" id="of_cancel">Cancel</button></div></div>';
 }
-function line(r) {
+// Focus view and Working-on strip (8 Nov 2026, Andy): open the page to tiles, open one task and see everything related to it.
+let focusId = null;
+const PINS_KEY = 'sc_pins';
+function pins() { try { return JSON.parse(localStorage.getItem(PINS_KEY) || '[]').map(String); } catch (e) { return []; } }
+function setPins(p) { try { localStorage.setItem(PINS_KEY, JSON.stringify(p.slice(0, 5))); } catch (e) {} }
+const isPinned = r => pins().includes(String(r.id));
+// Function = the business workstream a task lives in for life: its Relaunch bucket, or its category.
+function funcOf(r) {
+  let x = r, n = 0;
+  while (x && n < 6) { if (x.type === 'BUCKET') return x.title; const p = rows.find(y => String(y.id) === String(x.parent)); if (!p) break; x = p; n++; }
+  const c = r.category || '';
+  return ({ 'Shop': 'Range and product quality', 'Posts and boosts': 'Marketing and content', 'Influencers': 'Marketing and content', 'Press and media': 'Marketing and content', 'Systems': 'Dashboard, alerts and systems', 'Alerts': 'Dashboard, alerts and systems', 'Ideas': 'Marketing and content' })[c] || c || 'Other';
+}
+const STOP = new Set(['the','and','for','with','from','that','this','into','then','your','andy','claude','task','tasks','check','fix','make','build','move','every','each','page','pages','shop','sc','all','one','new','off','set','its']);
+const words = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !STOP.has(w));
+function linkKey(u) { try { const x = new URL(u); return x.host + x.pathname.split('/').slice(0, 4).join('/'); } catch (e) { return ''; } }
+function related(r) {
+  const rw = new Set(words(r.title + ' ' + (r.next_step || ''))), rl = linkKey(r.link), rc = safeUrl(r.chat_link);
+  const pool = rows.filter(x => String(x.id) !== String(r.id) && !CONTAINERS.includes(x.type || '') && x.status !== 'Removed' && (ACTIVE.includes(x.status) || x.done_on === today()));
+  return pool.map(x => {
+    let s = 0, why = [];
+    if (r.parent && String(x.parent) === String(r.parent)) { s += 3; why.push('same group'); }
+    if (String(x.parent) === String(r.id) || String(r.parent) === String(x.id)) { s += 3; why.push('same group'); }
+    if (rl && linkKey(x.link) === rl) { s += 3; why.push('same place'); }
+    if (rc && safeUrl(x.chat_link) === rc) { s += 3; why.push('same chat'); }
+    if (r.outcome && String(x.outcome) === String(r.outcome)) { s += 1; why.push('same outcome'); }
+    if (funcOf(x) === funcOf(r)) { s += 1; why.push(funcOf(r)); }
+    const ov = words(x.title + ' ' + (x.next_step || '')).filter(w => rw.has(w)); const uniq = Array.from(new Set(ov));
+    if (uniq.length) { s += Math.min(3, uniq.length); why.push(uniq.slice(0, 3).join(', ')); }
+    return { x, s, why: Array.from(new Set(why)).slice(0, 3).join(' · ') };
+  }).filter(o => o.s >= 2).sort((a, b) => b.s - a.s || lineSort(a.x, b.x)).slice(0, 20);
+}
+function line(r, opts) {
+  opts = opts || {};
   const isA = needsYou(r), red = r.type === 'ALERT' && aRed(r);
   const act = r.next_step && r.next_step !== 'none' && r.next_step !== r.title ? r.next_step : '';
   const late = r.due && r.due < today();
-  return '<div class="trow2' + (isA ? ' you' : ' cl') + (red ? ' red' : '') + (r.status === 'Done' ? ' done' : '') + '" data-id="' + esc(r.id) + '">'
-    + '<div class="t1"><span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isA ? 'You' : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b>' + esc(r.title) + '</b>'
-    + (r.waiting_on ? '<span class="chip wait">waiting: ' + esc(r.waiting_on) + '</span>' : '') + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '') + '<span class="am">' + esc(r.type === 'CHAT' ? 'chat' : r.type === 'ALERT' ? 'alert' : (r.category || '')) + '</span></div>'
+  const o = r.outcome && openOutcomes().find(x => String(x.id) === String(r.outcome));
+  return '<div class="trow2' + (isA ? ' you' : ' cl') + (red ? ' red' : '') + (r.status === 'Done' ? ' done' : '') + (opts.compact ? ' compact' : '') + '" data-id="' + esc(r.id) + '">'
+    + '<div class="t1"><span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isA ? 'You' : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b class="ttl" data-act="focus" title="Open with everything related">' + esc(r.title) + '</b>'
+    + (r.waiting_on ? '<span class="chip wait">waiting: ' + esc(r.waiting_on) + '</span>' : '') + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
+    + (opts.why ? '<span class="chip why">' + esc(opts.why) + '</span>' : '') + (!opts.compact && o && !ofilter ? '<span class="chip">' + esc(o.title) + '</span>' : '')
+    + '<span class="am">' + esc(funcOf(r)) + '</span></div>'
     + (act ? '<div class="t2">' + esc(act) + '</div>' : '')
     + '<div class="tb">' + taskBtn(r) + chatBtn(r)
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
     + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
-    + outcomeSel(r) + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
+    + (opts.compact ? '' : outcomeSel(r))
+    + '<button class="btn small ghost" data-act="pin">' + (isPinned(r) ? 'Unpin' : 'Pin') + '</button>'
+    + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
 const lineSort = (a, b) => ((b.type === 'ALERT' && aRed(b)) ? 1 : 0) - ((a.type === 'ALERT' && aRed(a)) ? 1 : 0) || (needsYou(b) ? 1 : 0) - (needsYou(a) ? 1 : 0) || rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id);
 function lineGroup(title, list, cls) {
-  return '<div class="ogroup' + (cls ? ' ' + cls : '') + '"><div class="group-title">' + esc(title) + ' <span class="cnt">' + list.length + '</span></div>' + (list.length ? list.slice().sort(lineSort).map(line).join('') : '<div class="empty" style="padding:10px 0">Nothing here.</div>') + '</div>';
+  return '<div class="ogroup' + (cls ? ' ' + cls : '') + '"><div class="group-title">' + esc(title) + ' <span class="cnt">' + list.length + '</span></div>' + (list.length ? list.slice().sort(lineSort).map(r => line(r)).join('') : '<div class="empty" style="padding:10px 0">Nothing here.</div>') + '</div>';
+}
+function byFunction(list) {
+  const g = {}; list.forEach(r => { const f = funcOf(r); (g[f] = g[f] || []).push(r); });
+  return Object.keys(g).sort().map(f => '<div class="fgroup"><div class="ftitle">' + esc(f) + ' <span class="cnt">' + g[f].length + '</span></div>' + g[f].sort(lineSort).map(r => line(r)).join('') + '</div>').join('');
+}
+function workingStrip() {
+  const ps = pins().map(id => rows.find(r => String(r.id) === id)).filter(r => r && r.status !== 'Removed');
+  if (!ps.length) return '';
+  return '<div class="ogroup pinned"><div class="group-title">Working on <span class="cnt">' + ps.length + '</span></div>' + ps.map(r => line(r, { compact: true })).join('') + '</div>';
+}
+function nextForYou() {
+  const os = openOutcomes(); const pos = o => { const i = os.findIndex(x => String(x.id) === String(o)); return i < 0 ? 99 : i; };
+  const list = workItems().filter(r => needsYou(r) && !isLater(r) && r.outcome).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : (a.due || '9') > (b.due || '9') ? 1 : pos(a.outcome) - pos(b.outcome) || lineSort(a, b)).slice(0, 3);
+  if (!list.length) return '';
+  return '<div class="ogroup"><div class="group-title">Next for you</div>' + list.map(r => line(r, { compact: true })).join('') + '</div>';
+}
+function focusHtml(r) {
+  const p = parseNotes(r.notes);
+  const rel = related(r);
+  return '<div class="focus"><div class="fmain"><button class="btn ghost small" id="fx_back">← Back</button>'
+    + line(r)
+    + (p ? '<div class="pf" style="background:#fff;border:1px solid var(--line);padding:10px 12px"><div><b>Problem</b>' + esc(p.problem) + '</div>' + (p.solution ? '<div><b>Proposed solution</b>' + esc(p.solution) + '</div>' : '') + (p.notes ? '<div><b>Notes</b>' + esc(p.notes) + '</div>' : '') + '</div>' : (r.notes ? '<div class="pf" style="background:#fff;border:1px solid var(--line);padding:10px 12px">' + esc(r.notes) + '</div>' : ''))
+    + '</div><div class="frel"><div class="group-title">Related <span class="cnt">' + rel.length + '</span></div>' + (rel.length ? rel.map(o => line(o.x, { compact: true, why: o.why })).join('') : '<div class="empty" style="padding:10px 0">Nothing related is open.</div>') + '</div></div>';
 }
 function renderNow() {
-  let h = inUseHtml() + managerBar() + outcomeStrip();
-  if (outForm) h += outcomeFormHtml();
   const os = openOutcomes();
-  if (ofilter === 'untied') h += lineGroup('Untied: tie each one to an outcome, or Later', untied(), 'red');
-  else if (ofilter === 'later') h += lineGroup('Later: comes back at the next stand-up', laterItems());
-  else if (ofilter === 'done') h += lineGroup('Done today', doneToday());
-  else if (ofilter) { const o = os.find(x => String(x.id) === ofilter); if (o) h += '<div class="prow" style="margin:0 0 6px"><button class="btn small ghost" id="of_edit">Rename or close this outcome</button></div>' + lineGroup(o.title, tiedTo(o)); else ofilter = ''; }
-  if (!ofilter) {
-    if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning stand-up with the Manager", or tap + Outcome.</div>';
-    h += os.map(o => lineGroup(o.title, tiedTo(o))).join('');
-    if (untied().length) h += lineGroup('Untied: tie each one to an outcome, or Later', untied(), 'red');
+  let h = inUseHtml() + managerBar();
+  const fr = focusId && rows.find(x => String(x.id) === String(focusId));
+  if (fr) h += focusHtml(fr);
+  else {
+    h += outcomeStrip();
+    if (outForm) h += outcomeFormHtml();
+    if (ofilter === 'untied') h += lineGroup('Untied: tie each one to an outcome, or Later', untied(), 'red');
+    else if (ofilter === 'later') h += lineGroup('Later: comes back at the next stand-up', laterItems());
+    else if (ofilter === 'done') h += lineGroup('Done today', doneToday());
+    else if (ofilter) { const o = os.find(x => String(x.id) === ofilter); if (o) h += '<div class="prow" style="margin:0 0 6px"><h2 style="margin:0;font-size:18px;flex:1">' + esc(o.title) + '</h2><button class="btn small ghost" id="of_edit">Rename or close</button></div>' + byFunction(tiedTo(o)); else ofilter = ''; }
+    if (!ofilter) {
+      if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning stand-up with the Manager", or tap + Outcome.</div>';
+      h += workingStrip() + nextForYou();
+      if (untied().length) h += '<div class="hint" style="border-color:#c62828;color:#c62828">' + untied().length + ' open task' + (untied().length === 1 ? ' is' : 's are') + ' untied. Tap the Untied tile.</div>';
+    }
+    h += channelHtml() + basketHtml();
   }
-  h += channelHtml() + basketHtml();
   $('list').innerHTML = h;
-  $('list').querySelectorAll('.otile').forEach(b => b.onclick = () => { const k = b.dataset.of; if (k === '+') { outForm = true; outEdit = null; render(); const i = $('of_title'); if (i) i.focus(); return; } ofilter = ofilter === k ? '' : k; render(); });
+  $('list').querySelectorAll('.otile').forEach(b => b.onclick = () => { const k = b.dataset.of; if (k === '+') { outForm = true; outEdit = null; render(); const i = $('of_title'); if (i) i.focus(); return; } ofilter = ofilter === k ? '' : k; render(); window.scrollTo(0, 0); });
   if ($('of_edit')) $('of_edit').onclick = () => { outEdit = os.find(x => String(x.id) === ofilter) || null; outForm = true; render(); };
+  if ($('fx_back')) $('fx_back').onclick = () => { focusId = null; render(); };
   if ($('of_save')) {
     $('of_save').onclick = async () => { const t = $('of_title').value.trim(); if (!t) { toast('Give the outcome a name'); return; } try { await saveOutcome(Object.assign({}, outEdit || { position: os.length + 1, day: today(), status: 'open' }, { title: t })); outForm = false; outEdit = null; render(); toast('Saved'); } catch (e) { toast('Not saved: ' + e.message); } };
     $('of_cancel').onclick = () => { outForm = false; outEdit = null; render(); };
@@ -1158,6 +1236,8 @@ function renderNow() {
     const g = c.querySelector('[data-act=go]'); if (g) g.onclick = () => save(Object.assign({}, r, { go: r.go === 'yes' ? '' : 'yes' }));
     const d = c.querySelector('[data-act=done]'); if (d) d.onclick = () => save(Object.assign({}, r, { status: 'Done', done_on: today(), next_step: 'none' }));
     c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
+    const f = c.querySelector('[data-act=focus]'); if (f) f.onclick = () => { focusId = String(r.id); render(); window.scrollTo(0, 0); };
+    const pn = c.querySelector('[data-act=pin]'); if (pn) pn.onclick = () => { const p = pins(); const i = p.indexOf(String(r.id)); if (i >= 0) p.splice(i, 1); else { if (p.length >= 5) { toast('Five pinned already; unpin one first'); return; } p.unshift(String(r.id)); } setPins(p); render(); };
     wireOutcome(c);
   });
   if ($('chn_run')) $('chn_run').onclick = channelRun;
