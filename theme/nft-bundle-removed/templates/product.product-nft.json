@@ -1,0 +1,193 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "vendor": {
+          "type": "text",
+          "disabled": true,
+          "settings": {
+            "text": "{{ product.vendor }}",
+            "text_style": "uppercase"
+          }
+        },
+        "title": {
+          "type": "title",
+          "settings": {}
+        },
+        "price": {
+          "type": "price",
+          "settings": {}
+        },
+        "variant_picker": {
+          "type": "variant_picker",
+          "settings": {
+            "picker_type": "dropdown",
+            "swatch_shape": "circle"
+          }
+        },
+        "description_BbRFjT": {
+          "type": "description",
+          "settings": {}
+        },
+        "custom_liquid_F6f33d": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "<div class=\"nft-whatyouget\">\n  <p class=\"nft-whatyouget__h\">What you get</p>\n  <p class=\"nft-whatyouget__p\">One-of-a-kind digital art. Registered on the blockchain as an <a href=\"/pages/nft-purchase-guide-disclaimers\">NFT</a>. Keep it, show it off, or sell it on.</p>\n</div>\n\n<style>\n.nft-whatyouget{background:#f2f5f7;border-left:4px solid #00aeef;padding:16px 18px;margin:0 0 20px;text-align:center;}\n.nft-whatyouget__h{font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px;}\n.nft-whatyouget__p{font-size:14px;line-height:1.65;margin:0;}\n.nft-whatyouget__p a{text-decoration:underline;text-underline-offset:3px;}\n</style>"
+          }
+        },
+        "custom_liquid_BKEmCK": {
+          "type": "custom_liquid",
+          "name": "Lore",
+          "disabled": true,
+          "settings": {
+            "custom_liquid": "<div class=\"product-metafield\">\n  <p>  {{ product.metafields.custom.expanded_lore }}</p>\n</div>"
+          }
+        },
+        "custom_liquid_AGmDLX": {
+          "type": "custom_liquid",
+          "name": "Structural Rigidity",
+          "disabled": true,
+          "settings": {
+            "custom_liquid": "<div class=\"product-metafield\">\n  <p>Structural Rigidity: {{ product.metafields.verisart.structural_rigidity }}</p>\n</div>"
+          }
+        },
+        "custom_liquid_XfDdh9": {
+          "type": "custom_liquid",
+          "name": "Tactical Girth",
+          "disabled": true,
+          "settings": {
+            "custom_liquid": "<div class=\"product-metafield\">\n  <p>Tactical Girth: {{ product.metafields.verisart.tactical_girth }}</p>\n</div>"
+          }
+        },
+        "custom_liquid_t69kee": {
+          "type": "custom_liquid",
+          "name": "Innuendo Intensity",
+          "disabled": true,
+          "settings": {
+            "custom_liquid": "<div class=\"product-metafield\">\n  <p>Innuendo Intensity: {{ product.metafields.verisart.innuendo_intensity }}</p>\n</div>"
+          }
+        },
+        "custom_liquid_AcEn9z": {
+          "type": "custom_liquid",
+          "name": "Friction Force",
+          "disabled": true,
+          "settings": {
+            "custom_liquid": "<div class=\"product-metafield\">\n  <p> Friction Force: {{ product.metafields.verisart.friction_force }}</p>\n</div>"
+          }
+        },
+        "text_TPDmiF": {
+          "type": "text",
+          "disabled": true,
+          "settings": {
+            "text": "Warning: Not responsible for sudden loss of rigidity during play. Each figure sold separately.",
+            "text_style": "body"
+          }
+        },
+        "buy_buttons": {
+          "type": "buy_buttons",
+          "settings": {
+            "show_dynamic_checkout": false,
+            "show_gift_card_recipient": true
+          }
+        },
+        "share": {
+          "type": "share",
+          "settings": {
+            "share_label": "Share"
+          }
+        }
+      },
+      "block_order": [
+        "vendor",
+        "title",
+        "price",
+        "variant_picker",
+        "description_BbRFjT",
+        "custom_liquid_F6f33d",
+        "custom_liquid_BKEmCK",
+        "custom_liquid_AGmDLX",
+        "custom_liquid_XfDdh9",
+        "custom_liquid_t69kee",
+        "custom_liquid_AcEn9z",
+        "text_TPDmiF",
+        "buy_buttons",
+        "share"
+      ],
+      "custom_css": [],
+      "settings": {
+        "enable_sticky_info": true,
+        "color_scheme": "scheme-2",
+        "media_size": "medium",
+        "constrain_to_viewport": true,
+        "media_fit": "contain",
+        "gallery_layout": "stacked",
+        "mobile_thumbnails": "hide",
+        "media_position": "left",
+        "image_zoom": "lightbox",
+        "hide_variants": true,
+        "enable_video_looping": false,
+        "padding_top": 32,
+        "padding_bottom": 32
+      }
+    },
+    "nft_traits_TFw9Ed": {
+      "type": "nft-traits",
+      "name": "NFT Traits",
+      "settings": {
+        "heading": "Traits",
+        "stats_heading": "Ratings",
+        "product_type": "NFT",
+        "footnote": "These are the traits recorded on the blockchain when the piece is minted.",
+        "color_tint": "#f2f5f7",
+        "color_bar": "#00aeef",
+        "margin_top": 24
+      }
+    },
+    "custom_liquid_MprR8H": {
+      "type": "custom-liquid",
+      "disabled": true,
+      "name": "t:sections.custom-liquid.presets.name",
+      "settings": {
+        "custom_liquid": "",
+        "color_scheme": "",
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    },
+    "related-products": {
+      "type": "related-products",
+      "disabled": true,
+      "settings": {
+        "heading": "YOU NEED THIS TOO!",
+        "heading_size": "h2",
+        "products_to_show": 4,
+        "columns_desktop": 4,
+        "columns_mobile": "1",
+        "color_scheme": "scheme-1",
+        "image_ratio": "square",
+        "image_shape": "default",
+        "show_secondary_image": true,
+        "show_vendor": false,
+        "show_rating": false,
+        "padding_top": 8,
+        "padding_bottom": 8
+      }
+    }
+  },
+  "order": [
+    "main",
+    "nft_traits_TFw9Ed",
+    "custom_liquid_MprR8H",
+    "related-products"
+  ]
+}
