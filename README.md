@@ -37,7 +37,8 @@ its code lives. Detailed process rules are in the SC Content Playbook (Google Do
 | SC - Post Extras (Story + Discord) (`wWpHusQobhHUMVWY`) | Publishing: POST `{row_id, ig_ok, dry}` to `sc-post-extras` once a post is out (called by both publishers). Posts the Instagram Story (the clip; Dare to Buy uses its X image) and sends posts whose platforms include Discord to Discord #1994-series. Failures go to Andy through SC - Alert; a dry run makes the Story container without publishing and sends nothing to Discord. |
 | SC - YouTube Short (`giKA0kChYX7U7xOf`) | Publishing: POST `{row_id}` to `sc-youtube` uploads the post's clip to youtube.com/@StiffCompetition as a public Short (title: caption's first sentence + #Shorts; description: Facebook caption, shop link, Instagram hashtags). `{row_id, dry:true}` builds the words only; `{check:true}` confirms the channel. Called by SC - Publish Approved Posts. |
 | SC - Calendar API (update) (`4eXYIAKnlJz6aAJ1`) | `sc-calendar-list` / `sc-calendar-update` webhooks used by the dashboard and all content workflows. |
-| SC - Content Calendar Dashboard (hosted) (`Fi8KwAgLq266QQ01`) | Serves the dashboard (`dashboard/dashboard.html` in this repo). |
+| SC - Dashboard (hosted) (`RMT2qNwTFdjCQvVi`) | Serves the SC Dashboard (`dashboard/dashboard.html`) at /webhook/sc-dashboard; /webhook/sc-marketing redirects there. |
+| SC - Content Dashboard (hosted) (`Fi8KwAgLq266QQ01`) | Serves the content calendar page (`dashboard/content-dashboard.html`) at /webhook/sc-content, shown as the Content tab. |
 | SC - Publish Scheduler (`cAA12OqK71am3qsV`) | 6am, 7am, Monday 10am, Wed/Fri/Sat 12pm and custom-time slots; hands each approved post to the publish flow. |
 | SC - Publish Approved Posts (`ZL9PEe1MnY8nekcE`) | Posts one approved clip to Instagram (Reel), Facebook (Reel), X and, when its platforms include YouTube, YouTube (Short, through SC - YouTube Short); hands approved Dare to Buy rows to SC - Publish Dare to Buy (carousel). After each post it calls SC - Post Extras and reports any failed platform through SC - Alert. Never runs without Andy's approval of that post. |
 | SC - VO Timing Check (`BQMDmAuHtRzSHCv2`) | POST `{lines:[...]}` to `sc-vo-timing`: speaks each line in the announcer voice (ElevenLabs), returns seconds and an audio URL per line. Called by the dashboard's Preview voice (Product and Roll Call voice-overs) and by Claude when timing new lines. |
@@ -78,7 +79,7 @@ SC - Bank Statement Ingest, SC - Receipt Capture (Gmail), SC - PayPal Ingest, SC
 | SC - Executive Report (`fB53RN5Q5yZG8PkR`) | The 06:00 London SC Daily Brief: Telegram brief from SCWhatsAppSupportBot plus the full email. Reads open Alerts tasks, SC Shopify Daily (`q9mAhJ8uQRohUJlX`) and the Cost Calculator. |
 | SC - Shopify Daily Snapshot (`vyNq83y7PHBHv90N`) | Saves the day's store figures at 23:30 London (extra column: signups, waitlist, e-cards, sticker clicks, follow codes). Sends no message. |
 
-Dashboard: `dashboard/marketing-dashboard.html` has an Alerts tab (urgent display, also in Now).
+Dashboard: `dashboard/dashboard.html` has an Alerts tab (urgent display, also in Now).
 
 ## Marketing (SC Marketing Playbook; SC NFT Creator Outreach Playbook)
 
@@ -100,8 +101,8 @@ SC - Character Fact Review (`RDomdwUKvXvk1rLk`) with the SC - Character Facts ta
 SC - Daily Workflow Backup, SC - Daily Data Table Backup, SC - Claims Backup to Drive.
 
 ## Repository layout
-- `dashboard/dashboard.html` — the content calendar dashboard.
-- `dashboard/marketing-dashboard.html` — the marketing dashboard (MAR).
+- `dashboard/dashboard.html` — the SC Dashboard (Now board, Alerts, Relaunch, Content tab and the rest; was marketing-dashboard.html until 8 Nov 2026).
+- `dashboard/content-dashboard.html` — the content calendar page, embedded as the Content tab (was dashboard.html).
 - `services/hotline-compose/` — the Hotline Compose service (code + README).
 - `rollcall/` — Roll Call assets.
 - `ecards/` — birthday e-card artwork per character.
