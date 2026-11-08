@@ -430,7 +430,16 @@
   .toast { border-radius: 999px; }
   @media (max-width: 900px) { .sitem { border-radius: 999px; } .sitem.home { font-size: 14px; } .trow2 .t1 .am { display: none; } }
 
-  .ovgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; align-items: start; }
+  .ovlist { display: grid; gap: 10px; }
+  .ovtiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .ovtile { display: flex; flex-direction: column; gap: 2px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; text-decoration: none; color: inherit; min-width: 0; }
+  .ovtile.warn { border-color: #e6cf9a; background: #fdf8ec; } .ovtile.red { border-color: #ead4d1; background: #fbf1f0; }
+  .ovtile .tl { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); } .ovtile .tv { font-family: var(--display); font-size: 28px; font-weight: 600; line-height: 1.1; } .ovtile .td { font-size: 13px; min-height: 18px; } .ovtile .ts { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ovmoved { margin-bottom: 14px; } .ovm { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid #eef1f4; font-size: 15px; } .ovm:last-of-type { border-bottom: 0; } .ovm .ovd { font-weight: 600; } .ovm .mv { color: var(--muted); } .ovm .ms { font-size: 12px; color: #9aa3ad; } .ovquiet { color: var(--muted); margin: 4px 0; }
+  details.ovd2 > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 190px minmax(0, 1fr) auto; gap: 12px; align-items: baseline; } details.ovd2 > summary::-webkit-details-marker { display: none; }
+  details.ovd2 > summary .st { font-family: var(--display); font-weight: 600; font-size: 18px; } details.ovd2 > summary .st::before { content: '▸'; display: inline-block; width: 16px; color: var(--muted); font-size: 13px; transition: transform .15s; } details.ovd2[open] > summary .st::before { transform: rotate(90deg); }
+  details.ovd2 > summary .ss { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } details.ovd2 > summary .sn { font-size: 12px; color: #9aa3ad; white-space: nowrap; }
+  details.ovd2[open] > summary { margin-bottom: 6px; } .ovsub { margin: 0 0 6px; color: var(--muted); font-size: 13px; }
   .ovs { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px 10px; }
   .ovh h3 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 0; } .ovh p { margin: 2px 0 8px; color: var(--muted); font-size: 14px; }
   .ovhead, .ovr { display: grid; grid-template-columns: minmax(0, 1fr) 92px 96px 92px; gap: 8px; align-items: baseline; }
@@ -441,7 +450,7 @@
   .ovd.good { color: var(--good); } .ovd.bad { color: var(--red); } .ovd.flat, .ovd.none { color: #9aa3ad; }
   .ovnot { margin: 10px 0 4px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .ovnot b { font-weight: 600; margin-right: 2px; } .ovnot span { border: 1px dashed #cfd6dd; border-radius: 999px; padding: 2px 9px; }
   .ovbk { margin-top: 8px; } .ovb { border-top: 1px solid #eef1f4; padding: 8px 0; font-size: 14px; } .ovb .amt { float: right; font-weight: 600; } .ovb .items { color: #444; margin: 2px 0; } .ovb .who { color: var(--muted); font-size: 13px; } .ovb a { color: var(--accent); }
-  @media (max-width: 900px) { .ovgrid { grid-template-columns: 1fr; } .ovhead, .ovr { grid-template-columns: minmax(0, 1fr) 76px 80px 70px; } }
+  @media (max-width: 900px) { .ovtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } details.ovd2 > summary { grid-template-columns: minmax(0, 1fr) auto; } details.ovd2 > summary .ss { grid-column: 1 / -1; white-space: normal; } .ovm { grid-template-columns: 80px minmax(0, 1fr) auto; } .ovm .ms { display: none; } .ovhead, .ovr { grid-template-columns: minmax(0, 1fr) 76px 80px 70px; } }
   .ostat { margin: 4px 0 2px; } .oline { margin: 0 0 3px; font-size: 15.5px; line-height: 1.4; color: var(--ink, #1a1a1a); } .oline.none { color: var(--muted); font-style: italic; } .oline small { color: var(--muted); font-style: normal; font-size: 12px; }
   .oauto { margin: 0; font-size: 13px; color: var(--muted); } .onotes2 { color: var(--muted); font-size: 13px; align-self: center; }
   .ohead h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; } .ohead .sub { color: var(--muted); margin: 2px 0 10px; }
@@ -1418,23 +1427,77 @@ function ovRow(it) {
   return '<div class="ovr' + (sub ? ' sub' : '') + '"><div class="ovl">' + lab + (it.note ? '<small>' + esc(it.note) + '</small>' : '') + '</div>'
     + '<div class="ovv">' + ovFmt(it.value, it.unit) + '</div><div class="ovc">' + ovDelta(it) + '</div><div class="ovt">' + (it.total === null || it.total === undefined ? '' : ovFmt(it.total, it.unit)) + '</div></div>';
 }
-function ovSection(sc) {
-  let h = '<section class="ovs"><div class="ovh"><h3>' + esc(sc.title) + '</h3>' + (sc.sub ? '<p>' + esc(sc.sub) + '</p>' : '') + '</div>';
+const OV_OPEN_KEY = 'sc_ov_open';
+function ovOpenSet() { try { return new Set(JSON.parse(localStorage.getItem(OV_OPEN_KEY) || '[]')); } catch (e) { return new Set(); } }
+function ovFind(title, label) { const sc = (ov.sections || []).find(x => x.title === title); return sc ? sc.items.find(i => i.label.trim() === label) : null; }
+function ovNum(it) { return it && it.unit !== 'text' && typeof it.value !== 'string' && it.value !== null ? Number(it.value) : null; }
+// Headline tiles: the six numbers a director looks at first.
+function ovTiles() {
+  const o = ovFind('Shop', 'Orders'), ns = ovFind('Shop', 'Net sales'), v = ovFind('Shop', 'Visitors');
+  const fx = ovFind('Audience', 'Followers: X'), fi = ovFind('Audience', 'Followers: Instagram'), ff = ovFind('Audience', 'Followers: Facebook');
+  const fol = [fx, fi, ff].filter(Boolean), folNow = fol.reduce((t, i) => t + Number(i.value || 0), 0), folPrev = fol.every(i => i.prev !== null) ? fol.reduce((t, i) => t + Number(i.prev || 0), 0) : null;
+  const bk = ovFind('Abandoned baskets', 'Baskets left'), bv = ovFind('Abandoned baskets', 'Value left');
+  const sp = ovFind('Money', 'Spend yesterday');
+  const ra = ovFind('Systems', 'Red alerts open'), aa = ovFind('Systems', 'Amber alerts open');
+  const tile = (label, value, delta, sub, cls, href) => '<' + (href ? 'a href="' + href + '"' : 'div') + ' class="ovtile' + (cls ? ' ' + cls : '') + '"><span class="tl">' + label + '</span><span class="tv">' + value + '</span><span class="td">' + delta + '</span>' + (sub ? '<span class="ts">' + sub + '</span>' : '') + '</' + (href ? 'a' : 'div') + '>';
+  const tiles = [];
+  tiles.push(tile('Sales yesterday', ns ? ovFmt(ns.value, '£') : '—', ns ? ovDelta(ns) : '', o ? ovNum(o) + ' order' + (ovNum(o) === 1 ? '' : 's') + ' · ' + ovFmt(ns.total, '£') + ' all time' : '', ''));
+  tiles.push(tile('Shop visitors', v ? ovFmt(v.value) : '—', v ? ovDelta(v) : '', v && v.total ? ovFmt(v.total) + ' all time' : '', ''));
+  tiles.push(tile('Followers', fol.length ? ovFmt(folNow) : '—', fol.length ? ovDelta({ label: 'Followers', value: folNow, prev: folPrev, unit: '' }) : '', fol.length ? fol.map(i => i.label.replace('Followers: ', '') + ' ' + ovFmt(i.value)).join(' · ') : '', ''));
+  tiles.push(tile('Abandoned baskets', bk ? ovFmt(bk.total) : '—', bk ? ovDelta(bk) : '', bv ? ovFmt(bv.total, '£') + ' open, last 7 days' : '', bk && Number(bk.total) > 0 ? 'warn' : ''));
+  tiles.push(tile('Spend yesterday', sp ? ovFmt(sp.value, '$') : '—', sp ? ovDelta(sp) : '', sp ? ovFmt(sp.total, '$') + ' this month' : '', ''));
+  const alertsN = (ra ? Number(ra.value) : 0) + (aa ? Number(aa.value) : 0);
+  tiles.push(tile('Alerts open', String(alertsN), ra && Number(ra.value) ? '<span class="ovd bad">' + ra.value + ' red</span>' : '<span class="ovd flat">none red</span>', 'open the Alerts tab', ra && Number(ra.value) ? 'red' : '', '#Alerts'));
+  return '<div class="ovtiles">' + tiles.join('') + '</div>';
+}
+// What moved: only the figures that changed yesterday.
+function ovMoved() {
+  const skip = /^Followers|^Spend today|^Renewal|^  /;
+  const moved = [];
+  (ov.sections || []).forEach(sc => sc.items.forEach(it => {
+    if (it.unit === 'text' || typeof it.value === 'string' || it.prev === null || it.prev === undefined || it.value === null || skip.test(it.label)) return;
+    const d = Number(it.value) - Number(it.prev); if (Math.abs(d) < 0.005) return;
+    moved.push({ sc: sc.title, it, d });
+  }));
+  moved.sort((a, b) => Math.abs(b.d / (Number(b.it.prev) || 1)) - Math.abs(a.d / (Number(a.it.prev) || 1)));
+  const lines = moved.slice(0, 12).map(x => '<div class="ovm">' + ovDelta(x.it) + '<span class="mt">' + esc(x.it.label.trim()) + '</span><span class="mv">to ' + ovFmt(x.it.value, x.it.unit) + '</span><span class="ms">' + esc(x.sc) + '</span></div>').join('');
+  return '<section class="ovs ovmoved"><div class="ovh"><h3>What moved yesterday</h3></div>' + (lines || '<p class="ovquiet">Nothing moved. Every figure is the same as the day before.</p>') + (moved.length > 12 ? '<p class="ovquiet">' + (moved.length - 12) + ' smaller moves are in the sections below.</p>' : '') + '</section>';
+}
+// One-line summary per section for the closed drop-down header.
+function ovSummary(sc) {
+  const f = (l) => sc.items.find(i => i.label.trim() === l);
+  const n = (l, u) => { const i = f(l); return i ? ovFmt(i.value, u === undefined ? i.unit : u) : null; };
+  switch (sc.title) {
+    case 'Shop': return [n('Orders') + ' orders', n('Net sales'), n('Visitors') + ' visitors', n('Conversion') + ' conversion'].filter(x => !/^null/.test(x)).join(' · ');
+    case 'Abandoned baskets': { const b = f('Baskets left'), v = f('Value left'); return b ? ovFmt(b.total) + ' open worth ' + ovFmt(v ? v.total : 0, '£') + ' · ' + ovFmt(b.value) + ' left yesterday' : ''; }
+    case 'Audience': { const e = f('Email signups'); return [f('Followers: X') ? 'X ' + n('Followers: X') : null, f('Followers: Instagram') ? 'Instagram ' + n('Followers: Instagram') : null, f('Followers: Facebook') ? 'Facebook ' + n('Followers: Facebook') : null, e ? ovFmt(e.total) + ' email subscribers' : null].filter(Boolean).join(' · '); }
+    case 'Content': return [n('Posts published') + ' posted yesterday', n('Posts this week') + ' this week', n('Posts scheduled ahead') + ' scheduled'].join(' · ');
+    case 'Sales channels': { const g = f('Products missing on a channel'); const live = sc.items.filter(i => i.unit !== 'text' && /^(?!Products|Fixed)/.test(i.label)).length; return (g ? ovFmt(g.value) + ' products missing' : '') + ' · ' + live + ' channels live'; }
+    case 'Money': { const s = f('Spend yesterday'); const ren = sc.items.filter(i => /^Renewal/.test(i.label)); return (s ? ovFmt(s.value, '$') + ' yesterday · ' + ovFmt(s.total, '$') + ' this month' : '') + (ren.length ? ' · ' + ren.length + ' renewal' + (ren.length === 1 ? '' : 's') + ' due this week' : ''); }
+    case 'Launches and campaigns': { const q = f('Quiz taken'); return (q ? ovFmt(q.total) + ' quizzes taken' : '') + (f('OpenSea drop pieces') ? ' · ' + ovFmt(f('OpenSea drop pieces').total) + ' drop pieces' : ''); }
+    case 'Systems': { const r = f('Red alerts open'), a = f('Amber alerts open'), t = f('Tasks closed'); return (r ? ovFmt(r.value) + ' red' : '') + (a ? ', ' + ovFmt(a.value) + ' amber' : '') + (t ? ' · ' + ovFmt(t.value) + ' tasks closed yesterday' : ''); }
+  }
+  return sc.items.length + ' figures';
+}
+function ovSection(sc, open) {
+  let h = '<details class="ovs ovd2" data-sec="' + esc(sc.title) + '"' + (open ? ' open' : '') + '><summary><span class="st">' + esc(sc.title) + '</span><span class="ss">' + esc(ovSummary(sc)) + '</span><span class="sn">' + sc.items.length + ' figures</span></summary>';
+  if (sc.sub) h += '<p class="ovsub">' + esc(sc.sub) + '</p>';
   if (sc.items.length) h += '<div class="ovhead"><span></span><span>Yesterday</span><span>Change</span><span>Total</span></div>' + sc.items.map(ovRow).join('');
   if (sc.headers && sc.headers.length) h += '<div class="ovnot"><b>Not measured yet</b>' + sc.headers.map(x => '<span>' + esc(x) + '</span>').join('') + '</div>';
   if (sc.title === 'Abandoned baskets' && ov.baskets && ov.baskets.length) h += '<div class="ovbk">' + ov.baskets.map(b => '<div class="ovb"><div><b>' + esc(b.when) + ' · ' + esc(b.country) + '</b> <span class="amt">£' + Number(b.amount).toFixed(2) + '</span></div><div class="items">' + esc(b.items) + '</div><div class="who">' + esc(b.name) + ' · ' + esc(b.stage) + (safeUrl(b.url) ? ' · <a target="_blank" rel="noopener" href="' + esc(b.url) + '">Open basket</a>' : '') + '</div></div>').join('') + '</div>';
-  return h + '</section>';
+  return h + '</details>';
 }
 function renderOverview() {
   loadOverview(false);
   const when = ov ? new Date(ov.built_at).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) + ' UK' : '';
-  let h = '<div class="ohead"><h2>Overview</h2><p class="sub">Every figure we collect: yesterday, the change against the day before, and the running total.' + (ov ? ' Yesterday = ' + esc(ov.yesterday) + ' · built ' + esc(when) : '') + ' <button class="btn small ghost" id="ov_reload">Refresh</button></p></div>';
+  let h = '<div class="ohead"><h2>Overview</h2><p class="sub">' + (ov ? 'Yesterday ' + esc(ov.yesterday) + ' against the day before · built ' + esc(when) : 'The headline numbers, what moved, and every figure in the sections below.') + ' <button class="btn small ghost" id="ov_reload">Refresh</button></p></div>';
   if (!ov && ovLoading) h += '<div class="ovs"><p style="color:var(--muted)">Collecting the figures…</p></div>';
   else if (!ov) h += '<div class="ovs"><p style="color:var(--red)">' + esc(ovErr || 'No figures yet.') + '</p></div>';
-  else h += '<div class="ovgrid">' + ov.sections.map(ovSection).join('') + '</div>';
+  else { const open = ovOpenSet(); h += ovTiles() + ovMoved() + '<div class="ovlist">' + ov.sections.map(sc => ovSection(sc, open.has(sc.title))).join('') + '</div>'; }
   h += inUseHtml();
   $('list').innerHTML = h;
   const b = $('ov_reload'); if (b) b.onclick = () => { ov = null; loadOverview(true); render(); };
+  $('list').querySelectorAll('details.ovd2').forEach(d => d.addEventListener('toggle', () => { const set = ovOpenSet(); if (d.open) set.add(d.dataset.sec); else set.delete(d.dataset.sec); try { localStorage.setItem(OV_OPEN_KEY, JSON.stringify([...set])); } catch (e) {} }));
 }
 // ---- Outcomes tab (8 Nov 2026, Andy): every outcome on one page, in priority order, with its numbers, target date, chat and controls.
 let oEdit = null;
