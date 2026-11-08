@@ -2563,12 +2563,27 @@ function jReplaceHtml() {
   }
   return h + '</div></details>';
 }
+// Journal master chat (8 Nov 2026, Andy): one chat for general talk and actions about the journal, linked from this tab. Link kept on the SYSTEM row "Journal master chat".
+const journalRow = () => rows.find(r => r.type === 'SYSTEM' && r.title === 'Journal master chat');
+function journalChatUrl() {
+  const sys = journalRow();
+  const q = 'Journal master chat for Andy (Stiff Competition journal: the 392-page printed journal, Lulu for the shop, Amazon KDP, pre-order first). You manage every journal action and answer general journal questions in one place. Reply in one line, results only, plain words, clickable links, no ID codes, never the word honest, no hedging. Read the SC Master Manual, then the Journal Playbook (Drive) and memory /areas/sc-journal.md first.'
+    + (sys ? ' First save this chat\'s link: call read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink, triggerNodeName "Chat Link Webhook") with id ' + sys.id + ' and that chat_link.' : '')
+    + ' Journal tasks are rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO) tied to the outcome "Journal ready for pre-launch" (SC Outcomes table) and the Relaunch groups "Journal pre-order for Christmas" and "Journal marketing"; read them first, keep them current with SC - Marketing Actions API (save) (whole row, keeps outcome when omitted), and add new ones there, owner Claude wherever Claude can do the work. Page data: n8n SC - Journal API and the Journal tab of the SC Dashboard (https://n8n-production-afc2.up.railway.app/webhook/sc-dashboard#Journal). Earlier journal chat for history: https://claude.ai/chat/9d05fc15-e195-4079-afe5-59d673ee0a89 (search inside it with conversation_search before asking Andy anything already settled). State any cost first and wait for his yes.';
+  return 'https://claude.ai/new?q=' + encodeURIComponent(q);
+}
+function journalChatBar() {
+  const sys = journalRow(), last = sys && safeUrl(sys.chat_link);
+  return '<div class="cleanbar mgr">' + (last ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(last) + '">Open the journal chat</a>' : '')
+    + '<a class="btn small' + (last ? ' ghost' : '') + '" target="_blank" rel="noopener" href="' + esc(journalChatUrl()) + '">' + (last ? 'Start a fresh journal chat' : 'Open the journal chat') + '</a>'
+    + '<a class="btn small ghost" target="_blank" rel="noopener" href="https://n8n-production-afc2.up.railway.app/webhook/sc-dashboard#Orders">Journal tasks on Orders</a></div>';
+}
 function renderJournal() {
   renderTabs();
   if (!jr.loaded) { $('list').innerHTML = '<div class="empty">Loading the journal…</div>'; if (!jr.loading) loadJournal(); return; }
   const chars = Array.from(new Set(jr.pages.map(p => p.character).filter(Boolean)));
   const list = jShown();
-  let h = jBookHtml()
+  let h = journalChatBar() + jBookHtml()
     + '<div class="prow jfilt"><select id="j_type"><option value="all">All pages</option>' + Object.keys(J_TYPES).map(k => '<option value="' + k + '"' + (jr.type === k ? ' selected' : '') + '>' + J_TYPES[k] + '</option>').join('') + '</select>'
     + '<select id="j_m"><option value="all">All months</option>' + [1,2,3,4,5,6,7,8,9,10,11,12].map(n => '<option value="' + n + '"' + (jr.m === String(n) ? ' selected' : '') + '>Month ' + n + '</option>').join('') + '</select>'
     + '<select id="j_ch"><option value="all">All characters</option>' + chars.map(c => '<option' + (jr.ch === c ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>'
