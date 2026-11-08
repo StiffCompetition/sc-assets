@@ -592,7 +592,8 @@ const CONTAINERS = ['MISSION', 'DAILY', 'SYSTEM', 'BUCKET', 'GROUP'];
 const workItems = () => rows.filter(r => !CONTAINERS.includes(r.type || '') && ACTIVE.includes(r.status) && whoOk(r));
 const isLater = r => !!r.later && r.later > today();
 // 8 Nov 2026 (Andy): a task blocked by another (status Waiting with a 'Starts when / Waiting on') is hidden everywhere until it is unblocked, like Later.
-const isBlocked = r => r.status === 'Waiting' && !!r.waiting_on;
+// Blocked = waiting on another task, a group or a routine step; a task waiting on Andy himself is his action and always shows (Andy, 8 Nov 2026).
+const isBlocked = r => r.status === 'Waiting' && !!r.waiting_on && (r.type === 'DAILY' || /^(#|row|rows|group|task|tasks|step)\b|#\d|\b(rows?|groups?) \d/i.test(String(r.waiting_on)) || (r.owner !== 'Andy' && !/andy/i.test(String(r.waiting_on))));
 const isHidden = r => isLater(r) || isBlocked(r);
 const untied = () => workItems().filter(r => !r.outcome && !isHidden(r));
 const laterItems = () => workItems().filter(isHidden);
