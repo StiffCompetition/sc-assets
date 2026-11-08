@@ -477,7 +477,7 @@
   .ovbk { margin-top: 8px; } .ovb { border-top: 1px solid #eef1f4; padding: 8px 0; font-size: 14px; } .ovb .amt { float: right; font-weight: 600; } .ovb .items { color: #444; margin: 2px 0; } .ovb .who { color: var(--muted); font-size: 13px; } .ovb a { color: var(--accent); }
   @media (max-width: 900px) { .ovtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } details.ovd2 > summary { grid-template-columns: minmax(0, 1fr) auto; } details.ovd2 > summary .ss { grid-column: 1 / -1; white-space: normal; } .ovm { grid-template-columns: 80px minmax(0, 1fr) auto; gap: 8px; } .ovm .ms { display: none; } .ovhead, .ovr { grid-template-columns: minmax(0, 1fr) 76px 80px 70px; gap: 8px; } }
   .ostat { margin: 4px 0 2px; } .oline { margin: 0 0 3px; font-size: 15.5px; line-height: 1.4; color: var(--ink, #1a1a1a); } .oline.none { color: var(--muted); font-style: italic; } .oline small { color: var(--muted); font-style: normal; font-size: 12px; }
-  .oauto { margin: 0; font-size: 13px; color: var(--muted); } .onotes2 { color: var(--muted); font-size: 13px; align-self: center; }
+  .oauto { margin: 0; font-size: 13px; color: var(--muted); } .oauto .hd { color: #8a6100; } .obody h3 .mark { margin-right: 8px; } .onotes2 { color: var(--muted); font-size: 13px; align-self: center; }
   .ohead h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; } .ohead .sub { color: var(--muted); margin: 2px 0 10px; }
   .ocard { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; margin-bottom: 10px; }
   .ocard.red { border-color: #ead4d1; background: #fbf1f0; } .ocard.done { opacity: .65; }
@@ -1281,7 +1281,7 @@ function sideHtml() {
   const item = (key, label, n, cls, sub) => '<button class="sitem' + (ofilter === key ? ' on' : '') + (cls ? ' ' + cls : '') + (n === 0 || n === '' ? ' zero' : '') + '" data-of="' + esc(key) + '"><span class="sl">' + esc(label) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><span class="sn">' + n + '</span></button>';
   let h = '<button class="sitem home' + (!ofilter ? ' on' : '') + '" data-of=""><span class="sl">Orders of the Day</span><span class="sn">' + (os.length) + '</span></button>';
   h += '<div class="shead">Outcomes</div>';
-  h += os.map(o => { const l = tiedTo(o), y = l.filter(needsYou).length, red = l.some(r => r.type === 'ALERT' && aRed(r)); return item(String(o.id), o.title, l.length, red ? 'red' : '', y ? y + ' for you' : ''); }).join('');
+  h += os.map(o => { const l = tiedTo(o), y = l.filter(needsYou).length, hd = l.filter(handed).length, red = l.some(r => r.type === 'ALERT' && aRed(r)); return item(String(o.id), (hd ? '✋ ' : '') + o.title, l.length, red ? 'red' : (hd ? 'hand' : ''), hd ? hd + ' back to you' : (y ? y + ' for you' : '')); }).join('');
   h += '<div class="shead">Lists</div>';
   const hd = handedItems().length;
   h += item('handed', '✋ Back to you', hd, hd ? 'hand' : '', hd ? 'Claude needs you' : '');
@@ -1646,10 +1646,17 @@ async function moveOutcome(o, dir) {
   } catch (e) { toast('Not saved: ' + e.message); }
 }
 // Executive status (8 Nov 2026, Andy): line 1 is written by the Manager (stand-up and end of day) and saved as status_line; line 2 is built from the tasks.
+function outcomeMark(list) {
+  const hd = list.filter(handed).length;
+  if (hd) return '<span class="mark hand" title="' + hd + ' task' + (hd === 1 ? '' : 's') + ' handed back to you">✋</span>';
+  if (list.some(claudeBusy)) return '<span class="mark busy" title="Claude is working on this outcome">⚙</span>';
+  return '<span class="mark idle" title="Nothing is running on this outcome">○</span>';
+}
 function outcomeStatusHtml(o, list, you, cl, doneAll) {
-  const nxt = list.slice().sort((a, b) => (needsYou(b) ? 1 : 0) - (needsYou(a) ? 1 : 0) || (a.due || '9') < (b.due || '9') ? -1 : 1)[0];
+  const hd = list.filter(handed);
+  const nxt = (hd.length ? hd : list).slice().sort((a, b) => (needsYou(b) ? 1 : 0) - (needsYou(a) ? 1 : 0) || (a.due || '9') < (b.due || '9') ? -1 : 1)[0];
   const total = list.length + doneAll.length;
-  const auto = (total ? doneAll.length + ' of ' + total + ' done' : 'no tasks yet') + (you.length ? ' · ' + you.length + ' for you' : '') + (cl.length ? ' · ' + cl.length + ' with Claude' : '') + (nxt ? ' · next: ' + esc(nxt.title) : '');
+  const auto = (total ? doneAll.length + ' of ' + total + ' done' : 'no tasks yet') + (hd.length ? ' · <b class="hd">✋ ' + hd.length + ' back to you</b>' : '') + (you.length ? ' · ' + you.length + ' for you' : '') + (cl.length ? ' · ' + cl.length + ' with Claude' : '') + (nxt ? ' · next: #' + esc(nxt.id) + ' ' + esc(nxt.title) : '');
   const line = String(o.status_line || '').trim();
   return '<div class="ostat">' + (line ? '<p class="oline">' + esc(line) + (o.status_at ? '<small> · ' + esc(String(o.status_at).slice(5, 16)) + '</small>' : '') + '</p>' : '<p class="oline none">No status written yet — the Manager writes it at the morning stand-up.</p>') + '<p class="oauto">' + auto + '</p></div>';
 }
@@ -1669,7 +1676,7 @@ function outcomeCard(o, i, n) {
     + '<div class="obody">'
     + (editing
       ? '<input class="w" id="oc_title" maxlength="80" value="' + esc(o.title) + '"><textarea class="w" id="oc_notes" rows="2" placeholder="What this outcome is, in one or two lines">' + esc(o.notes || '') + '</textarea><div class="prow"><label class="olab">Target <input type="date" id="oc_target" value="' + esc(o.target || '') + '"></label><button class="btn small" data-oact="save">Save</button><button class="btn small ghost" data-oact="cancel">Cancel</button></div>'
-      : '<h3>' + esc(o.title) + '</h3>'
+      : '<h3>' + outcomeMark(list) + esc(o.title) + '</h3>'
         + outcomeStatusHtml(o, list, you, cl, doneAll)
         + '<div class="ometa">' + (o.target ? '<span class="chip due' + (late ? ' late' : '') + '">target ' + esc(o.target) + '</span>' : '') + (red ? '<span class="chip late">red alert</span>' : '') + (o.notes ? '<span class="onotes2">' + esc(o.notes) + '</span>' : '') + '</div>')
     + '</div>'
