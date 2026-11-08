@@ -38,7 +38,23 @@
 
   main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
   main.wide { max-width: none; padding: 0; }
-  main.board { max-width: 1240px; }
+  main.board { max-width: 1480px; padding-top: 10px; }
+  .obd { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .side { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow: auto; background: #fff; border: 1px solid var(--line); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+  .shead { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); margin: 10px 6px 4px; }
+  .sitem { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; font: inherit; font-size: 13.5px; padding: 7px 8px; border: 0; border-left: 4px solid transparent; background: transparent; color: var(--ink); cursor: pointer; line-height: 1.25; }
+  .sitem:hover { background: #f3f5f8; } .sitem .sl { flex: 1; min-width: 0; overflow-wrap: anywhere; } .sitem .sl small { display: block; font-size: 11px; color: var(--grey); }
+  .sitem .sn { font-family: var(--mono); font-size: 12px; color: var(--grey); min-width: 18px; text-align: right; }
+  .sitem.red { border-left-color: #c62828; } .sitem.red .sn { color: #c62828; font-weight: 700; } .sitem.amber { border-left-color: #e49b0f; } .sitem.routine { border-left-color: var(--c-today); } .sitem.green { border-left-color: var(--c-done); } .sitem.grey { border-left-color: #c9ccd1; }
+  .sitem.zero { opacity: .55; } .sitem.on { background: var(--c-next); color: #fff; border-left-color: var(--c-next); } .sitem.on .sn, .sitem.on .sl small { color: #fff; } .sitem.home { font-weight: 700; } .sitem.add { color: var(--grey); border-top: 1px dashed var(--line); margin-top: 6px; }
+  .cleanbar.mgr { margin-bottom: 8px; } .cleanbar.mgr .btn { flex: 0 1 auto; min-height: 34px; }
+  .work .ogroup.pinned { margin-bottom: 10px; }
+  @media (max-width: 900px) {
+    .obd { grid-template-columns: 1fr; gap: 10px; }
+    .side { position: static; max-height: none; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding: 6px; }
+    .side .shead { display: none; } .sitem { flex: 0 0 auto; width: auto; white-space: nowrap; border-left: 0; border-bottom: 3px solid transparent; border-radius: 14px; padding: 5px 10px; background: #f3f5f8; }
+    .sitem .sl small { display: none; } .sitem.red { border-bottom-color: #c62828; } .sitem.on { background: var(--c-next); }
+  }
   .group-title { margin: 22px 0 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey); font-family: var(--mono); }
   .card { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
   .card { border-left: 5px solid var(--c-park); }
@@ -1106,10 +1122,10 @@ function managerUrl(mode) {
 }
 function managerBar() {
   const sys = managerRow(), last = sys && safeUrl(sys.chat_link);
-  return '<div class="cleanbar"><a class="btn" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning orders with the Manager</a>'
-    + '<a class="btn" target="_blank" rel="noopener" href="' + esc(managerUrl('ask')) + '">Ask the Manager</a>'
-    + (last ? '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(last) + '">Open today\'s Manager chat</a>' : '')
-    + '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(winsUrl()) + '">End of day report</a></div>';
+  return '<div class="cleanbar mgr"><a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning orders with the Manager</a>'
+    + '<a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('ask')) + '">Ask the Manager</a>'
+    + (last ? '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(last) + '">Open today\'s Manager chat</a>' : '')
+    + '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(winsUrl()) + '">End of day report</a></div>';
 }
 function outcomeStrip() {
   const os = openOutcomes(), un = untied().length, lt = laterItems().length, dn = doneToday().length;
@@ -1126,6 +1142,25 @@ function outcomeStrip() {
   h += '<button class="atile otile' + (ofilter === 'workstreams' ? ' on' : '') + '" style="--ac:#1a1a1a" data-of="workstreams"><div class="n">' + rlBuckets().length + '</div><div class="l">Workstreams</div><div class="s">buckets, groups, chats</div></button>';
   h += '<button class="atile otile add" style="--ac:#1a1a1a" data-of="+"><div class="n">+</div><div class="l">Outcome</div></button></div>';
   return h;
+}
+// Sidebar (8 Nov 2026, Andy): outcomes down the left, work on the right; nothing to scroll past.
+function sideHtml() {
+  const os = openOutcomes(), un = untied().length, lt = laterItems().length, dn = doneToday().length;
+  const al = openAlerts(), alRed = al.filter(aRed).length;
+  const rt = routineDue(), rtOpen = rt.filter(r => r.status === 'Today' && r.done_on !== today()).length;
+  const item = (key, label, n, cls, sub) => '<button class="sitem' + (ofilter === key ? ' on' : '') + (cls ? ' ' + cls : '') + (n === 0 || n === '' ? ' zero' : '') + '" data-of="' + esc(key) + '"><span class="sl">' + esc(label) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><span class="sn">' + n + '</span></button>';
+  let h = '<button class="sitem home' + (!ofilter ? ' on' : '') + '" data-of=""><span class="sl">Orders of the Day</span><span class="sn">' + (os.length) + '</span></button>';
+  h += '<div class="shead">Outcomes</div>';
+  h += os.map(o => { const l = tiedTo(o), y = l.filter(needsYou).length, red = l.some(r => r.type === 'ALERT' && aRed(r)); return item(String(o.id), o.title, l.length, red ? 'red' : '', y ? y + ' for you' : ''); }).join('');
+  h += '<div class="shead">Lists</div>';
+  h += item('untied', 'Untied', un, un ? 'red' : '', un ? 'tie or defer' : '');
+  h += item('alerts', 'Alerts', al.length, alRed ? 'red' : 'amber', alRed ? alRed + ' red' : '');
+  h += item('routine', 'Routine', rtOpen, 'routine', rtOpen ? 'to tick' : '');
+  h += item('later', 'Later', lt, 'grey', '');
+  h += item('done', 'Done today', dn, 'green', '');
+  h += item('workstreams', 'Workstreams', rlBuckets().length, 'grey', '');
+  h += '<button class="sitem add" data-of="+"><span class="sl">+ Outcome</span></button>';
+  return '<aside class="side">' + h + '</aside>';
 }
 function outcomeFormHtml() {
   const o = outEdit || {};
@@ -1213,12 +1248,11 @@ function focusHtml(r) {
 }
 function renderNow() {
   const os = openOutcomes();
-  let h = inUseHtml() + managerBar();
+  let h = '<div class="obd">' + sideHtml() + '<section class="work">' + inUseHtml() + managerBar() + workingStrip();
   const fr = focusId && rows.find(x => String(x.id) === String(focusId));
   if (!fr && ofilter && os.some(x => String(x.id) === ofilter && /audience/i.test(x.title))) loadEngage();
   if (fr) h += focusHtml(fr);
   else {
-    h += outcomeStrip();
     if (outForm) h += outcomeFormHtml();
     if (ofilter === 'untied') h += lineGroup('Untied: tie each one to an outcome, or Later', untied(), 'red');
     else if (ofilter === 'alerts') h += '<div class="ogroup"><div class="group-title">Alerts</div>' + alertsHtml(false) + '</div>';
@@ -1228,18 +1262,19 @@ function renderNow() {
     else if (ofilter === 'done') h += lineGroup('Done today', doneToday());
     else if (ofilter) { const o = os.find(x => String(x.id) === ofilter); if (o) h += '<div class="prow" style="margin:0 0 6px"><h2 style="margin:0;font-size:18px;flex:1">' + esc(o.title) + '</h2><button class="btn small ghost" id="of_edit">Rename or close</button></div>' + byFunction(tiedTo(o)) + (/audience/i.test(o.title) ? egHtml() + gpHtml() : ''); else ofilter = ''; }
     if (!ofilter) {
-      if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning stand-up with the Manager", or tap + Outcome.</div>';
-      h += workingStrip() + nextForYou();
-      if (untied().length) h += '<div class="hint" style="border-color:#c62828;color:#c62828">' + untied().length + ' open task' + (untied().length === 1 ? ' is' : 's are') + ' untied. Tap the Untied tile.</div>';
+      if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning orders with the Manager", or + Outcome in the sidebar.</div>';
+      h += nextForYou();
+      if (untied().length) h += '<div class="hint" style="border-color:#c62828;color:#c62828">' + untied().length + ' open task' + (untied().length === 1 ? ' is' : 's are') + ' untied. Open Untied in the sidebar.</div>';
+      h += channelHtml() + basketHtml();
     }
-    h += channelHtml() + basketHtml();
   }
+  h += '</section></div>';
   $('list').innerHTML = h;
   if (!fr && ofilter === 'alerts') wireAlerts();
   if (!fr && ofilter === 'routine') wireRoutine();
   if (!fr && ofilter === 'workstreams') renderRelaunch();
   if (!fr && ofilter && $('list').querySelector('.egc')) { wireEngage(); const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; eg = null; render(); }; }
-  $('list').querySelectorAll('.otile').forEach(b => b.onclick = () => { const k = b.dataset.of; if (k === '+') { outForm = true; outEdit = null; render(); const i = $('of_title'); if (i) i.focus(); return; } ofilter = ofilter === k ? '' : k; render(); window.scrollTo(0, 0); });
+  $('list').querySelectorAll('.sitem, .otile').forEach(b => b.onclick = () => { const k = b.dataset.of; focusId = null; if (k === '+') { outForm = true; outEdit = null; ofilter = ''; render(); const i = $('of_title'); if (i) i.focus(); return; } ofilter = k; render(); window.scrollTo(0, 0); });
   if ($('of_edit')) $('of_edit').onclick = () => { outEdit = os.find(x => String(x.id) === ofilter) || null; outForm = true; render(); };
   if ($('fx_back')) $('fx_back').onclick = () => { focusId = null; render(); };
   if ($('of_save')) {
