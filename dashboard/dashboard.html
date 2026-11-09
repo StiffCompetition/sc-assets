@@ -745,7 +745,7 @@ function tabCount(v) {
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
   if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && !isHidden(r)).length;
-  if (v === 'Tasks' || v === 'Now') return (handedItems().length ? '✋' + handedItems().length + ' · ' : '') + ((untied().length + workItems().filter(r => !isHidden(r) && needsYou(r) && r.outcome).length) || '');
+  if (v === 'Tasks' || v === 'Now') return (handedItems().length ? '✋' + handedItems().length : '') + (workItems().filter(r => !isHidden(r) && working(r)).length ? ' ✎' + workItems().filter(r => !isHidden(r) && working(r)).length : '') + (untied().length ? ' · ' + untied().length + ' untied' : '');
   if (v === 'Today' || v === 'Routine') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length || '';
   const keep = view; view = v; let n;
   if (v === 'Done') n = rows.filter(flatShown).length;
@@ -772,7 +772,7 @@ function chatUrl(r) {
     + ' Reply in one line, results only.'
     + ' WHAT ANDY NEEDS FROM YOU: the specific information he needs to do his action on this task and nothing else, namely the exact thing to do, the link to the page where he does it, and any text or choice he needs in front of him. Never answer "read the document", "see the playbook" or "I need your approval" without saying exactly what he is approving and why.'
     + ' SCOPE: this chat works only on the task "' + r.title + '" and only reads or writes row id ' + r.id + '. Never edit, close, hand back or add notes to any other task row, and never do another task\'s work; if something belongs to another task, tell Andy in one line which task and stop. Every note you write on the row begins with what you did in THIS task, in plain words.'
-    + ' HAND-BACK RULE: while you work, the row is owner Claude. The moment you need Andy to do or decide something, save the row with owner Andy, next_step = exactly what he must do in one line, and handed_at = "now" (that shows a yellow hand on his dashboard); when he answers and you carry on, save owner Claude and handed_at = "". When the task is finished save status Done, done_on today and handed_at = "".'
+    + ' HAND-BACK RULE: while you work, the row is owner Claude. The moment you need Andy to do or decide something, save the row with owner Andy, next_step = exactly what he must do in one line, and handed_at = "now" (that shows a yellow hand on his dashboard); when he answers and you carry on, save owner Claude and handed_at = "". When the task is finished save status Done, done_on today and handed_at = "". CLOSE RULE: every task you touch ends the turn in one state: Done, owner Andy with the exact next step (hand up), or owner Claude running; Andy says it is finished means save Done at once.'
     + ' First, save this chat\'s link on the row: get it by calling read_conversation with conversation_id "current" and max_turns 1, then call the n8n workflow SC - Marketing Chat Link (save) (webhook sc-marketing-chatlink) with id ' + r.id + ' and that chat_link.'
     + ' You can edit rows yourself: to update or close this row, call the n8n workflow SC - Marketing Actions API (save) (webhook sc-marketing-save) with this row\'s id and the WHOLE row, because it overwrites every field.'
     + (daily ? ' This is a daily routine line: keep status Today and type DAILY; when today\'s step is done set done_on today (YYYY-MM-DD) only.' : ' When the work is done set status Done, next_step none, done_on today (YYYY-MM-DD), and put the cause, the fix and the test in notes.')
@@ -901,6 +901,7 @@ function outcomeSel(r) {
   if (r.status === 'Done') return '';
   const os = openOutcomes();
   return '<select class="osel' + (r.outcome ? '' : ' none') + '" data-act="outcome" title="Outcome"><option value="">' + (isLater(r) ? 'Later (' + esc(r.later) + ')' : 'Untied') + '</option>' + os.map(o => '<option value="' + esc(o.id) + '"' + (String(o.id) === String(r.outcome) && !isHidden(r) ? ' selected' : '') + '>' + esc(o.title) + '</option>').join('') + '</select>'
+    + (r.owner === 'Andy' ? '<button class="btn small ghost" data-act="working" title="Toggle: you are working on this, so it drops off the waiting-on-you hand">' + (working(r) ? 'Hand up' : 'Working on it') + '</button>' : '')
     + (isLater(r) ? '' : '<button class="btn small ghost" data-act="later" title="Back to tomorrow\'s stand-up">Later</button>')
     + (r.outcome && !isHidden(r) && !(view === 'Tasks' && ofilter === String(r.outcome)) && os.some(o => String(o.id) === String(r.outcome)) ? '<button class="btn small ghost goout" data-act="goout" title="Open this outcome on Tasks of the Day">Go to outcome →</button>' : '');
 }
@@ -909,6 +910,7 @@ function wireOutcome(scope) {
   els.forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id); if (!r) return;
     const s = c.querySelector('[data-act=outcome]'); if (s) s.onchange = e => save(Object.assign({}, r, { outcome: e.target.value, later: '' }));
+    const wk = c.querySelector('[data-act=working]'); if (wk) wk.onclick = () => save(Object.assign({}, r, { handed_at: working(r) ? 'now' : 'working' }));
     const l = c.querySelector('[data-act=later]'); if (l) l.onclick = () => { const d = window.prompt('Hide this until (YYYY-MM-DD). It comes back as Untied on that day.', tomorrow()); if (!d) return; if (!/^\d{4}-\d{2}-\d{2}$/.test(d.trim()) || d.trim() <= today()) { toast('Give a date after today, like ' + tomorrow()); return; } save(Object.assign({}, r, { later: d.trim(), outcome: '' })); };
     const go = c.querySelector('[data-act=goout]'); if (go) go.onclick = () => { view = 'Tasks'; ofilter = String(r.outcome); focusId = null; try { history.replaceState(null, '', '#Tasks'); } catch (e) {} render(); window.scrollTo(0, 0); };
   });
@@ -1335,11 +1337,14 @@ function related(r) {
   }).filter(o => o.s >= 2).sort((a, b) => b.s - a.s || lineSort(a.x, b.x)).slice(0, 20);
 }
 // Task state marks (8 Nov 2026, Andy): a yellow hand = a Claude chat handed the task back and needs him; teal cog = Claude is busy on it (Claude owns it, a chat is running); grey dot = nothing is happening.
-const handed = r => !!r.handed_at && r.owner === 'Andy' && r.status !== 'Done';
+// 9 Nov 2026 (Andy): every open task he owns carries the hand unless he marks it Working on it (handed_at = 'working').
+const working = r => r.handed_at === 'working' && r.owner === 'Andy' && r.status !== 'Done';
+const handed = r => r.owner === 'Andy' && r.status !== 'Done' && r.handed_at !== 'working';
 const claudeBusy = r => r.owner === 'Claude' && r.status !== 'Done' && !!r.chat_link && r.go !== 'no';
 function stateMark(r) {
   if (r.status === 'Done') return '';
-  if (handed(r)) return '<span class="mark hand" title="Claude handed this back to you at ' + esc(String(r.handed_at).slice(5, 16)) + '">✋</span>';
+  if (working(r)) return '<span class="mark busy" style="animation:none;background:#e8e4f7;color:#5b49b0" title="You are working on this">✎</span>';
+  if (handed(r)) return '<span class="mark hand" title="Waiting on you">✋</span>';
   if (claudeBusy(r)) return '<span class="mark busy" title="Claude is working on this">⚙</span>';
   return '<span class="mark idle" title="Nothing is running on this">○</span>';
 }
@@ -1352,7 +1357,7 @@ function line(r, opts) {
   const late = r.due && r.due < today();
   const o = r.outcome && openOutcomes().find(x => String(x.id) === String(r.outcome));
   return '<div class="trow2' + (isA ? ' you' : ' cl') + (red ? ' red' : '') + (r.status === 'Done' ? ' done' : '') + (opts.compact ? ' compact' : '') + '" data-id="' + esc(r.id) + '">'
-    + '<div class="t1">' + stateMark(r) + num(r) + '<span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isA ? (handed(r) ? 'Back to you' : 'You') : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b class="ttl" data-act="focus" title="Open with everything related">' + esc(r.title) + '</b>'
+    + '<div class="t1">' + stateMark(r) + num(r) + '<span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isA ? (working(r) ? 'Working on it' : 'Back to you') : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b class="ttl" data-act="focus" title="Open with everything related">' + esc(r.title) + '</b>'
     + (r.waiting_on ? '<span class="chip wait">waiting: ' + esc(r.waiting_on) + '</span>' : '') + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
     + (opts.why ? '<span class="chip why">' + esc(opts.why) + '</span>' : '') + (!opts.compact && o && !ofilter ? '<span class="chip">' + esc(o.title) + '</span>' : '')
     + '<span class="am">' + esc(funcOf(r)) + '</span></div>'
@@ -1399,7 +1404,7 @@ function renderNow() {
   if (fr) h += focusHtml(fr);
   else {
     if (outForm) h += outcomeFormHtml();
-    if (ofilter === 'handed') h += lineGroup('Back to you: Claude is waiting on your answer', handedItems().sort((a, b) => String(b.handed_at).localeCompare(String(a.handed_at))), 'hand');
+    if (ofilter === 'handed') h += lineGroup('Back to you: Claude is waiting on your answer', handedItems().sort((a, b) => String(b.handed_at || '').localeCompare(String(a.handed_at || ''))), 'hand');
     if (ofilter === 'untied') h += lineGroup('Untied: tie each one to an outcome, or Later', untied(), 'red');
     else if (ofilter === 'alerts') h += '<div class="ogroup"><div class="group-title">Alerts</div>' + alertsHtml(false) + '</div>';
     else if (ofilter === 'routine') h += routineHtml();
@@ -1727,8 +1732,8 @@ function outcomeCard(o, i, n) {
 function renderOutcomes() {
   const os = openOutcomes();
   const closed = outcomes.filter(o => o.status === 'done').sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
-  const you = workItems().filter(r => needsYou(r) && !isHidden(r) && r.outcome).length, cl = workItems().filter(r => !needsYou(r) && !isHidden(r) && r.outcome).length;
-  let h = '<div class="ohead"><h2>Outcomes</h2><p class="sub">' + os.length + ' open · ' + you + ' tasks for you · ' + cl + ' with Claude · ' + untied().length + ' untied. Arrows set the priority; the order here is the order everywhere.</p>'
+  const you = workItems().filter(r => handed(r) && !isHidden(r) && r.outcome).length, wk = workItems().filter(r => working(r) && !isHidden(r) && r.outcome).length, cl = workItems().filter(r => !needsYou(r) && !isHidden(r) && r.outcome).length;
+  let h = '<div class="ohead"><h2>Outcomes</h2><p class="sub">' + os.length + ' open · ✋ ' + you + ' waiting on you · ✎ ' + wk + ' working on it · ' + cl + ' with Claude · ' + untied().length + ' untied. Arrows set the priority; the order here is the order everywhere.</p>'
     + '<div class="cleanbar mgr"><a class="btn small" target="_blank" rel="noopener" href="' + esc(managerUrl('standup')) + '">Morning tasks with the Manager</a><button class="btn small ghost" id="oc_add">+ Outcome</button></div></div>';
   if (oEdit && !oEdit.id) h += '<div class="ocard"><div class="onum">+</div><div class="obody"><input class="w" id="oc_title" maxlength="80" placeholder="Executive outcome, e.g. Card payments live"><textarea class="w" id="oc_notes" rows="2" placeholder="What this outcome is, in one or two lines"></textarea><div class="prow"><label class="olab">Target <input type="date" id="oc_target"></label><button class="btn small" data-oact="save">Save</button><button class="btn small ghost" data-oact="cancel">Cancel</button></div></div></div>';
   h += os.map((o, i) => outcomeCard(o, i, os.length)).join('') || '<div class="empty">No outcomes yet.</div>';
