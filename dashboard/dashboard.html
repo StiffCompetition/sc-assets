@@ -477,6 +477,7 @@
   .ovbk { margin-top: 8px; } .ovb { border-top: 1px solid #eef1f4; padding: 8px 0; font-size: 14px; } .ovb .amt { float: right; font-weight: 600; } .ovb .items { color: #444; margin: 2px 0; } .ovb .who { color: var(--muted); font-size: 13px; } .ovb a { color: var(--accent); }
   @media (max-width: 900px) { .ovtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } details.ovd2 > summary { grid-template-columns: minmax(0, 1fr) auto; } details.ovd2 > summary .ss { grid-column: 1 / -1; white-space: normal; } .ovm { grid-template-columns: 80px minmax(0, 1fr) auto; gap: 8px; } .ovm .ms { display: none; } .ovhead, .ovr { grid-template-columns: minmax(0, 1fr) 76px 80px 70px; gap: 8px; } }
   .ostat { margin: 4px 0 2px; } .oline { margin: 0 0 3px; font-size: 15.5px; line-height: 1.4; color: var(--ink, #1a1a1a); } .oline.none { color: var(--muted); font-style: italic; } .oline small { color: var(--muted); font-style: normal; font-size: 12px; }
+  .ohd { margin: 0 0 10px; padding: 0 0 8px; border-bottom: 1px solid var(--line); } .ohd .ostat { margin: 2px 0 0; }
   .oauto { margin: 0; font-size: 13px; color: var(--muted); } .oauto .hd { color: #8a6100; } .obody h3 .mark { margin-right: 8px; } .onotes2 { color: var(--muted); font-size: 13px; align-self: center; }
   .ohead h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; } .ohead .sub { color: var(--muted); margin: 2px 0 10px; }
   .ocard { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; margin-bottom: 10px; }
@@ -1405,7 +1406,7 @@ function renderNow() {
     else if (ofilter === 'workstreams') h += '<div id="rlhost"></div>';
     else if (ofilter === 'later') h += lineGroup('Later: comes back at the next morning tasks', laterItems());
     else if (ofilter === 'done') h += lineGroup('Done today', doneToday());
-    else if (ofilter) { const o = os.find(x => String(x.id) === ofilter); if (o) h += '<div class="prow" style="margin:0 0 6px"><h2 style="margin:0;font-size:18px;flex:1">' + esc(o.title) + '</h2><button class="btn small ghost" id="of_edit">Rename or close</button></div>' + byFunction(tiedTo(o)) + (/audience/i.test(o.title) ? egHtml() + gpHtml() : ''); else ofilter = ''; }
+    else if (ofilter) { const o = os.find(x => String(x.id) === ofilter); if (o) h += outcomeHeadHtml(o) + byFunction(tiedTo(o)) + (/audience/i.test(o.title) ? egHtml() + gpHtml() : ''); else ofilter = ''; }
     if (!ofilter) {
       if (!os.length) h += '<div class="hint">No outcomes set for today. Press "Morning tasks with the Manager", or + Outcome in the sidebar.</div>';
       h += nextForYou();
@@ -1419,6 +1420,7 @@ function renderNow() {
   if (!fr && ofilter === 'workstreams') renderRelaunch();
   if (!fr && ofilter && $('list').querySelector('.egc')) { wireEngage(); const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; eg = null; render(); }; }
   $('list').querySelectorAll('.sitem, .otile').forEach(b => b.onclick = () => { const k = b.dataset.of; focusId = null; if (k === '+') { outForm = true; outEdit = null; ofilter = ''; render(); const i = $('of_title'); if (i) i.focus(); return; } ofilter = k; render(); window.scrollTo(0, 0); });
+  wireMgr();
   if ($('of_edit')) $('of_edit').onclick = () => { outEdit = os.find(x => String(x.id) === ofilter) || null; outForm = true; render(); };
   if ($('fx_back')) $('fx_back').onclick = () => { focusId = null; render(); };
   if ($('of_save')) {
@@ -1630,12 +1632,42 @@ function renderOverview() {
 }
 // ---- Outcomes tab (8 Nov 2026, Andy): every outcome on one page, in priority order, with its numbers, target date, chat and controls.
 let oEdit = null;
+// One permanent Manager chat per outcome (8 Nov 2026, Andy): the button opens THAT chat every time; a new chat is only ever started once, when none is linked yet.
+const MGR_RE = /^https:\/\/claude\.ai\/(chat|code)\//;
+function mgrButtons(o) {
+  const link = safeUrl(o.chat_link), oid = esc(o.id);
+  return (link
+    ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(link) + '" title="The one ongoing chat for this outcome">Manager chat</a><button class="btn small ghost" data-mgr="update" data-oid="' + oid + '" title="Opens the Manager chat with the word Update ready to paste">Update</button>'
+    : '<a class="btn small" target="_blank" rel="noopener" href="' + esc(outcomeChatUrl(o)) + '" title="Starts the one ongoing chat for this outcome. It saves its own link, so this button then opens it every time.">Start manager chat</a>')
+    + '<button class="btn small ghost" data-mgr="link" data-oid="' + oid + '" title="Paste the address of a chat that already exists for this outcome">' + (link ? 'Change chat' : 'Link a chat') + '</button>';
+}
+function outcomeHeadHtml(o) {
+  const list = tiedTo(o), you = list.filter(needsYou), cl = list.filter(r => !needsYou(r));
+  const doneAll = rows.filter(r => !CONTAINERS.includes(r.type || '') && String(r.outcome) === String(o.id) && r.status === 'Done');
+  return '<div class="ohd"><div class="prow" style="margin:0 0 4px"><h2 style="margin:0;font-size:18px;flex:1;min-width:200px">' + outcomeMark(list) + esc(o.title) + '</h2>' + mgrButtons(o) + '<button class="btn small ghost" id="of_edit">Rename or close</button></div>' + outcomeStatusHtml(o, list, you, cl, doneAll) + '</div>';
+}
+function wireMgr() {
+  $('list').querySelectorAll('[data-mgr]').forEach(b => b.onclick = async () => {
+    const o = outcomes.find(x => String(x.id) === b.dataset.oid); if (!o) return;
+    if (b.dataset.mgr === 'update') {
+      const link = safeUrl(o.chat_link);
+      try { await navigator.clipboard.writeText('Update'); toast('"Update" copied: paste it in the Manager chat'); } catch (e) { toast('Type Update in the Manager chat'); }
+      if (link) window.open(link, '_blank', 'noopener');
+      return;
+    }
+    const u = (window.prompt('Paste the address of the Manager chat for "' + o.title + '"', o.chat_link || '') || '').trim();
+    if (!u) return;
+    if (!MGR_RE.test(u)) { toast('That is not a Claude chat address'); return; }
+    try { await saveOutcome(Object.assign({}, o, { chat_link: u.split('?')[0] })); toast('Manager chat linked'); } catch (e) { toast('Not saved: ' + e.message); }
+  });
+}
 function outcomeChatUrl(o) {
   const list = tiedTo(o);
   const q = 'Outcome: ' + o.title + '. Outcome chat for Andy (Stiff Competition): "' + o.title + '"' + (o.notes ? ' — ' + o.notes : '') + (o.target ? ' — target ' + o.target : '') + '. You run this one outcome end to end: you know every task under it, you keep them moving, and you answer Andy in ONE line, results only, plain words, clickable links, no ID codes, never the word honest, no hedging. FIRST read the memory file /topics/sc-manager-chat.md (the standing rule) and the SC Master Manual.'
     + ' Save this chat\'s link on the outcome: call read_conversation with conversation_id "current" and max_turns 1; GET ' + OUT_LIST + ' and find the row with id ' + o.id + '; POST ' + OUT_SAVE + ' with that whole row (id, title, day, position, status, notes, target) plus chat_link = this chat\'s link.'
     + ' Tasks under this outcome are rows in the n8n data table SC Marketing Actions (project 5tHMVzHlU1eiamv9, table tWNO2Zd6kPgtOLpO) with outcome = "' + o.id + '": ' + (list.length ? list.slice(0, 40).map(r => '#' + r.id + ' ' + r.title + ' (' + r.owner + ')').join('; ') : 'none yet') + '. Read each row before acting; update rows with SC - Marketing Actions API (save) (whole row); add new tasks there with outcome "' + o.id + '", owner Claude wherever Claude can do the work, a Problem line in notes, and link = the exact page where Andy acts. Always quote the task number #id when you mention a task. Hand-back rule for every task: while Claude works it is owner Claude; when Andy must do or decide something, save the row with owner Andy, next_step = exactly what he must do, handed_at = "now" (yellow hand on the dashboard); when he has answered, save owner Claude and handed_at = ""; Done clears it.'
     + ' You reach the task chats through comments on the Todoist project Stiff Competition Launch (project id 6h2vMpxmpJVPg8q7): add a comment starting with #id of the task (notifyUsers ["none"]) and read their answers with find-comments on that projectId (comments starting with #id).'
+    + ' You are the ONE permanent chat for this outcome: Andy comes back here every time and never starts another, so never suggest a new chat. When Andy writes just "Update", reply with ONE executive sentence under 30 words (where it stands, what blocks it, the next step with a date) and save it: POST ' + OUT_SAVE + ' with the whole row plus status_line = that sentence.'
     + ' Start: one line per task with its state and the next action, then the one thing Andy does first. Cost: state it first and wait for his yes. Never publish live, change a key or edit a workflow without his yes.';
   return 'https://claude.ai/new?q=' + encodeURIComponent(q);
 }
@@ -1688,8 +1720,7 @@ function outcomeCard(o, i, n) {
     + '<div class="oacts">'
     + '<button class="btn small ghost" data-oact="up" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button class="btn small ghost" data-oact="down" title="Move down"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>'
     + '<button class="btn small" data-oact="open">Open on Tasks</button>'
-    + (link ? '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(link) + '">Outcome chat</a>' : '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(outcomeChatUrl(o)) + '">Start outcome chat</a>')
-    + '<a class="btn small ghost" target="_blank" rel="noopener" href="' + esc(outcomeStatusUrl(o)) + '" title="Opens a chat that researches this outcome and writes its one-line status">Status</a>'
+    + mgrButtons(o)
     + '<button class="btn small ghost" data-oact="edit">Edit</button><button class="btn small ghost" data-oact="close">Close</button>'
     + '</div></div>';
 }
@@ -1703,6 +1734,7 @@ function renderOutcomes() {
   h += os.map((o, i) => outcomeCard(o, i, os.length)).join('') || '<div class="empty">No outcomes yet.</div>';
   if (closed.length) h += '<details class="oclosed"><summary>Closed outcomes (' + closed.length + ')</summary>' + closed.map(o => '<div class="ocard done" data-oid="' + esc(o.id) + '"><div class="onum">✓</div><div class="obody"><h3>' + esc(o.title) + '</h3>' + (o.notes ? '<p class="onotes">' + esc(o.notes) + '</p>' : '') + '</div><div class="oacts"><button class="btn small ghost" data-oact="reopen">Reopen</button></div></div>').join('') + '</details>';
   $('list').innerHTML = h;
+  wireMgr();
   if ($('oc_add')) $('oc_add').onclick = () => { oEdit = { id: '' }; renderOutcomes(); const i = $('oc_title'); if (i) i.focus(); };
   $('list').querySelectorAll('[data-oact]').forEach(b => b.onclick = async () => {
     const card = b.closest('[data-oid]'); const o = card ? outcomes.find(x => String(x.id) === card.dataset.oid) : null; const a = b.dataset.oact;
