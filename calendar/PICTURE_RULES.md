@@ -1,6 +1,6 @@
 # 2027 calendar picture rules (Andy, 9 Nov 2026) - every month, same rules
 
-Picture: 5:4 landscape, fal google/nano-banana-2.1/edit, 2K, one reference picture of the month's character (calendar/refs/<k>_front.jpg).
+Picture: 5:4 landscape, fal google/nano-banana-2.1/edit, 2K. THREE reference pictures per character, in this order: calendar/refs/<k>_face.jpg (tight face close-up), calendar/refs/<k>_head.jpg (head and hat), calendar/refs/<k>_front.jpg (standing body and outfit). Keys: mw ra hh sw tg vp. Prompt line: 'Reference 1 and 2 are his face, reference 3 is his body and outfit: the face must be identical to references 1 and 2 (same eyes, brows, nose, mouth, beard or moustache, hair and hat), only the expression changes to the sexy smile.' Check the face against the references before showing.
 
 ## 1. Scale
 - Full body, head near the top edge, boots near the bottom edge: figure fills about 90% of the picture height. Check after every picture: head-to-feet 85% or more of frame height, else redo.
