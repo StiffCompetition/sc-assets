@@ -5,8 +5,14 @@ on:
   push:
     paths: ['gifs/jobs/**.json']
   workflow_dispatch:
+    inputs:
+      attempt:
+        description: 'Retry round (set by the workflow itself, max 3)'
+        required: false
+        default: '1'
 permissions:
   contents: write
+  actions: write
 jobs:
   list:
     runs-on: ubuntu-latest
@@ -44,3 +50,23 @@ jobs:
           git config user.name "sc-clip-bot"; git config user.email "noreply@github.com"
           git add gifs/clips; git commit -m "Free clips from runner" || exit 0
           for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+  retry:
+    # A runner's free Hugging Face allowance can run out (ZeroGPU quota). Missing clips get up to 2 more rounds,
+    # each on fresh runners (new internet addresses). Costs nothing; no clip that exists is ever redone.
+    needs: save
+    if: always() && needs.save.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "gifs/jobs\ngifs/clips" }
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          ATTEMPT: ${{ github.event.inputs.attempt || '1' }}
+        run: |
+          git pull -q origin main || true
+          missing=$(for f in gifs/jobs/*.json; do b=$(basename "$f" .json); [ -f "gifs/clips/$b.mp4" ] || echo "$b"; done | wc -l)
+          echo "missing=$missing attempt=$ATTEMPT"
+          if [ "$missing" -gt 0 ] && [ "$ATTEMPT" -lt 3 ]; then
+            sleep 60
+            gh workflow run free-clip.yml --ref main -f attempt=$((ATTEMPT+1)) --repo "$GITHUB_REPOSITORY"
+          fi
