@@ -35,10 +35,17 @@ Picture: 5:4 landscape, fal google/nano-banana-2.1/edit, 2K. THREE reference pic
 | Nov | Slick Willy | amber red + teal |
 | Dec | Rear Admiral | Christmas red + green |
 
-## 5. Semi-real toy world (the Christmas ad look)
-- Figure is a glossy plastic action figure with visible joints; props and set are toy-scale miniature, real materials, real lighting, shallow depth of field.
-- NO display stand, NO base disc: boots on the set floor with soft contact shadows.
+## 5. Real location, tinge of toy (Andy 9 Nov 2026: "too toy world")
+- The set is a REAL full-size location photographed like a real calendar shoot: real materials, real light, real food, real equipment. Prompt words never include miniature, diorama, macro or toy-scale.
+- The toy tinge: the figure is a glossy plastic action figure with visible joints, plus one or two small toy touches in the scene (a tiny toy bunny, a toy-size prop).
+- NO display stand, NO base disc: boots on the real floor with soft contact shadows.
 - No readable writing, text or letters anywhere in the picture. Captions are typeset text on the page.
+
+## 5b. Story and layers (Andy: "scene is boring")
+- The set shows the caption happening, with action in it. Three layers: blurred foreground props, the figure, a busy lit background. One dynamic effect (pouring glaze, steam, fireworks, confetti, spray, petals).
+
+## 5c. Sexy wording that the tool accepts (April v1-v3)
+- "glamour pin-up calendar photograph in the style of a classic beefcake calendar studio shoot", "skin glistening with baby oil, every muscle catching the light", "bedroom eyes, heavy-lidded, locked on the camera, naughty half-smile with a hint of teeth, one eyebrow raised", "leaning back, chest pushed out, one arm behind his head, hips set to one side, one knee bent", glaze or water running down his oiled chest and abs.
 
 ## 6. Innuendo
 - Safe: the caption and the prop carry it; the picture stays PG-13 (no nudity below the waist, no explicit acts).
