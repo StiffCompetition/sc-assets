@@ -17,8 +17,8 @@ h2{font-size:30px;text-align:center}
 
 /* header */
 .top{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
-.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:76px}
-.top img{height:50px;width:auto}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:96px}
+.top img{height:70px;width:auto}
 .nav{display:flex;align-items:center;gap:26px;font-size:13px;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
 .nav a{text-decoration:none;padding:6px 0;border-bottom:2px solid transparent}
 .nav a:hover,.nav a.on{border-color:var(--red)}
@@ -36,12 +36,13 @@ h2{font-size:30px;text-align:center}
 
 /* hero */
 .hero{padding:64px 0 56px;background:linear-gradient(180deg,#fff 0,var(--grey) 100%)}
-.hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center}
+.hero .wrap{text-align:center}
+.herologo{height:190px;width:auto;margin:0 auto 22px}
 .kicker{color:var(--red);font-weight:800;font-size:13px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:14px}
 .hero h1{font-size:52px;margin-bottom:20px}
 .hero h1 em{font-style:normal;color:var(--red);display:block}
-.lead{font-size:18px;color:#333;margin-bottom:30px;max-width:520px}
-.cta{display:flex;gap:12px;flex-wrap:wrap}
+.lead{font-size:18px;color:#333;margin:0 auto 30px;max-width:620px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 .hero .art{border:1px solid var(--line);background:#fff;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.12)}
 
 /* stats */
@@ -117,6 +118,7 @@ footer .legal{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);
 .angle strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--red);margin-bottom:4px}
 .angle p{margin:0}
 .kit{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+.kit.two{grid-template-columns:repeat(2,1fr)}
 .kit a{border:1px solid var(--line);text-decoration:none;display:block}
 .kit .p{background:var(--grey);padding:16px;height:150px;display:flex;align-items:center;justify-content:center}
 .kit .p img{max-height:118px;width:auto;object-fit:contain}
@@ -134,8 +136,9 @@ footer .cols{grid-template-columns:1fr 1fr}
 }
 @media(max-width:640px){
 .wrap{padding:0 18px}
-.top .wrap{min-height:64px}
-.top img{height:40px}
+.top .wrap{min-height:78px}
+.herologo{height:120px}
+.top img{height:54px}
 .nav{gap:14px;font-size:11px}
 .nav .hide{display:none}
 .nav a.shop{padding:9px 12px}
