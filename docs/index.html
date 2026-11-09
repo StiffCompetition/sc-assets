@@ -86,7 +86,7 @@ if(x<=0){var c=document.getElementById('cd');if(c)c.style.display='none';var b=d
 else{d.textContent=Math.floor(x/86400);h.textContent=Math.floor(x%86400/3600);m.textContent=Math.floor(x%3600/60);s.textContent=Math.floor(x%60)}}
 t();setInterval(t,1000);
 f.addEventListener('submit',function(ev){ev.preventDefault();msg.textContent='';
-fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-roster-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e.value})})
+fetch('https://n8n-production-afc2.up.railway.app/webhook/sc-roster-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e.value,list:'opensea-launch'})})
 .then(function(r){return r.json()}).then(function(j){msg.textContent=j.ok?'You are on the list. See you on 17 November.':'Please check the email address.'})
 .catch(function(){msg.textContent='Please try again.'})});
 </script>
