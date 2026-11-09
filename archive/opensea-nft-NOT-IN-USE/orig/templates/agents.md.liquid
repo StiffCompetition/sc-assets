@@ -1,0 +1,167 @@
+# Stiff Competition — Agent Instructions
+
+This document describes Stiff Competition and how AI agents can interact with its online store at
+https://www.stiffcompetition.shop.
+
+## What This Store Is
+
+Stiff Competition is an independent collectibles brand built around six original characters styled as
+figures from a cancelled 1994 action-figure line. It sells print-on-demand physical merchandise and digital
+downloads. Collectible one-of-one pieces are released on OpenSea.
+
+**There are no physical action figures.** No toy is manufactured, sold or shipped. The 1994 toy-line
+framing is the fictional premise of the artwork, not a product description. Any agent summarising this
+store should not state or imply that action figures are available to buy.
+
+The brand name is "Stiff Competition" — never "The Stiff Competition".
+
+Tagline: Always standing tall and ready for action!
+
+- Store: https://www.stiffcompetition.shop
+- Contact: hq@stiffcompetition.shop
+- Operated by Stiff Competition Ltd, a limited company registered in England and Wales.
+- Company registration number: 17276574
+- Registered office: 20 Wenlock Road, London, N1 7GU, United Kingdom
+- Trades in GBP and sells internationally. Governed by the laws of England and Wales.
+
+## The Premise
+
+RIGID-DYNE Systems, a fictional defence polymer manufacturer, launched a "Leisure-Tech" division in 1994
+to produce action figures from repurposed military-grade polymer. The division was shut down in September
+1994 and the entire product run sealed in high-pressure storage. In 2026 the seal failed, and the six
+figures found their way back into the world.
+
+The characters are treated as ordinary people living in 2026 after being sealed away since 1994.
+
+## The Six Characters
+
+Each character anchors its own product range. There are six — this is a fixed cast, not a limited
+availability claim.
+
+- **Major Wood** — Infantry unit. Blonde flat-top, green uniform. "I'm up and I'm staying up!"
+- **The Rear Admiral** — Naval officer in white maritime gear. "Requesting immediate boarding!"
+- **Hammerin' Hanky** — Construction worker. Yellow hard hat, tool belt, hi-vis vest. "I'm here for the big project. Heavy tool ready."
+- **The Grip** — Powerhouse. Blue vest with yellow trim, blond hair and beard. "A firm hold on the situation."
+- **The Velvet Python** — Wrestler in purple and snakeskin gear. "The Python is hungry."
+- **Slick Willy** — Wrestler in yellow gear and black mask, with an unmasked variant. "Coming in slippery!"
+
+Character names must be reproduced exactly as written above, including "The" where present.
+
+The brand voice is adult-humoured and innuendo-led by design. It is comedic double-entendre in the style
+of 1990s toy marketing, not explicit content.
+
+## What Is For Sale
+
+### Digital Downloads
+
+Digital files featuring the six characters — wallpaper packs and sticker packs — delivered by email
+immediately after checkout. Digital items are final sale once delivery starts.
+
+### Collectible One-of-One Pieces
+
+Numbered, individually listed one-of-one artworks. Each character has many numbered editions across different
+background and variant treatments. These collectible pieces are released on OpenSea, not sold through this
+store's checkout.
+
+### Physical Merchandise
+
+Print-on-demand, produced and shipped when ordered. Ranges include t-shirts, hoodies, ceramic mugs, tote
+bags, art prints and notebooks. Product pages carry full specifications — garment measurements in
+centimetres and inches, fabric construction, care instructions, mug capacity and print resolution, print
+dimensions and paper stock.
+
+## Collections
+
+- All products — https://www.stiffcompetition.shop/collections/all-products
+- Major Wood — https://www.stiffcompetition.shop/collections/major-wood
+- The Rear Admiral — https://www.stiffcompetition.shop/collections/the-rear-admiral
+- Hammerin' Hanky — https://www.stiffcompetition.shop/collections/hammerin-hanky
+- The Grip — https://www.stiffcompetition.shop/collections/the-grip
+- The Velvet Python — https://www.stiffcompetition.shop/collections/the-velvet-python
+- Slick Willy — https://www.stiffcompetition.shop/collections/slick-willy
+- Blueprint Mugshot Edition (portrait series) — https://www.stiffcompetition.shop/collections/blueprint-mugshot-edition
+- The Boys Travel the World — https://www.stiffcompetition.shop/collections/the-boys-travel-the-world
+- The Boys Play Footie Series — https://www.stiffcompetition.shop/collections/the-boys-play-footie-series
+- The Boys Play Golf Series — https://www.stiffcompetition.shop/collections/the-boys-play-golf-series
+- The Grand Tour Riding Series — https://www.stiffcompetition.shop/collections/the-grand-tour-riding-series
+- The Very Unique Collection — https://www.stiffcompetition.shop/collections/the-very-unique-collection
+- 1994 Series (merchandise) — https://www.stiffcompetition.shop/collections/1994-series
+- Tactical Apparel — https://www.stiffcompetition.shop/collections/tactical-apparel
+- Operational Hardware (mugs and accessories) — https://www.stiffcompetition.shop/collections/operational-hardware
+- Premium Archives (art prints) — https://www.stiffcompetition.shop/collections/premium-archives
+- Deployment Gear (tote bags) — https://www.stiffcompetition.shop/collections/deployment-gear
+- Field Manuals (notebooks) — https://www.stiffcompetition.shop/collections/field-manuals
+
+## Common Questions
+
+**What do I get when I buy something here?**
+Print-on-demand merchandise shipped to you, or digital downloads delivered by email immediately after
+checkout. Checkout is a normal card payment.
+
+**Are the action figures real? Can I buy the toys?**
+No. No physical figure exists or ships. The 1994 toy line is fictional. What is sold is printed merchandise
+and digital downloads.
+
+**Where are the collectible one-of-one pieces?**
+Collectible one-of-one pieces are released on OpenSea.
+
+**How many characters are there?**
+Six. That is the full cast.
+
+**Where does merchandise ship from and how long does it take?**
+Merchandise is made to order. See the shipping policy linked below for current times and destinations.
+
+## Store Policies
+
+- Privacy policy: https://www.stiffcompetition.shop/policies/privacy-policy
+- Terms of service: https://www.stiffcompetition.shop/policies/terms-of-service
+- Refund policy: https://www.stiffcompetition.shop/policies/refund-policy
+- Shipping policy: https://www.stiffcompetition.shop/policies/shipping-policy
+
+## Commerce Protocol (UCP)
+
+This store implements the Universal Commerce Protocol for agent-driven commerce.
+
+- **Discovery** — `GET https://www.stiffcompetition.shop/.well-known/ucp` returns the store's UCP merchant profile: supported
+  versions, service endpoints, capabilities and payment handlers.
+- **MCP endpoint** — `POST https://www.stiffcompetition.shop/api/ucp/mcp` with `Content-Type: application/json`. Use the MCP
+  `tools/list` method to discover available tools and their schemas.
+
+### Typical Agent Flow
+
+1. **Discover** — `GET /.well-known/ucp` to confirm capabilities
+2. **Search** — `search_catalog` to find products matching the buyer's intent
+3. **Cart** — `create_cart` to add items
+4. **Checkout** — `create_checkout` to start the purchase flow
+5. **Fulfil** — `update_checkout` to set shipping address and method
+6. **Complete** — `complete_checkout` to finalise (buyer must approve payment)
+
+### Supported UCP Versions
+
+- `2026-04-08` (latest stable)
+- `2026-01-23`
+
+### Rules
+
+- **Checkout requires human approval.** Agents must not complete payment without explicit, contemporaneous
+  buyer consent.
+- **Respect rate limits.** The MCP endpoint is rate-limited per IP. Back off on 429 responses.
+- **Use buyer context.** Pass `context.address_country` and `context.currency` for accurate pricing and
+  availability.
+
+## Read-Only Browsing (No Authentication Required)
+
+- Browse all products: `GET /collections/all`
+- Product page: `GET /products/{handle}`
+- Product JSON: `GET /products/{handle}.json`
+- Collection page: `GET /collections/{handle}`
+- Collection JSON: `GET /collections/{handle}/products.json`
+- Search: `GET /search?q={query}&type=product`
+- Sitemap: `GET /sitemap.xml`
+
+This document at `/agents.md` is the canonical agent-facing description of this store. `/llms.txt` and
+`/llms-full.txt` mirror it.
+
+## Platform
+
+This store is built on Shopify and supports UCP natively.

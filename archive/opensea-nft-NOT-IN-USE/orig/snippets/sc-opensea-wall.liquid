@@ -1,0 +1,88 @@
+{%- comment -%}
+  The pieces on OpenSea: a wall of the release's pieces on The Digital Mint page (4 Nov 2026).
+  The list comes live from n8n (SC - OpenSea Pieces API (list)), so each picture links to its own OpenSea page
+  as soon as the piece is minted; before that it links to the collection.
+  Rendered from sections/main-page.liquid when page.handle == 'the-digital-mint', in place of the page body.
+  6 Nov 2026: the wall points to the new collection, Stiff Competition: The Blueprint (contract 0xe585...F6cD).
+{%- endcomment -%}
+<section class="sc-osw" id="scOsw" aria-label="The pieces on OpenSea">
+  <div class="sc-osw__head">
+    <h2 class="sc-osw__title">THE BLUEPRINT</h2>
+    <p class="sc-osw__lede">339 one-of-one pieces from the 1994 Series, on OpenSea from 17 November. Tap a piece to see it on OpenSea.</p>
+    <a class="sc-osw__btn" href="https://opensea.io/collection/stiff-competition-the-blueprint" target="_blank" rel="noopener">Open the collection on OpenSea</a>
+  </div>
+  <div class="sc-osw__filters" id="scOswFilters" role="group" aria-label="Filter by character"></div>
+  <div class="sc-osw__grid" id="scOswGrid"><div class="sc-osw__note">Loading the pieces&hellip;</div></div>
+</section>
+<style>
+  .sc-osw{margin:10px auto 10px;max-width:1200px;}
+  .sc-osw__head{text-align:center;margin-bottom:18px;}
+  .sc-osw__title{font-size:clamp(22px,3.4vw,34px);letter-spacing:.06em;margin:0 0 6px;}
+  .sc-osw__lede{margin:0 0 12px;opacity:.8;}
+  .sc-osw__btn{display:inline-block;background:#2081e2;color:#fff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:10px 16px;border-radius:4px;}
+  .sc-osw__btn:hover{background:#1868b8;color:#fff;}
+  .sc-osw__filters{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0 0 14px;}
+  .sc-osw__filters button{background:#fff;color:#0b0b0d;border:2px solid #0b0b0d;padding:7px 12px;border-radius:999px;font-weight:700;font-size:12px;letter-spacing:.04em;cursor:pointer;}
+  .sc-osw__filters button.on{background:#0b0b0d;color:#fff;}
+  .sc-osw__filters button:hover{border-color:#2081e2;}
+  .sc-osw__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .sc-osw__card{display:block;background:#111;border-radius:8px;overflow:hidden;text-decoration:none;color:#fff;position:relative;aspect-ratio:1;}
+  .sc-osw__card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s;}
+  .sc-osw__card:hover img{transform:scale(1.04);}
+  .sc-osw__cap{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;background:linear-gradient(transparent,rgba(0,0,0,.85));font-size:12px;line-height:1.3;}
+  .sc-osw__cap b{display:block;font-size:12px;}
+  .sc-osw__cap span{opacity:.75;font-size:11px;}
+  .sc-osw__note{grid-column:1/-1;text-align:center;opacity:.7;padding:20px;}
+  .sc-osw__more{grid-column:1/-1;text-align:center;}
+  .sc-osw__more button{background:#0b0b0d;color:#fff;border:1px solid #444;padding:10px 18px;border-radius:4px;font-weight:700;cursor:pointer;}
+</style>
+<script>
+  (function(){
+    var API = 'https://n8n-production-afc2.up.railway.app/webhook/sc-opensea-pieces?drop=D01';
+    var CONTRACT = '0xe585240c98f18D015F90219E3C054515d4D8F6cD';
+    var COLL = 'https://opensea.io/collection/stiff-competition-the-blueprint';
+    var grid = document.getElementById('scOswGrid'), filters = document.getElementById('scOswFilters');
+    var all = [], items = [], shown = 0, STEP = 60, who = '';
+    function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+    function pic(u){ return u ? u + (u.indexOf('?') > -1 ? '&' : '?') + 'width=400' : ''; }
+    function link(it){ return it.token ? 'https://opensea.io/item/polygon/' + CONTRACT + '/' + it.token : COLL; }
+    function more(){
+      var frag = document.createDocumentFragment();
+      items.slice(shown, shown + STEP).forEach(function(it){
+        var a = document.createElement('a');
+        a.className = 'sc-osw__card'; a.href = link(it); a.target = '_blank'; a.rel = 'noopener';
+        a.innerHTML = '<img loading="lazy" src="' + esc(pic(it.image)) + '" alt="' + esc(it.title) + '"><div class="sc-osw__cap"><b>' + esc(it.title) + '</b><span>' + esc(it.grade) + '</span></div>';
+        frag.appendChild(a);
+      });
+      shown = Math.min(items.length, shown + STEP);
+      var old = grid.querySelector('.sc-osw__more'); if (old) old.remove();
+      grid.appendChild(frag);
+      if (shown < items.length) {
+        var m = document.createElement('div'); m.className = 'sc-osw__more';
+        m.innerHTML = '<button type="button">Show more (' + (items.length - shown) + ' left)</button>';
+        m.querySelector('button').onclick = more; grid.appendChild(m);
+      }
+    }
+    function show(){
+      items = who ? all.filter(function(it){ return it.character === who; }) : all;
+      shown = 0; grid.innerHTML = '';
+      if (!items.length) { grid.innerHTML = '<div class="sc-osw__note">The pieces appear here on launch day.</div>'; return; }
+      more();
+    }
+    function buttons(chars){
+      if (!chars.length) return;
+      filters.innerHTML = '';
+      ['All'].concat(chars).forEach(function(c){
+        var b = document.createElement('button'); b.type = 'button'; b.textContent = c === 'All' ? 'All' : c;
+        b.className = (c === 'All' && !who) ? 'on' : '';
+        b.onclick = function(){ who = c === 'All' ? '' : c; Array.prototype.forEach.call(filters.children, function(x){ x.className = ''; }); b.className = 'on'; show(); };
+        filters.appendChild(b);
+      });
+    }
+    fetch(API).then(function(r){ return r.json(); }).then(function(d){
+      all = (d && d.items) || [];
+      buttons((d && d.characters) || []);
+      show();
+    }).catch(function(){ grid.innerHTML = '<div class="sc-osw__note"><a href="' + COLL + '" target="_blank" rel="noopener">See the pieces on OpenSea</a></div>'; });
+  })();
+</script>

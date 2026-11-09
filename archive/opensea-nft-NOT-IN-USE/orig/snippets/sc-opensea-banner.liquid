@@ -1,0 +1,36 @@
+{%- comment -%}
+  OpenSea launch strip across the top of every page (4 Nov 2026). Launch day 17 November 2026, 16:00 London.
+  Before launch: a countdown to the day. From launch: "now on OpenSea" with the buy button.
+  Rendered from snippets/sc-merchant-schema.liquid at the top of the page content. Remove that one render line to take it off.
+  6 Nov 2026: the link goes to the new collection, Stiff Competition: The Blueprint.
+{%- endcomment -%}
+<div class="sc-os-bar" id="scOsBar" role="region" aria-label="OpenSea launch">
+  <div class="sc-os-in">
+    <span class="sc-os-tag">OPENSEA</span>
+    <span class="sc-os-txt" id="scOsTxt">The Blueprint lands on OpenSea on 17 November</span>
+    <a class="sc-os-btn" id="scOsBtn" href="https://opensea.io/collection/stiff-competition-the-blueprint" target="_blank" rel="noopener">See the collection</a>
+  </div>
+</div>
+<style>
+  .sc-os-bar{background:#0b0b0d;color:#fff;border-bottom:2px solid #d41f2a;font-family:var(--font-heading-family,inherit);}
+  .sc-os-in{max-width:1200px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;text-align:center;}
+  .sc-os-tag{background:#2081e2;color:#fff;font-weight:800;font-size:11px;letter-spacing:.14em;padding:3px 8px;border-radius:3px;}
+  .sc-os-txt{font-size:14px;letter-spacing:.04em;}
+  .sc-os-txt b{color:#ffd23f;font-weight:800;}
+  .sc-os-btn{background:#d41f2a;color:#fff;text-decoration:none;font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:3px;white-space:nowrap;}
+  .sc-os-btn:hover{background:#b3141e;color:#fff;}
+  @media (max-width:600px){.sc-os-in{flex-wrap:nowrap;justify-content:space-between;gap:10px;text-align:left;padding:7px 12px}.sc-os-tag{display:none}.sc-os-txt{font-size:12.5px;line-height:1.3;flex:1 1 auto;width:auto}.sc-os-btn{font-size:11px;padding:7px 10px;flex:0 0 auto}}
+</style>
+<script>
+  (function(){
+    var launch = Date.UTC(2026, 10, 17, 16, 0, 0);
+    var t = document.getElementById('scOsTxt'), b = document.getElementById('scOsBtn');
+    function draw(){
+      var now = Date.now();
+      if (now >= launch) { t.innerHTML = 'The Blueprint is now on OpenSea'; b.textContent = 'Buy on OpenSea'; return; }
+      var d = Math.ceil((launch - now) / 86400000);
+      t.innerHTML = 'The Blueprint lands on OpenSea on 17 November <b>· ' + (d === 1 ? 'tomorrow' : d + ' days') + '</b>';
+    }
+    draw(); setInterval(draw, 60000);
+  })();
+</script>
