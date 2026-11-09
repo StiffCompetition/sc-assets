@@ -1,0 +1,59 @@
+<style>
+[id$='__hero_video']{display:none!important}
+.scxh{display:flex;flex-direction:column;align-items:center;padding:22px 16px 8px}
+.scxh__win{position:relative;aspect-ratio:9/16;width:min(100%,calc(min(86svh,760px)*.5625));background:#000;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.45);overflow:visible}
+.scxh__v{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:10px;display:block;background:#000}
+.scxh__snd{position:absolute;left:10px;bottom:10px;height:44px;padding:0 16px;border:0;border-radius:22px;background:rgba(0,0,0,.65);color:#fff;font-size:1.2rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;z-index:2}
+.scxh__pp{position:absolute;right:10px;bottom:10px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.6rem;cursor:pointer;z-index:2}
+.scxh__btns{display:flex;gap:12px;justify-content:center;width:100%;max-width:520px;padding:18px 0 10px}
+.scxh__btns a{flex:1 1 0;min-width:0;min-height:4.8rem;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;font-size:1.3rem;padding:1rem 1.2rem;line-height:1.25}
+.scxh__btns .x{background:#e5261b;color:#fff;font-size:1.5rem;flex:1.5 1 0}
+.scxh__btns .y{background:#334fb4;color:#fff}
+</style>
+<div class="scxh">
+  <div class="scxh__win">
+    <video class="scxh__v" muted loop playsinline preload="metadata" poster="{{ 'sc-xmas-hero-t2-poster.jpg' | asset_url }}" aria-label="Christmas is coming to Stiff Competition: Rear Admiral"><source src="{{ 'sc-xmas-hero-t2.mp4' | asset_url }}" type="video/mp4"></video>
+    <button type="button" class="scxh__snd" aria-pressed="false">Tap for sound</button>
+    <button type="button" class="scxh__pp" aria-label="Pause video">&#10074;&#10074;</button>
+  </div>
+  <div class="scxh__btns"><a class="x" href="/collections/christmas-2026">Shop Christmas 2026</a><a class="y" href="/collections/all">Shop all merch</a></div>
+</div>
+<script>
+(function(){
+  var r=document.currentScript.previousElementSibling;if(!r)return;
+  var v=r.querySelector('video'),s=r.querySelector('.scxh__snd'),p=r.querySelector('.scxh__pp');
+  v.muted=true;
+  function sync(){s.textContent=v.muted?'Tap for sound':'Sound on';s.setAttribute('aria-pressed',v.muted?'false':'true');p.innerHTML=v.paused?'&#9654;':'&#10074;&#10074;';p.setAttribute('aria-label',v.paused?'Play video':'Pause video');}
+  s.addEventListener('click',function(){v.muted=!v.muted;if(!v.muted&&v.paused){var q=v.play();if(q&&q.catch)q.catch(sync);}sync();});
+  p.addEventListener('click',function(){if(v.paused){var q=v.play();if(q&&q.catch)q.catch(sync);}else{v.pause();}sync();});
+  v.addEventListener('play',sync);v.addEventListener('pause',sync);
+  var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!rm){var q=v.play();if(q&&q.catch)q.catch(sync);}
+  sync();
+  /* old hero clip moves down into LATEST TRANSMISSION as its first clip */
+  function mv(){try{
+    var old=document.querySelector("[id$='__hero_video'] video"),tr=document.querySelector('.ltr__track');
+    if(old&&tr){
+      var t=document.createElement('div');t.className='ltr__tile';
+      var ov=document.createElement('video');ov.controls=true;ov.playsInline=true;ov.preload='none';ov.poster=old.getAttribute('poster')||'';
+      old.querySelectorAll('source').forEach(function(s){ov.appendChild(s.cloneNode(true));});
+      t.appendChild(ov);tr.insertBefore(t,tr.firstChild);
+      var t1=document.createElement('div');t1.className='ltr__tile';
+      var v1=document.createElement('video');v1.controls=true;v1.playsInline=true;v1.preload='none';v1.poster='{{ 'sc-xmas-hero-t1-poster.jpg' | asset_url }}';
+      var s1=document.createElement('source');s1.src='{{ 'sc-xmas-hero-t1.mp4' | asset_url }}';s1.type='video/mp4';v1.appendChild(s1);
+      t1.appendChild(v1);tr.insertBefore(t1,tr.firstChild);
+      v1.addEventListener('play',function(){document.querySelectorAll('.scxh__v,.ltr__tile video').forEach(function(o){if(o!==v1&&!o.paused)o.pause();});});
+      ov.addEventListener('play',function(){document.querySelectorAll('.scxh__v,.ltr__tile video').forEach(function(o){if(o!==ov&&!o.paused)o.pause();});});
+    }
+  }catch(e){}}
+  function tile(){try{
+    var sec=document.querySelector('[id*="featured_collection"]');var ul=sec&&sec.querySelector('ul.product-grid');
+    if(!ul||document.getElementById('scx-xmas-tile'))return;
+    var li=document.createElement('li');li.id='scx-xmas-tile';li.className='grid__item';li.style.setProperty('--animation-order','0');
+    li.innerHTML='<div class="card-wrapper product-card-wrapper underline-links-hover"><div class="card card--standard card--media" style="--ratio-percent:100%"><div class="card__inner color-scheme-2 gradient ratio" style="--ratio-percent:100%"><div class="card__media"><div class="media media--transparent media--hover-effect"><img src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/pics67_1793980363277_pic_01_main_black_1847c3d4-6153-444e-853a-f2fffbb73181.jpg?v=1793981446&width=1000" alt="Christmas 2026 t-shirts" width="1000" height="1000" loading="lazy" class="motion-reduce"></div></div></div><div class="card__content"><div class="card__information"><h3 class="card__heading h5"><a href="/collections/christmas-2026" class="full-unstyled-link">Christmas 2026</a></h3><div class="card-information"><span class="caption-large light">Funny Christmas t-shirts</span></div></div></div></div></div>';
+    var kids=[].slice.call(ul.children);if(kids.length>=4){kids[kids.length-1].style.display='none';}
+    ul.insertBefore(li,ul.firstElementChild);
+  }catch(e){}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){mv();tile();});else{mv();tile();}
+})();
+</script>
