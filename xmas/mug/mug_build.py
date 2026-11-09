@@ -9,16 +9,20 @@ TRACK = 0.035
 def word(w, sz):
     f = ImageFont.truetype(F, sz, layout_engine=ImageFont.Layout.RAQM); d = ImageDraw.Draw(Image.new('L', (1, 1)))
     im = Image.new('L', (int(sz*len(w)*1.3)+40, int(sz*1.6)), 0); dr = ImageDraw.Draw(im)
-    for i, ch in enumerate(w):   # kerned position of each glyph (prefix length minus its own advance) plus an even tracking
+    for i, ch in enumerate(w):
         x = d.textlength(w[:i+1], font=f) - d.textlength(ch, font=f) + i*TRACK*sz
         dr.text((10 + x, int(sz*.2)), ch, font=f, fill=255)
-    a = np.asarray(im); r = np.where(a.max(1) > 40)[0]; c = np.where(a.max(0) > 40)[0]
-    return im.crop((c.min(), r.min(), c.max()+1, r.max()+1))
+    a = np.asarray(im); c = np.where(a.max(0) > 40)[0]; rr = np.where(a.max(1) > 40)[0]
+    # shared baseline: rows fixed by the cap height of 'H' so punctuation never shifts a word
+    hi = Image.new('L', im.size, 0); ImageDraw.Draw(hi).text((10, int(sz*.2)), 'H', font=f, fill=255)
+    hr = np.where(np.asarray(hi).max(1) > 40)[0]; m = int(.03*sz)
+    top = hr.min() - m; bot = max(rr.max()+1, hr.max()+1+m)
+    return im.crop((c.min(), top, c.max()+1, bot))
 def line(t, sz, gap=0.30):
     ws = [word(w, sz) for w in t.split(' ')]; g = int(gap*sz)
     W = sum(i.width for i in ws) + g*(len(ws)-1); H = max(i.height for i in ws)
     L = Image.new('L', (W, H), 0); x = 0
-    for i in ws: L.paste(i, (x, H - i.height)); x += i.width + g   # baseline-aligned (bottom)
+    for i in ws: L.paste(i, (x, 0)); x += i.width + g   # top-aligned = shared baseline
     return L
 def fit(t, W, gap=0.30):
     sz = 400
@@ -27,7 +31,7 @@ def fit(t, W, gap=0.30):
     return line(t, sz, gap)
 # picture: lose the bottom `crop` and refade higher
 pic = Image.open(pic_f).convert('RGBA'); a = np.array(pic); h = a.shape[0]; keep = int(h*(1-crop)); a = a[:keep]
-fade = int(keep*0.22); a[-fade:, :, 3] = (a[-fade:, :, 3]*np.linspace(1, 0, fade)[:, None]**1.3).astype(np.uint8)
+import os; fade = int(keep*float(os.environ.get("FADE","0.22"))); a[-fade:, :, 3] = (a[-fade:, :, 3]*np.linspace(1, 0, fade)[:, None]**1.3).astype(np.uint8)
 pic = Image.fromarray(a); pa = pic.height/pic.width
 def stack(W):
     l1, l2 = fit(L1, W), fit(L2, W); nm = fit(NAME, W)
