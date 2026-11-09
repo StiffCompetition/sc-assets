@@ -540,6 +540,8 @@ function fmtDate(raw) {
 // Post type names (Playbook 1.2.1, Andy 8 Nov 2026): what is shown on screen. The stored values (calendar format, planner keys) stay as they are.
 const FDISP = { 'Product': 'Product: Shopping Channel', 'Dare to Buy': 'Product: Dare to Buy', 'Gift Guide': 'Product: Gift Guide', 'Brand Lore (Movie Poster)': 'Brand Lore: Movie Poster', 'Brand Lore (Poster Wall)': 'Brand Lore: Movie Poster', 'Brand Lore (Roll Call)': 'Brand Lore: Roll Call Characters', 'Brand Lore (Roll Call cartoon flick)': 'Brand Lore: Roll Call Comic', 'Character Lore (Poster Wall)': 'Character Lore: Movie Poster' };
 function fdisp(f) { return FDISP[f] || f; }
+// Campaign posts (8 Nov 2026, Andy): a calendar row made from a campaign shows "Campaign: <name>" (the name is kept in panel_notes as "Campaign: <name> | ...").
+function fmtLabel(r) { const m = String((r && r.panel_notes) || '').match(/Campaign: (.+?) \|/); return (r && r.format === 'Campaign' && m) ? 'Campaign: ' + m[1] : fdisp(r && r.format); }
 const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60', 'Gift Guide': '#1B8A3A', 'Salute': '#5E35B1', 'Campaign': '#F5B800', 'Launch': '#2081E2' };
 const CHAR_COLOR = { 'Major Wood': '#556B2F', 'The Rear Admiral': '#1E3A8A', "Hammerin' Hanky": '#FF7A00', 'The Grip': '#1E5BD8', 'Slick Willy': '#111111', 'The Velvet Python': '#6B2FA0', 'SC Logo': '#555555' };
 // Brand posts are filed under "SC Logo" for the pipeline; on screen they read "All 6" (Roll Call) or "Brand".
@@ -752,7 +754,7 @@ function render() {
       tr.innerHTML =
         '<td>' + fmtDate(r.post_date) + '</td>' +
         '<td>' + dayName(r) + '<br>' + charTag(r.character, r) + '</td>' +
-        '<td>' + typeDot(r.format) + escapeHtml(fdisp(r.format)) + '</td>' +
+        '<td>' + typeDot(r.format) + escapeHtml(fmtLabel(r)) + '</td>' +
         '<td class="text-cell">' + (r.text_content ? escapeHtml(r.text_content) : '<span class="snippet empty">no text yet</span>') + '</td>' +
         '<td>' + (r.platforms || '') + '</td>' +
         '<td>' + (st => '<span class="badge" style="border-color:' + st.color + ';color:' + st.color + '">' + escapeHtml(st.label) + '</span>')(cardStage(r)) + '</td>' +
@@ -821,7 +823,7 @@ function makeCard(r) {
   card.innerHTML =
     '<div class="date">' + fmtDate(r.post_date) + ' &middot; ' + londonHm(slotDue(r)) + ' <span class="postno">#' + r.id + '</span></div>' +
     charTag(r.character, r) +
-    '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + escapeHtml(fdisp(r.format)) + '</div>' +
+    '<div class="format" style="color:' + (FORMAT_COLOR[r.format] || '') + ';font-weight:700">' + escapeHtml(fmtLabel(r)) + '</div>' +
     osLine +
     (r.format === 'Brand Lore' ? '<div class="clip-line">Clip: ' + escapeHtml(clipName(r)) + '</div>' : '') +
     '<span class="badge" style="border-color:' + st.color + ';color:' + st.color + ';margin-top:6px">' + escapeHtml(st.label) + '</span>';
@@ -1754,7 +1756,7 @@ async function saveRepost(it) {
     post_date: date + 'T12:00:00.000Z', post_time: time, day_of_week: weekday, character: it.character || 'SC Logo', format: it.format,
     text_content: ig || fb || x, caption_instagram: ig, caption_facebook: fb, caption_x: x, video_url: it.video_url || null, image_url: it.image_url,
     platforms: plats.join(', '), status: 'draft', panel_status: 'ready', notes: 'REPOST:' + it.key,
-    panel_notes: 'Repost of ' + src + ', made in the Library tab ' + new Date().toISOString().slice(0, 10) + '. Check the clip and captions, then set "approved" to schedule it.'
+    panel_notes: (it.camp ? 'Campaign: ' + it.camp + ' | ' : '') + 'Repost of ' + src + ', made in the ' + (it.camp ? 'Campaigns' : 'Library') + ' tab ' + new Date().toISOString().slice(0, 10) + '. Check the clip and captions, then set "approved" to schedule it.'
   };
   try {
     const res = await fetch(RESTORE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -2115,7 +2117,7 @@ function stateTag(row, time) {
   const st = slotState(row);
   if (!row) return '<span class="pempty">EMPTY</span>';
   const who = row.format === 'Day Greeting' || row.character === 'SC Logo' ? '' : ' ' + charTag(row.character);
-  return '<div class="pchip" style="border-left-color:' + (FORMAT_COLOR[row.format] || '#999') + '">' + (time ? '<b>' + escapeHtml(time) + '</b> ' : '') + '<b style="color:' + (FORMAT_COLOR[row.format] || '#333') + '">' + escapeHtml(fdisp(row.format)) + '</b>' + who + '<span class="pst" style="color:' + st.color + '">' + st.label + '</span></div>';
+  return '<div class="pchip" style="border-left-color:' + (FORMAT_COLOR[row.format] || '#999') + '">' + (time ? '<b>' + escapeHtml(time) + '</b> ' : '') + '<b style="color:' + (FORMAT_COLOR[row.format] || '#333') + '">' + escapeHtml(fmtLabel(row)) + '</b>' + who + '<span class="pst" style="color:' + st.color + '">' + st.label + '</span></div>';
 }
 function shortTitle(t) { t = String(t || ''); return t.length > 44 ? t.slice(0, 42).trim() + '…' : t; }
 // A product's approved clip (Product rows that reached approved/scheduled/posted with a video), for reuse.
