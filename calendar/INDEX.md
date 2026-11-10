@@ -14,4 +14,4 @@ One row per month. Working versions: calendar/work/months/<month>_v<n>.jpg. Chos
 | Sep | Slick Willy | autumn leaves and bonfire (moved here from November by Andy 10 Nov) | PASS (Andy: parked, not approved) | approved/sep_slick_willy_autumn_leaves_PASS_nov_v2.jpg |
 | Oct | Velvet Python | KEEP THE MASK ON | approved (v18) | approved/oct_velvet_python_keep_the_mask_on_approved_v18.jpg |
 | Nov | Hammerin' Hanky | SPARKS FLY, building-site steel beam, angle grinder, sunset (moved here from September by Andy 10 Nov) | approved | approved/nov_hammerin_hanky_sparks_fly_approved_sep_v4.jpg |
-| Dec | ALL SIX characters | Christmas party (Andy 10 Nov: end of the year is all six; Rear Admiral keeps June only) | v1 made 10 Nov (pub, Missing Star story, Willy covered in glitter); Python mask missing, fix next | work/months/dec_v1.jpg |
+| Dec | ALL SIX characters | Christmas party (Andy 10 Nov: end of the year is all six; Rear Admiral keeps June only) | v2 made 10 Nov (empty pub, front row Willy/Hanky/Grip, back row Python/Major Wood/Admiral, glitter trail Willy-Hanky, gold star in Python wrap); not approved | work/months/dec_v2.jpg (v1 also there) |
