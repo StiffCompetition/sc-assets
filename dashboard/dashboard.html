@@ -489,6 +489,24 @@
   .obody input.w, .obody textarea.w { width: 100%; box-sizing: border-box; font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; } .olab { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; } .olab input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
   .oclosed { margin-top: 18px; } .oclosed summary { cursor: pointer; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
   @media (max-width: 760px) { .ocard { grid-template-columns: 36px minmax(0, 1fr); } .oacts { grid-column: 1 / -1; justify-content: flex-start; max-width: none; } }
+
+  /* Ads tab (10 Nov 2026, Andy): one card per campaign, big figures, spend against budget */
+  .adhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .adhead h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; } .adhead .sub { color: var(--muted); margin: 2px 0 0; font-size: 14px; }
+  .adcap { min-width: 260px; } .adcap .t { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; } .adcap .t b { color: var(--ink); font-size: 16px; }
+  .adbar { height: 8px; background: #e6ebf0; border-radius: 4px; overflow: hidden; margin-top: 4px; } .adbar i { display: block; height: 100%; background: var(--c-next); border-radius: 4px; }
+  .adcard { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--c-park); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .adcard.running { border-left-color: var(--c-done); } .adcard.scheduled { border-left-color: var(--c-next); } .adcard.ended { border-left-color: var(--c-park); } .adcard.paused { border-left-color: var(--c-wait); opacity: .8; }
+  .adtop { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .adtop h3 { font-family: var(--display); font-weight: 600; font-size: 21px; margin: 0; }
+  .adpill { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; border-radius: 999px; padding: 3px 11px; color: #fff; background: var(--c-park); }
+  .adpill.running { background: var(--c-done); } .adpill.scheduled { background: var(--c-next); } .adpill.paused { background: var(--c-wait); }
+  .adspend { margin: 2px 0 14px; } .adspend .t { display: flex; justify-content: space-between; font-size: 14px; color: var(--grey); } .adspend .t b { color: var(--ink); font-size: 18px; }
+  .adgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; }
+  .adstat { background: #f6f8fa; border-radius: 10px; padding: 10px 12px; } .adstat .v { font-family: var(--display); font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; } .adstat .l { font-size: 12px; color: var(--grey); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
+  details.adads { margin-top: 12px; } details.adads > summary { cursor: pointer; color: var(--grey); font-size: 14px; font-weight: 600; }
+  .adrow { display: grid; grid-template-columns: minmax(150px, 1.6fr) repeat(5, minmax(60px, 1fr)); gap: 8px; padding: 7px 0; border-bottom: 1px solid #eef1f4; font-size: 14px; font-variant-numeric: tabular-nums; } .adrow:last-child { border-bottom: 0; } .adrow.h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--grey); } .adrow span:not(:first-child) { text-align: right; }
+  @media (max-width: 760px) { .adrow { grid-template-columns: minmax(110px, 1.4fr) repeat(3, minmax(48px, 1fr)); } .adrow span:nth-child(n+5) { display: none; } .adcap { min-width: 0; width: 100%; } }
 </style>
 </head>
 <body>
@@ -635,7 +653,7 @@ let fview = 'To follow';
 let showDone = false;   // 13 Oct 2026 (Andy): lines ticked today are hidden unless asked for
 let view = 'Overview';   // 8 Nov 2026 (Andy): Overview first, then Routine, Alerts, Outcomes, Tasks of the Day
 // A link can open a tab directly: .../webhook/sc-dashboard#Alerts (8 Nov 2026).
-try { let hv = decodeURIComponent(location.hash.slice(1)); if (hv === 'Orders') hv = 'Tasks'; if (hv && ['Overview','Routine','Alerts','Outcomes','Tasks','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
+try { let hv = decodeURIComponent(location.hash.slice(1)); if (hv === 'Orders') hv = 'Tasks'; if (hv && ['Overview','Ads','Routine','Alerts','Outcomes','Tasks','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
 let who = 'Everyone';
 
 const $ = id => document.getElementById(id);
@@ -734,7 +752,7 @@ function flatShown(r) {
   return false;
 }
 function tabCount(v) {
-  if (v === 'Pages' || v === 'Outcomes' || v === 'Overview') return '';
+  if (v === 'Pages' || v === 'Outcomes' || v === 'Overview' || v === 'Ads') return '';
   if (v === 'Content') return '';
   if (v === 'NFT Drops') return '';
   if (v === 'Engage') return eg ? (eg.cards || []).filter(c => c.status === 'draft').length || '' : '';
@@ -759,7 +777,7 @@ function tabCount(v) {
 function goTab(name) { view = name; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); window.scrollTo(0, 0); }
 function renderTabs() {
   // 8 Nov 2026 (Andy): one board for every action (Tasks of the Day); the other tabs are build tools and data.
-  const names = ['Overview', 'Routine', 'Alerts', 'Outcomes', 'Tasks', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
+  const names = ['Overview', 'Ads', 'Routine', 'Alerts', 'Outcomes', 'Tasks', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); });
@@ -1189,7 +1207,7 @@ function render() {
   renderTabs();
   $('list').classList.toggle('wide', view === 'Content');
   $('list').classList.toggle('board', view === 'Now' || view === 'Tasks');
-  $('list').classList.toggle('wide', view === 'Overview');
+  $('list').classList.toggle('wide', view === 'Overview' || view === 'Ads');
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
   // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
@@ -1205,6 +1223,7 @@ function render() {
   if (view === 'Now' || view === 'Tasks') { renderNow(); return; }
   if (view === 'Outcomes') { renderOutcomes(); return; }
   if (view === 'Overview') { renderOverview(); return; }
+  if (view === 'Ads') { renderAds(); return; }
   let html = '';
   if (view === 'Done') {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
@@ -1448,6 +1467,56 @@ function renderNow() {
 }
 
 
+
+// ---- Ads tab (10 Nov 2026, Andy): every campaign with how long it has run, what it cost, views, impressions, clicks. Feed: SC - Ads API (sc-ads), filled from Meta by the scheduled refresh.
+const ADS_URL = BASE + 'sc-ads';
+let ads = null, adsLoading = false, adsErr = '';
+function loadAds(force) {
+  if (adsLoading || (ads && !force)) return;
+  adsLoading = true; adsErr = '';
+  fetch(ADS_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(d => { ads = d && d.campaigns ? d : null; if (!ads) adsErr = 'The Ads feed gave no figures.'; }).catch(e => { adsErr = 'Could not load the ads (' + e.message + ').'; }).finally(() => { adsLoading = false; if (view === 'Ads') render(); });
+}
+function adN(v) { return Number(v || 0).toLocaleString('en-GB'); }
+function adGbp(v) { return '£' + Number(v || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function adAgo(iso) {
+  if (!iso) return 'not yet';
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (m < 2) return 'just now'; if (m < 90) return m + ' min ago';
+  const h = Math.round(m / 60); return h < 36 ? h + ' h ago' : Math.round(h / 24) + ' days ago';
+}
+function adCpc(v) { return '£' + Number(v || 0).toLocaleString('en-GB', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); }
+function adDays(d) { return d === null || d === undefined ? '—' : (Number(d) < 1 ? Math.round(Number(d) * 24) + ' h' : Number(d).toFixed(1).replace(/\.0$/, '') + ' d'); }
+function adCard(c) {
+  const label = { running: 'Running', scheduled: c.hours_to_start !== null ? 'Starts in ' + (c.hours_to_start < 48 ? c.hours_to_start + ' h' : Math.round(c.hours_to_start / 24) + ' days') : 'Scheduled', ended: 'Ended', paused: 'Paused' }[c.phase] || c.phase;
+  const hasVideo = c.video_views > 0 || c.ads.some(a => /video/i.test(a.name));
+  const pct = c.budget_gbp ? Math.min(100, Math.round(c.spend_gbp / c.budget_gbp * 100)) : 0;
+  const bud = c.budget_is_daily ? adGbp(c.budget_gbp) + ' a day' : adGbp(c.budget_gbp);
+  const st = (v, l) => '<div class="adstat"><div class="v">' + v + '</div><div class="l">' + l + '</div></div>';
+  let h = '<section class="adcard ' + esc(c.phase) + '"><div class="adtop"><h3>' + esc(c.campaign) + '</h3><span class="adpill ' + esc(c.phase) + '">' + esc(label) + '</span></div>';
+  h += '<div class="adspend"><div class="t"><span><b>' + adGbp(c.spend_gbp) + '</b> spent</span><span>budget ' + esc(bud) + '</span></div>' + (c.budget_is_daily ? '' : '<div class="adbar"><i style="width:' + pct + '%"></i></div>') + '</div>';
+  h += '<div class="adgrid">'
+    + st(c.phase === 'scheduled' ? '0' : (c.phase === 'paused' ? '—' : adDays(c.days_run)), 'Run so far')
+    + st(c.days_left === null ? (c.phase === 'ended' ? 'Done' : 'No end') : adDays(c.days_left), 'Left')
+    + st(adN(c.impressions), 'Impressions') + st(adN(c.reach), 'People reached')
+    + (hasVideo ? st(adN(c.video_views), 'Video views') : '')
+    + st(adN(c.link_clicks), 'Clicks')
+    + st(c.cpc_gbp === null ? '—' : adCpc(c.cpc_gbp), 'Cost per click')
+    + st(c.ctr_pct === null ? '—' : Number(c.ctr_pct).toFixed(2) + '%', 'Click rate') + '</div>';
+  if (c.ads.length > 1) h += '<details class="adads"><summary>' + c.ads.length + ' ads in this campaign</summary><div class="adrow h"><span>Ad</span><span>Spent</span><span>Impr.</span><span>Clicks</span><span>CPC</span><span>Rate</span></div>'
+    + c.ads.map(a => '<div class="adrow"><span>' + esc(a.name) + '</span><span>' + adGbp(a.spend_gbp) + '</span><span>' + adN(a.impressions) + '</span><span>' + adN(a.link_clicks) + '</span><span>' + (a.link_clicks ? adCpc(a.cpc_gbp) : '—') + '</span><span>' + (a.impressions ? Number(a.ctr_pct).toFixed(2) + '%' : '—') + '</span></div>').join('') + '</details>';
+  return h + '</section>';
+}
+function renderAds() {
+  loadAds(false);
+  let h = '<div class="adhead"><div><h2>Ads</h2><p class="sub">' + (ads ? 'Figures from Meta, updated ' + esc(adAgo(ads.updated_at)) : '') + ' <button class="btn small ghost" id="ad_reload">Refresh</button></p></div>';
+  if (ads) { const cap = ads.spend_cap_gbp || 14, pc = Math.min(100, Math.round(ads.total_spend_gbp / cap * 100)); h += '<div class="adcap"><div class="t"><span>All ads spent</span><span><b>' + adGbp(ads.total_spend_gbp) + '</b> of ' + adGbp(cap) + ' limit</span></div><div class="adbar"><i style="width:' + pc + '%"></i></div></div>'; }
+  h += '</div>';
+  if (!ads && adsLoading) h += '<p style="color:var(--grey)">Collecting the ads…</p>';
+  else if (!ads) h += '<p style="color:var(--c-today)">' + esc(adsErr || 'No ads yet.') + '</p>';
+  else h += ads.campaigns.map(adCard).join('');
+  $('list').innerHTML = h;
+  const b = $('ad_reload'); if (b) b.onclick = () => { ads = null; loadAds(true); render(); };
+}
 // ---- Overview tab (8 Nov 2026, Andy): the figures and health lines in one place (sales channels, baskets, GIF promotion, what is in use).
 // ---- Overview tab (8 Nov 2026, Andy): every statistic in one place from SC - Overview API, each as yesterday · change · running total.
 const OVERVIEW_URL = BASE + 'sc-overview';
