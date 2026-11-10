@@ -52,3 +52,7 @@ Picture: 5:4 landscape, fal google/nano-banana-2.1/edit, 2K. THREE reference pic
 
 ## 7. Prompt template
 Photograph of the action figure in the reference picture ([character traits]) posing for a pin-up calendar, shot as a real macro photograph of a toy in a miniature diorama. He stands on the [left third/centre/right third], full body from boots to hair, head close to the top edge and boots close to the bottom edge, filling about 90 percent of the picture height. NO display stand, NO black disc: boots on the set floor with soft contact shadows. [outfit state]. [prop and how held, away from his face]. [pose]. FACE: big flirtatious smile, eyes into the camera, one eyebrow raised, head tilted, sexy, NOT a frown, NOT stern. Set: [miniature set] in [colour 1] and [colour 2], saturated glossy toy-box colours, [colour] rim lights, glowing bokeh lights, sparkle. No readable writing, no text, no letters. Semi-real toy world: glossy plastic figure with visible joints, toy-scale props, realistic lighting, shallow depth of field. Landscape 5:4.
+
+## Major Wood references (updated 10 Nov 2026)
+- mw_face / mw_head / mw_front replaced with the new shadow-free set (old ones kept in refs/old/).
+- mw_expression.jpg = the calendar expression picture (face reference for all Major Wood month scenes; see Picture Script doc).
