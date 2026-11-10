@@ -10,3 +10,6 @@ Final files: BF_MajorWood_final_v7.mp4, BF_RearAdmiral_final_v7.mp4 (music fades
 SC mark: original bottom-right, x 820-1050, y 1660-1890 (wm_new.png = wm_layer.png).
 One layout for every character (char2.py NAME CLIP MUGPHOTO "LINE" mug 560 1240): UP TO 30% OFF y 280, PRICES DROP. y 400, gold line y 548; figure only, 820 px wide, top y 600; character's standard mug photo 1240 px wide, top y 560, centred x 540; then the standard end card.
 Check every full-size frame before showing: product 80 px clear of text, centred, filling the width, same layout in every video, audio 0 s to end.
+
+## Slick Willy (10 Nov 2026, free version)
+BF_SlickWilly_final_v1.mp4. Source clip zooms and cuts the arms off after 0.5 s, so the figure is the 0.1 s frame (sw_still.png, all of head, arms and fists in frame) with a slow push-in (sw_p1.py), then the standard layout (char3.py, same as char2.py but figure kept inside the frame, background keyed out at the edges, mug centre factor 0.44 because the sw_mug.jpg handle is on the left). Line: NO ONE PINS WILLY.
