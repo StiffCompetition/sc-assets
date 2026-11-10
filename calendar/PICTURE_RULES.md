@@ -81,3 +81,16 @@ LOOK
 - BRIGHT backgrounds: warm, bright and happy, never dark or murky. Night or dusk scenes are lit by plenty of warm bulbs, neon and glowing sky so the whole picture reads bright; nothing near-black.
 - FACE: never a scowl, snarl or villain look; smug, relaxed, cocky and happy (copied-reference scowl must be overridden by the prompt and the expression picture).
 - STORY CLUE must match the action: if he "unhooks the rope", the rope is visibly unhooked and swinging in his hand.
+
+## Lessons from October (10 Nov 2026) - how to edit and finish a picture
+ROUTE
+- fal runs only through the n8n webhook (SC - Image Edit (fal)); the spend gate refuses an endpoint with no price in the price book and any run that takes calendar-2027 past its cap.
+- Every prompt says "real full-size jointed plastic action figure". Give the body reference (vp_front_topless.jpg) for proportions and the face/expression references for the face.
+FIXING A PART
+- Crop the part as a 5:4 box, edit the crop in fal, resize to the crop size, match mean colour inside an inset region, blend back with a feathered rectangle (inset 30-40 px, Gaussian blur 20-28). 5:4 crops come back without reframing.
+- Consistent skin: Lab chroma flatten on a half-resolution silhouette mask (figure vs empty room), applied in 232-row tiles; run it after every blend.
+HARD PLASTIC EDGES
+- Soft shoulder or arm edges come from low contrast between warm skin and a warm gold wall; sharpening, shock filters, matte re-compositing and edge-redraw prompts all failed.
+- What worked: a whole-scene re-render from the picture (one light, contact shadows), then a crop re-render of the shoulders asking for a thin warm rim light along the whole outline. Ask for rim light in the first prompt of every scene.
+SCENE
+- A figure placed on an empty room looks stuck on: always render figure and room together.
