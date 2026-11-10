@@ -10,7 +10,7 @@ def eo3(x): x=min(max(x,0),1); return 1-(1-x)**3
 def eio(x): x=min(max(x,0),1); return x*x*(3-2*x)
 def eob(x,k=1.9):
     x=min(max(x,0),1); return 1+(k+1)*(x-1)**3+k*(x-1)**2
-fr=Image.open('sw_still.png').convert('RGB'); cw,ch_=fr.size
+fr=Image.open('sw_last.png').convert('RGB'); cw,ch_=fr.size
 def glow(im,cx,cy,r,peak=90):
     yy2,xx2=np.mgrid[0:H,0:W]; d=np.sqrt((xx2-cx)**2+(yy2-cy)**2)/r
     al=(np.clip(1-d,0,1)**2*peak).astype(np.uint8)
@@ -19,7 +19,7 @@ bgG=Image.new('RGBA',(W,H),(0,0,0,255)); glow(bgG,W/2,1000,750)
 bgK=Image.new('RGBA',(W,H),(0,0,0,255))
 FW=820; FINAL=dict(s=FW/fr.width,x=(W-FW)//2,y=600,ch=1.08*FW)
 def figure(k):
-    s0=0.93*W/fr.width; s=lerp(s0,FINAL['s'],k); x=lerp((W-fr.width*s0)/2,FINAL['x'],k); y=lerp((H-fr.height*s0)/2,FINAL['y'],k)
+    s0=1920/fr.height; s=lerp(s0,FINAL['s'],k); x=lerp(-(fr.width*s0-W)/2,FINAL['x'],k); y=lerp(0,FINAL['y'],k)
     w=int(fr.width*s); h=int(fr.height*s)
     im=fr.resize((w,h),Image.LANCZOS).convert('RGBA')
     ch=int(lerp(h,FINAL['ch'],k)); im=im.crop((0,0,w,min(ch,h)))
@@ -38,10 +38,10 @@ def fit(t,size,fill,sw,maxw=960):
         if im.width<=maxw: return im
         size-=2
 A=fit("UP TO 30% OFF",190,(255,255,255),9); B=fit("PRICES DROP.",100,(255,255,255),7)
-ims=[fit(x,66,(255,196,90),6) for x in LINES]
+ims=[fit(x,96,(255,196,90),7) for x in LINES]
 C=Image.new('RGBA',(max(i.width for i in ims),sum(i.height for i in ims)+10*(len(ims)-1)),(0,0,0,0)); y_=0
 for i in ims: C.alpha_composite(i,((C.width-i.width)//2,y_)); y_+=i.height+10
-YA,YB,YC=280,400,548
+YA,YB,YC=280,400,425
 def place(im,layer,cx,y,scale=1.0,alpha=1.0):
     if scale!=1.0: layer=layer.resize((max(1,int(layer.width*scale)),max(1,int(layer.height*scale))),Image.LANCZOS)
     if alpha<1.0:
@@ -73,11 +73,8 @@ for i in range(int(DUR*FPS)):
     if t>=0.45:
         u=(t-0.45)/0.3; sc=1+0.3*(1-eob(u,1.2)) if u<1 else 1
         place(base,A,W/2,YA-(A.height*sc-A.height)/2,sc,alpha=min(1,u*3))
-    if t>=0.8:
-        u=(t-0.8)/0.35; x=W/2-(1-eo3(u))*1200; dy=14*eob((t-1.15)/0.2,2.5) if t>1.15 else 0
-        place(base,B,x,YB+dy)
-    if t>=1.4:
-        u=(t-1.4)/0.35; x=W/2-(1-eo3(u))*1200; dy=-14*eob((t-1.75)/0.2,2.5) if t>1.75 else 0
+    if t>=0.85:
+        u=(t-0.85)/0.35; x=W/2-(1-eo3(u))*1200; dy=-14*eob((t-1.2)/0.2,2.5) if t>1.2 else 0
         place(base,C,x,YC+dy)
     base.alpha_composite(wm)
     p.stdin.write(base.convert('RGB').tobytes())

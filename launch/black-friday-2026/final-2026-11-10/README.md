@@ -11,5 +11,11 @@ SC mark: original bottom-right, x 820-1050, y 1660-1890 (wm_new.png = wm_layer.p
 One layout for every character (char2.py NAME CLIP MUGPHOTO "LINE" mug 560 1240): UP TO 30% OFF y 280, PRICES DROP. y 400, gold line y 548; figure only, 820 px wide, top y 600; character's standard mug photo 1240 px wide, top y 560, centred x 540; then the standard end card.
 Check every full-size frame before showing: product 80 px clear of text, centred, filling the width, same layout in every video, audio 0 s to end.
 
-## Slick Willy (10 Nov 2026, free version)
-BF_SlickWilly_final_v1.mp4. Source clip zooms and cuts the arms off after 0.5 s, so the figure is the 0.1 s frame (sw_still.png, all of head, arms and fists in frame) with a slow push-in (sw_p1.py), then the standard layout (char3.py, same as char2.py but figure kept inside the frame, background keyed out at the edges, mug centre factor 0.44 because the sw_mug.jpg handle is on the left). Line: NO ONE PINS WILLY.
+## Slick Willy (10 Nov 2026, final)
+BF_SlickWilly_final_v7.mp4: the full source animation (sw.mp4) then the standard layout via char5.py. Text approved by Andy: UP TO 30% OFF / HARD TO PIN. HARD TO BEAT. (no PRICES DROP. line for Willy). Mug slide from giftguide/src/sw_mug.jpg (handle on the left, centre factor 0.44). The source clip's arms leave the frame from 1.4 s; a clean version needs a new 400-credit Leonardo clip (Andy's yes first).
+
+## Final set (10 Nov 2026)
+Major Wood: UP TO 30% OFF / PRICES DROP. / MAJOR WOOD STAYS UP.
+Rear Admiral: UP TO 30% OFF / PRICES DROP. / ANCHOR'S DOWN.
+Slick Willy: UP TO 30% OFF / HARD TO PIN. HARD TO BEAT.
+Rule: Andy approves the text of every video line before any clip is built.
