@@ -75,3 +75,9 @@ STORY
 - International themes only (no US-only events, no hemisphere-bound seasons).
 LOOK
 - Pin-up glamour: strong warm rim light, two bold colours plus gold, three depth layers (but nothing blurred in front of him), wide stance and open chest, arms clear of the face, no display stand, no writing.
+
+## More standing feedback (10 Nov 2026, from February)
+- NO garment hanging off one shoulder on any character: it reads feminine and cheap. Garments are worn symmetrically (both shoulders), open and symmetric, tied at the waist, or off. Masculine only. (Major Wood vest: open and symmetric, not off one shoulder; The Grip: singlet tied or hanging symmetrically at the waist.)
+- BRIGHT backgrounds: warm, bright and happy, never dark or murky. Night or dusk scenes are lit by plenty of warm bulbs, neon and glowing sky so the whole picture reads bright; nothing near-black.
+- FACE: never a scowl, snarl or villain look; smug, relaxed, cocky and happy (copied-reference scowl must be overridden by the prompt and the expression picture).
+- STORY CLUE must match the action: if he "unhooks the rope", the rope is visibly unhooked and swinging in his hand.
