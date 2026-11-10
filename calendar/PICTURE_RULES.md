@@ -33,7 +33,7 @@ Picture: 5:4 landscape, fal google/nano-banana-2.1/edit, 2K. THREE reference pic
 | Sep | Hammerin' Hanky | bubble blue + hot pink |
 | Oct | Velvet Python | pumpkin orange + purple |
 | Nov | Slick Willy | amber red + teal |
-| Dec | Rear Admiral | Christmas red + green |
+| Dec | All six | Christmas red + green |
 
 ## 5. Real location, tinge of toy (Andy 9 Nov 2026: "too toy world")
 - The set is a REAL full-size location photographed like a real calendar shoot: real materials, real light, real food, real equipment. Prompt words never include miniature, diorama, macro or toy-scale.

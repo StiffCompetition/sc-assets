@@ -14,4 +14,4 @@ One row per month. Working versions: calendar/work/months/<month>_v<n>.jpg. Chos
 | Sep | Slick Willy | autumn leaves and bonfire (moved here from November by Andy 10 Nov) | PASS (Andy: parked, not approved) | approved/sep_slick_willy_autumn_leaves_PASS_nov_v2.jpg |
 | Oct | Velvet Python | KEEP THE MASK ON | approved (v18) | approved/oct_velvet_python_keep_the_mask_on_approved_v18.jpg |
 | Nov | Hammerin' Hanky | SPARKS FLY, building-site steel beam, angle grinder, sunset (moved here from September by Andy 10 Nov) | approved | approved/nov_hammerin_hanky_sparks_fly_approved_sep_v4.jpg |
-| Dec | Rear Admiral | SPECIAL DELIVERY ship deck | not made | - |
+| Dec | ALL SIX characters | Christmas party (Andy 10 Nov: end of the year is all six; Rear Admiral keeps June only) | not made | - |
