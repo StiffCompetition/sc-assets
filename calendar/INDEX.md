@@ -4,7 +4,7 @@ One row per month. Working versions: calendar/work/months/<month>_v<n>.jpg. Chos
 | Month | Character | Story | Status | Chosen file |
 |---|---|---|---|---|
 | Jan | Major Wood | snow, dog tags, salute (9 Nov plan); New Year's Eve rooftop LIGHT MY FUSE (script rewrite) - Andy to choose | made as snow v2, not approved; likeness fix due | work/months/jan_v2.jpg |
-| Feb | Velvet Python | COME ON IN | accepted | approved/feb_velvet_python_come_on_in_accepted_feb_v2.jpg |
+| Feb | Velvet Python | COME ON IN, theatre red carpet kept (Andy 10 Nov); Valentine touch added: snake neon curled into a heart plus rose petals | v3 made, waiting for Andy | work/months/feb_v3.jpg (v2 accepted copy in approved/) |
 | Mar | The Grip | keg | accepted | approved/mar_the_grip_accepted.jpg |
 | Apr | Slick Willy | Easter bakery | approved (latest on hand = v3) | approved/apr_slick_willy_latest_apr_v3.jpg |
 | May | Hammerin' Hanky | scaffold and hammer | approved | approved/may_hammerin_hanky_approved.jpg |
