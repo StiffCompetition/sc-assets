@@ -94,3 +94,8 @@ HARD PLASTIC EDGES
 - What worked: a whole-scene re-render from the picture (one light, contact shadows), then a crop re-render of the shoulders asking for a thin warm rim light along the whole outline. Ask for rim light in the first prompt of every scene.
 SCENE
 - A figure placed on an empty room looks stuck on: always render figure and room together.
+
+## Andy's change rule and month links (10 Nov 2026)
+- When Andy changes a decision it is changed everywhere at once (rules, index, script doc, Todoist) and the old version is never used again.
+- A month's picture ties ONLY to the calendar month itself. No organisations, charities, brands, shop events or named occasions.
+- No hemisphere-bound seasons: November is NOT autumn (spring in the south). The November autumn-leaves bonfire idea is DROPPED. November needs a new month-only idea from Andy.
