@@ -13,5 +13,5 @@ One row per month. Working versions: calendar/work/months/<month>_v<n>.jpg. Chos
 | Aug | The Grip | beach grill | made v2, redo needed | work/months/aug_v2.jpg |
 | Sep | Hammerin' Hanky | SPARKS FLY | approved (sep_v4) | approved/sep_v4_hanky_sparks_fly.jpg |
 | Oct | Velvet Python | KEEP THE MASK ON | approved (v18) | approved/oct_velvet_python_keep_the_mask_on.jpg |
-| Nov | Slick Willy | SLICK OPERATOR vault heist | not made | - |
+| Nov | Slick Willy | autumn leaves and bonfire (Andy 10 Nov; month link = the calendar month only) | made v1, v2; PASSED for now (face smirk and size 84% need fixing) | work/months/nov_v2.jpg |
 | Dec | Rear Admiral | SPECIAL DELIVERY ship deck | not made | - |
