@@ -95,7 +95,6 @@ HARD PLASTIC EDGES
 SCENE
 - A figure placed on an empty room looks stuck on: always render figure and room together.
 
-## Andy's change rule and month links (10 Nov 2026)
-- When Andy changes a decision it is changed everywhere at once (rules, index, script doc, Todoist) and the old version is never used again.
-- A month's picture ties ONLY to the calendar month itself. No organisations, charities, brands, shop events or named occasions.
-- No hemisphere-bound seasons: November is NOT autumn (spring in the south). The November autumn-leaves bonfire idea is DROPPED. November needs a new month-only idea from Andy.
+## Month links (10 Nov 2026, Andy)
+- A month's picture ties only to the calendar month itself: no organisations, charities, brands or shop events.
+- Andy 10 Nov: autumn does not work for November; the autumn picture belongs in an earlier month, so the months get swapped. Which month and what moves is Andy's decision (pending).
