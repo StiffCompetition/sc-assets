@@ -56,3 +56,22 @@ Photograph of the action figure in the reference picture ([character traits]) po
 ## Major Wood references (updated 10 Nov 2026)
 - mw_face / mw_head / mw_front replaced with the new shadow-free set (old ones kept in refs/old/).
 - mw_expression.jpg = the calendar expression picture (face reference for all Major Wood month scenes; see Picture Script doc).
+
+## Andy's standing feedback (10 Nov 2026) - apply to EVERY calendar picture, check before showing
+SIZE AND FOCUS
+- Figure fills about 90-92% of the picture height, head near the top edge, boots near the bottom edge, same size on every page.
+- Both boots fully visible. Nothing in front of him: no foreground clutter, no blurred foreground objects.
+- Deep focus: he, his props and the set around him are sharp; only the far background is soft. Never "99% blur".
+REAL SCALE
+- The set is a real full-size world and he is a plastic figure inside it; props are human-scale (grill to his hip, full-size table and bottles). No miniature or toy-size props, no toy-world look. One tiny toy touch only.
+LIKENESS AND OUTFIT
+- Real likeness of the character; face from his approved expression/month picture. One skin colour on face and body (edit head and body in one pass). Satin skin, soft highlight, never oily or shiny.
+- Keep each character's signature clothing: tops off but the signature garment still shows (The Grip: blue singlet with yellow trim pulled down, hanging at the waist; Major Wood: vest open and off the shoulders, knee pads, baggy olive trousers, chunky boots).
+FACE AND MOOD
+- Face evenly lit, no cap or hair shadow; eyes into the lens.
+- Confident, cocky, happy, masculine (fireman's-calendar), a one-sided smirk, strong brows, chin level. Never soppy, dreamy, strained, goofy or an open toothy grin.
+STORY
+- The image is the story: show it with visible clues and one action beat (a spray, a flip, sparks). Words belong in the caption, never in the picture.
+- International themes only (no US-only events, no hemisphere-bound seasons).
+LOOK
+- Pin-up glamour: strong warm rim light, two bold colours plus gold, three depth layers (but nothing blurred in front of him), wide stance and open chest, arms clear of the face, no display stand, no writing.
