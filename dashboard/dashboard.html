@@ -506,18 +506,51 @@
   .adstat { background: #f6f8fa; border-radius: 10px; padding: 10px 12px; } .adstat .v { font-family: var(--display); font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; } .adstat .l { font-size: 12px; color: var(--grey); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
   details.adads { margin-top: 12px; } details.adads > summary { cursor: pointer; color: var(--grey); font-size: 14px; font-weight: 600; }
   .adrow { display: grid; grid-template-columns: minmax(150px, 1.6fr) repeat(5, minmax(60px, 1fr)); gap: 8px; padding: 7px 0; border-bottom: 1px solid #eef1f4; font-size: 14px; font-variant-numeric: tabular-nums; } .adrow:last-child { border-bottom: 0; } .adrow.h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--grey); } .adrow span:not(:first-child) { text-align: right; }
+
+  /* 10 Nov 2026 (Andy): compact, sticky header with key figures; tighter spacing on every tab. */
+  body { font-size: 15px; line-height: 1.4; }
+  #top { position: sticky; top: 0; z-index: 50; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  #top header { border-bottom: 0; padding: 4px 14px; gap: 10px; }
+  #top header h1 { font-size: 17px; }
+  .keyrow { display: flex; flex-wrap: wrap; gap: 6px; padding: 3px 14px 5px; background: #fff; align-items: center; }
+  .kchip { display: inline-flex; align-items: baseline; gap: 6px; padding: 2px 9px; border: 1px solid var(--line); background: #f6f8fa; font-size: 12.5px; color: var(--ink); border-radius: 12px; cursor: pointer; font-family: inherit; line-height: 1.4; }
+  .kchip .kl { color: var(--grey); } .kchip b { font-variant-numeric: tabular-nums; }
+  .kchip.red { background: #fdecea; border-color: #e8a29d; } .kchip.red b { color: #c62828; } .kchip.amber { background: #fff6e0; border-color: #ecc874; } .kchip.green b { color: var(--c-done); }
+  #top .tabs { padding: 3px 14px; gap: 3px; border-top: 1px solid #eef0f2; }
+  #top .tab { padding: 2px 9px; font-size: 12.5px; }
+  main { padding: 10px 12px 40px; }
+  main.board { padding-top: 6px; }
+  .group-title { margin: 12px 0 5px; }
+  .card { padding: 8px 12px; margin-bottom: 5px; gap: 10px; }
+  .action { font-size: 16px; margin-top: 3px; }
+  .pf { margin-top: 5px; } .pf div { margin-top: 3px; }
+  .side { top: 92px; max-height: calc(100vh - 100px); }
+  .empty { padding: 20px 0; }
+  .adhead { margin-bottom: 8px; gap: 8px; } .adhead h2 { font-size: 20px; } .adhead .sub { margin: 0; font-size: 13px; }
+  .adcap { min-width: 240px; } .adbar { height: 6px; margin-top: 3px; }
+  .adcard { padding: 9px 12px; margin-bottom: 8px; border-radius: 8px; border-left-width: 5px; }
+  .adtop { margin-bottom: 4px; gap: 8px; } .adtop h3 { font-size: 16px; } .adpill { font-size: 11px; padding: 1px 9px; }
+  .adverdict { font-size: 14.5px; font-weight: 600; margin: 2px 0 6px; } .adverdict.bad { color: #c62828; } .adverdict.good { color: var(--c-done); } .adverdict.watch { color: #b9770e; } .adverdict.early, .adverdict.waiting, .adverdict.paused, .adverdict.done { color: var(--ink); }
+  .adspend { margin: 0 0 6px; } .adspend .t { font-size: 13px; } .adspend .t b { font-size: 15px; }
+  .adgrid { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 5px; }
+  .adstat { padding: 4px 8px; border-radius: 6px; } .adstat .v { font-size: 17px; } .adstat .l { font-size: 10.5px; margin-top: 0; }
+  details.adads { margin-top: 6px; } .adrow { padding: 4px 0; font-size: 13px; }
+  .backbtn { text-decoration: none; display: inline-block; }
   @media (max-width: 760px) { .adrow { grid-template-columns: minmax(110px, 1.4fr) repeat(3, minmax(48px, 1fr)); } .adrow span:nth-child(n+5) { display: none; } .adcap { min-width: 0; width: 100%; } }
 </style>
 </head>
 <body>
+<div id="top">
 <header>
   <img class="logo-img" src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/cl_SCSMAuto_sc_letters_logo_header_v1.png" alt="SC" onerror="this.outerHTML='<div class=&quot;logo&quot;>SC</div>'">
-  <div><h1>SC Dashboard</h1><p>Tasks of the Day</p></div>
+  <div><h1>Dashboard</h1></div>
   <div class="spacer"></div>
   <button class="btn ghost" id="giftBtn">Gift NFT</button>
   <button class="btn" id="addBtn">+ Add</button>
 </header>
+<div class="keyrow" id="keyrow"></div>
 <div class="tabs" id="tabs"></div>
+</div>
 <main id="list"><div class="empty">Loading…</div></main>
 
 <dialog id="dlg">
@@ -675,6 +708,7 @@ async function load() {
     loadBaskets();
     loadChannels();
     loadLocks();
+    loadAds(false);
     if (!eg) fetch(EG_LIST).then(r => r.ok ? r.json() : null).then(d => { if (d && !eg) { eg = d; renderTabs(); } }).catch(() => {});
   } catch (e) {
     $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
@@ -775,12 +809,28 @@ function tabCount(v) {
 }
 
 function goTab(name) { view = name; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); window.scrollTo(0, 0); }
+
+// Key figures in the pinned header (10 Nov 2026, Andy): locks in use, red alerts, tasks waiting on Andy, ad spend vs limit.
+function renderKeyRow() {
+  const el = $('keyrow'); if (!el) return;
+  const nLocks = locks ? locks.length : null;
+  const reds = rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && !isHidden(r) && aRed(r)).length;
+  const wait = rows.filter(r => r.owner === 'Andy' && ACTIVE.includes(r.status) && !isHidden(r) && !['MISSION', 'DAILY', 'ALERT', 'SYSTEM'].includes(r.type)).length;
+  const chip = (cls, label, val, tab, tip) => '<button type="button" class="kchip ' + cls + '" data-go="' + tab + '" title="' + esc(tip || '') + '"><span class="kl">' + label + '</span><b>' + val + '</b></button>';
+  let h = chip(nLocks ? 'amber' : 'green', 'Locks in use', nLocks === null ? '…' : (nLocks || 'none'), 'Tasks', locks && locks.length ? locks.map(l => l.file).join(', ') : 'Nothing locked');
+  h += chip(reds ? 'red' : 'green', 'Red alerts', reds || 'none', 'Alerts', '');
+  h += chip(wait ? 'amber' : 'green', 'Waiting on you', wait, 'Tasks', '');
+  if (ads) { const cap = ads.spend_cap_gbp || 18; h += chip(ads.total_spend_gbp >= cap * 0.9 ? 'red' : '', 'Ad spend', adGbp(ads.total_spend_gbp) + ' of ' + adGbp(cap), 'Ads', 'Updated ' + adAgo(ads.updated_at)); }
+  el.innerHTML = h;
+  el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goTab(b.dataset.go));
+}
 function renderTabs() {
+  renderKeyRow();
   // 8 Nov 2026 (Andy): one board for every action (Tasks of the Day); the other tabs are build tools and data.
   const names = ['Overview', 'Ads', 'Routine', 'Alerts', 'Outcomes', 'Tasks', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
-  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { view = b.dataset.v; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); });
+  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { if (b.dataset.v === 'Content') { location.href = BASE + 'sc-content'; return; } view = b.dataset.v; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); });
   $('whoSel').onchange = e => { who = e.target.value; render(); };
 }
 
@@ -959,7 +1009,7 @@ function cleanupBar(list) {
 // In use line (6 Nov 2026, Andy): what one chat at a time may use (browser, Shopify theme, shared files), and which chat holds it. From SC - File Lock (list).
 const LOCK_URL = BASE + 'sc-file-lock';
 let locks = null;
-function loadLocks() { fetch(LOCK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).then(d => { locks = (d && d.locks) || []; if (view === 'Tasks' || view === 'Now' || view === 'Alerts' || view === 'Today' || view === 'Routine') render(); }).catch(() => {}); }
+function loadLocks() { fetch(LOCK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).then(d => { locks = (d && d.locks) || []; renderKeyRow(); if (view === 'Tasks' || view === 'Now' || view === 'Alerts' || view === 'Today' || view === 'Routine') render(); }).catch(() => {}); }
 function inUseHtml() {
   if (!locks || !locks.length) return '';
   return '<div class="inuse"><b>In use</b>' + locks.map(l => '<span class="iu">' + esc(l.file) + (safeUrl(l.holder) ? ' · <a target="_blank" rel="noopener" href="' + esc(l.holder) + '">chat</a>' : '') + ' · until ' + esc(new Date(l.expires_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + '</span>').join('') + '</div>';
@@ -1211,7 +1261,8 @@ function render() {
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
   // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
-  if (view === 'Content') { $('list').innerHTML = '<iframe id="contentFrame" src="' + BASE + 'sc-content" style="display:block;width:100%;height:calc(100vh - 150px);border:0;background:#fff"></iframe>'; fitContentFrame(); return; }
+  if (view === 'Content') { location.href = BASE + 'sc-content'; return; }
+  if (false) { $('list').innerHTML = '<iframe id="contentFrame" src="' + BASE + 'sc-content" style="display:block;width:100%;height:calc(100vh - 150px);border:0;background:#fff"></iframe>'; fitContentFrame(); return; }
   if (view === 'NFT Drops') { $('list').innerHTML = '<iframe src="https://n8n-production-afc2.up.railway.app/webhook/sc-drop-tool" style="width:100%;height:calc(100vh - 150px);min-height:600px;border:0;border-radius:8px;background:#111"></iframe>'; return; }
   if (view === 'Products') { renderProducts(); return; }
   if (view === 'Returns') { renderReturns(); return; }
@@ -1474,7 +1525,7 @@ let ads = null, adsLoading = false, adsErr = '';
 function loadAds(force) {
   if (adsLoading || (ads && !force)) return;
   adsLoading = true; adsErr = '';
-  fetch(ADS_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(d => { ads = d && d.campaigns ? d : null; if (!ads) adsErr = 'The Ads feed gave no figures.'; }).catch(e => { adsErr = 'Could not load the ads (' + e.message + ').'; }).finally(() => { adsLoading = false; if (view === 'Ads') render(); });
+  fetch(ADS_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(d => { ads = d && d.campaigns ? d : null; if (!ads) adsErr = 'The Ads feed gave no figures.'; renderKeyRow(); }).catch(e => { adsErr = 'Could not load the ads (' + e.message + ').'; }).finally(() => { adsLoading = false; if (view === 'Ads') render(); });
 }
 function adN(v) { return Number(v || 0).toLocaleString('en-GB'); }
 function adGbp(v) { return '£' + Number(v || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -1493,14 +1544,15 @@ function adCard(c) {
   const bud = c.budget_is_daily ? adGbp(c.budget_gbp) + ' a day' : adGbp(c.budget_gbp);
   const st = (v, l) => '<div class="adstat"><div class="v">' + v + '</div><div class="l">' + l + '</div></div>';
   let h = '<section class="adcard ' + esc(c.phase) + '"><div class="adtop"><h3>' + esc(c.campaign) + '</h3><span class="adpill ' + esc(c.phase) + '">' + esc(label) + '</span></div>';
+  if (c.verdict) h += '<div class="adverdict ' + esc(c.state || '') + '">' + esc(c.verdict) + '</div>';
   h += '<div class="adspend"><div class="t"><span><b>' + adGbp(c.spend_gbp) + '</b> spent</span><span>budget ' + esc(bud) + '</span></div>' + (c.budget_is_daily ? '' : '<div class="adbar"><i style="width:' + pct + '%"></i></div>') + '</div>';
   h += '<div class="adgrid">'
-    + st(c.phase === 'scheduled' ? '0' : (c.phase === 'paused' ? '—' : adDays(c.days_run)), 'Run so far')
+    + st(c.phase === 'scheduled' ? '0' : (c.phase === 'paused' ? '—' : (c.days_run ? adDays(c.days_run) : 'Not yet')), 'Run so far')
     + st(c.days_left === null ? (c.phase === 'ended' ? 'Done' : 'No end') : adDays(c.days_left), 'Left')
-    + st(adN(c.impressions), 'Impressions') + st(adN(c.reach), 'People reached')
+    + st(adN(c.impressions), 'Impressions') + st(adN(c.reach), 'Reached')
     + (hasVideo ? st(adN(c.video_views), 'Video views') : '')
     + st(adN(c.link_clicks), 'Clicks')
-    + st(c.cpc_gbp === null ? '—' : adCpc(c.cpc_gbp), 'Cost per click')
+    + st(c.cpc_gbp === null ? '—' : adCpc(c.cpc_gbp), 'Per click')
     + st(c.ctr_pct === null ? '—' : Number(c.ctr_pct).toFixed(2) + '%', 'Click rate') + '</div>';
   if (c.ads.length > 1) h += '<details class="adads"><summary>' + c.ads.length + ' ads in this campaign</summary><div class="adrow h"><span>Ad</span><span>Spent</span><span>Impr.</span><span>Clicks</span><span>CPC</span><span>Rate</span></div>'
     + c.ads.map(a => '<div class="adrow"><span>' + esc(a.name) + '</span><span>' + adGbp(a.spend_gbp) + '</span><span>' + adN(a.impressions) + '</span><span>' + adN(a.link_clicks) + '</span><span>' + (a.link_clicks ? adCpc(a.cpc_gbp) : '—') + '</span><span>' + (a.impressions ? Number(a.ctr_pct).toFixed(2) + '%' : '—') + '</span></div>').join('') + '</details>';
@@ -1508,8 +1560,8 @@ function adCard(c) {
 }
 function renderAds() {
   loadAds(false);
-  let h = '<div class="adhead"><div><h2>Ads</h2><p class="sub">' + (ads ? 'Figures from Meta, updated ' + esc(adAgo(ads.updated_at)) : '') + ' <button class="btn small ghost" id="ad_reload">Refresh</button></p></div>';
-  if (ads) { const cap = ads.spend_cap_gbp || 14, pc = Math.min(100, Math.round(ads.total_spend_gbp / cap * 100)); h += '<div class="adcap"><div class="t"><span>All ads spent</span><span><b>' + adGbp(ads.total_spend_gbp) + '</b> of ' + adGbp(cap) + ' limit</span></div><div class="adbar"><i style="width:' + pc + '%"></i></div></div>'; }
+  let h = '<div class="adhead"><div><h2>Ads</h2><p class="sub">' + (ads ? 'Figures from Meta, updated ' + esc(adAgo(ads.updated_at)) + ' (refreshes hourly)' : '') + ' <button class="btn small ghost" id="ad_reload">Refresh</button></p></div>';
+  if (ads) { const cap = ads.spend_cap_gbp || 18, pc = Math.min(100, Math.round(ads.total_spend_gbp / cap * 100)); h += '<div class="adcap"><div class="t"><span>All ads spent</span><span><b>' + adGbp(ads.total_spend_gbp) + '</b> of ' + adGbp(cap) + ' limit</span></div><div class="adbar"><i style="width:' + pc + '%"></i></div></div>'; }
   h += '</div>';
   if (!ads && adsLoading) h += '<p style="color:var(--grey)">Collecting the ads…</p>';
   else if (!ads) h += '<p style="color:var(--c-today)">' + esc(adsErr || 'No ads yet.') + '</p>';
