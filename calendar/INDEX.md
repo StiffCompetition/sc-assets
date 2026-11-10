@@ -11,7 +11,7 @@ One row per month. Working versions: calendar/work/months/<month>_v<n>.jpg. Chos
 | Jun | Rear Admiral | sunset deck | approved (latest on hand = v1) | approved/jun_rear_admiral_latest_jun_v1.jpg |
 | Jul | Major Wood | fireworks, sparkler | made v9, not approved (likeness, size) | work/months/jul_v9.jpg |
 | Aug | The Grip | beach grill | made v2, redo needed | work/months/aug_v2.jpg |
-| Sep | Slick Willy | autumn leaves and bonfire (moved here from November by Andy 10 Nov) | made v2, not approved (needs smirk, 90-92% height, bigger head) | approved/sep_slick_willy_autumn_leaves_nov_v2_moved.jpg |
-| Oct | Velvet Python | KEEP THE MASK ON | approved (v18) | approved/oct_velvet_python_keep_the_mask_on.jpg |
+| Sep | Velvet Python | KEEP THE MASK ON (moved here from October because Slick Willy takes October) | approved (v18) | approved/sep_velvet_python_keep_the_mask_on_approved_oct_v18.jpg |
+| Oct | Slick Willy | autumn leaves and bonfire (moved here by Andy 10 Nov) | PASS (Andy: Slick Willy is a pass, parked) | approved/oct_slick_willy_autumn_leaves_PASS_nov_v2.jpg |
 | Nov | Hammerin' Hanky | SPARKS FLY, building-site steel beam, angle grinder, sunset (moved here from September by Andy 10 Nov) | approved | approved/nov_hammerin_hanky_sparks_fly_approved_sep_v4.jpg |
 | Dec | Rear Admiral | SPECIAL DELIVERY ship deck | not made | - |
