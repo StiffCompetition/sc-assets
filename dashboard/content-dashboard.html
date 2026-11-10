@@ -341,6 +341,9 @@
 .lib-card video{width:100%;aspect-ratio:9/16;max-height:380px;object-fit:cover;background:#000;display:block}
 .lib-body{padding:9px 10px 11px;display:flex;flex-direction:column;gap:6px;flex:1}
 .camp-h{font-size:18px;margin:18px 0 10px;border-bottom:3px solid #F5B800;padding-bottom:4px}
+.cmp-sec{margin:0 0 14px}.cmp-sec h4{margin:8px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#666}
+.cmp-list{display:flex;flex-direction:column;gap:4px}.cmp-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);background:#fff;font-size:14px}.cmp-row[data-pid]{cursor:pointer}.cmp-row[data-pid]:hover{background:#fff8e6}.cmp-d{font-family:var(--mono);font-size:12px;min-width:92px;color:#555}.cmp-t{flex:1;min-width:160px}
+.cmp-empty{font-size:13px;color:#999;padding:2px 0}.cmp-draft{border:1px solid var(--line);border-left:4px solid #F5B800;background:#fff;padding:10px 12px;margin-bottom:8px;max-width:760px}.cmp-dh{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.cmp-copy{white-space:pre-wrap;font-family:inherit;font-size:14px;margin:8px 0;background:#fafafa;padding:8px}.cmp-facts{font-size:13px;color:#555}.cmp-btns{display:flex;gap:8px;margin-top:8px}.cmp-draft video{max-width:260px;display:block;margin:6px 0}
 .hype-sec{margin:0 0 26px}
 .hype-wk{font-size:15px;margin:16px 0 8px;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
 .hype-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
@@ -455,6 +458,7 @@ html.embedded main{padding-top:12px}
   </div>
   <div class="tickfilter" id="tf_character"><button type="button">Characters</button><div class="tickpanel"></div></div>
   <div class="tickfilter" id="tf_format"><button type="button">Formats</button><div class="tickpanel"></div></div>
+  <div class="tickfilter" id="tf_campaign"><button type="button">Campaigns</button><div class="tickpanel"></div></div>
   <div class="tickfilter" id="tf_status"><button type="button">Statuses</button><div class="tickpanel"></div></div>
   <div class="tickfilter" id="tf_platform"><button type="button">Platforms</button><div class="tickpanel"></div></div>
   <input type="search" id="filterSearch" placeholder="search text...">
@@ -505,7 +509,7 @@ function dayIndex(dateStr) {
 let ROWS = [];
 let PRESS_ITEMS = [];
 let VIEW = 'grid';
-const FILTERS = { character: new Set(), format: new Set(), status: new Set(), platform: new Set() };
+const FILTERS = { character: new Set(), format: new Set(), campaign: new Set(), status: new Set(), platform: new Set() };
 
 function decodeEntities(s) {
   if (!s) return s;
@@ -633,7 +637,7 @@ function updateTickButton(key) {
   const wrap = document.getElementById('tf_' + key);
   const btn = wrap.querySelector('button');
   const n = FILTERS[key].size;
-  const label = { character: 'Characters', format: 'Formats', status: 'Statuses', platform: 'Platforms' }[key];
+  const label = { character: 'Characters', format: 'Formats', campaign: 'Campaigns', status: 'Statuses', platform: 'Platforms' }[key];
   btn.textContent = n ? label + ' (' + n + ')' : label;
   btn.classList.toggle('set', n > 0);
 }
@@ -647,6 +651,7 @@ function populateFilters() {
   const platforms = [...new Set(ROWS.flatMap(r => (r.platforms || '').split(',').map(p => p.trim()).filter(Boolean)))].sort();
   buildTickPanel('character', chars);
   buildTickPanel('format', formats);
+  buildTickPanel('campaign', [...new Set(ROWS.map(campaignOf).filter(Boolean))].sort());
   buildTickPanel('status', statuses);
   buildTickPanel('platform', platforms);
 }
@@ -659,6 +664,7 @@ function filteredRows() {
     (showPR || r.status !== 'posted') &&
     (!FILTERS.character.size || FILTERS.character.has(r.character)) &&
     (!FILTERS.format.size || FILTERS.format.has(r.format)) &&
+    (!FILTERS.campaign.size || FILTERS.campaign.has(campaignOf(r))) &&
     (!FILTERS.status.size || FILTERS.status.has(stateName(r))) &&
     (!FILTERS.platform.size || (r.platforms || '').split(',').map(x => x.trim()).some(p => FILTERS.platform.has(p))) &&
     (!q || (r.text_content || '').toLowerCase().includes(q))
@@ -1769,6 +1775,66 @@ async function saveRepost(it) {
 }
 document.getElementById('btnLibrary').addEventListener('click', () => { VIEW = 'library'; setViewButtons(); render(); });
 
+
+// ---------- Campaign names (10 Nov 2026, Andy): any post of any type can belong to a campaign. Read-only: the name comes from the row's "Campaign: <name> |" note, or from the wording of Launch/Campaign posts. ----------
+function canonCampaign(s) {
+  const t = String(s || '').toLowerCase();
+  if (/how stiff|quiz/.test(t)) return 'How Stiff Are You?';
+  if (/sticker/.test(t)) return 'Sticker campaign';
+  if (/christmas|xmas|stiffmas/.test(t)) return 'Christmas 2026';
+  if (/opensea|blueprint/.test(t)) return 'OpenSea drop';
+  if (/black friday/.test(t)) return 'Black Friday';
+  return '';
+}
+function campaignOf(r) {
+  const m = String((r && r.panel_notes) || '').match(/Campaign: (.+?) \|/);
+  if (m) return canonCampaign(m[1]) || m[1];
+  const all = ((r && r.text_content) || '') + ' ' + ((r && r.notes) || '') + ' ' + ((r && r.panel_notes) || '');
+  if (r && (r.format === 'Launch' || r.format === 'Campaign')) return canonCampaign(all);
+  return /black friday/i.test(all) ? 'Black Friday' : '';
+}
+const CAMP_ADS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-ads';
+const CAMP_DRAFTS_URL = 'https://n8n-production-afc2.up.railway.app/webhook/sc-ad-drafts';
+let CAMP_ADS = null, CAMP_DRAFTS = null;
+async function loadCampExtras(force) {
+  if (!force && CAMP_ADS !== null && CAMP_DRAFTS !== null) return;
+  const a = fetch(CAMP_ADS_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);
+  const d = fetch(CAMP_DRAFTS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const [ar, dr] = await Promise.all([a, d]);
+  CAMP_ADS = (ar && ar.campaigns) || [];
+  CAMP_DRAFTS = ((dr && dr.drafts) || []).filter(x => !/^DELETE ME/i.test(x.title || ''));
+}
+async function campDraftStatus(id, status) {
+  try {
+    const res = await fetch(CAMP_DRAFTS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'status', id, status }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json(); CAMP_DRAFTS = ((d && d.drafts) || []).filter(x => !/^DELETE ME/i.test(x.title || ''));
+    renderCampaigns();
+  } catch (e) { alert('Could not save: ' + e.message); }
+}
+const gbpC = v => '£' + (Math.round(Number(v || 0) * 100) / 100).toFixed(2);
+function campPostsHtml(n) {
+  const rows = ROWS.filter(r => campaignOf(r) === n && r.panel_status !== 'rejected').sort((a, b) => londonYmd(a.post_date).localeCompare(londonYmd(b.post_date)) || String(a.post_time || '').localeCompare(String(b.post_time || '')));
+  if (!rows.length) return '<div class="cmp-empty">No calendar posts yet.</div>';
+  return '<div class="cmp-list">' + rows.map(r => '<div class="cmp-row" data-pid="' + r.id + '"><span class="cmp-d">' + shortDate(londonYmd(r.post_date)) + (r.post_time ? ' ' + escapeHtml(r.post_time) : '') + '</span><span class="cmp-t">' + escapeHtml(((r.text_content || '').split('\n')[0] || '').slice(0, 90)) + '</span><span class="lib-chip">' + escapeHtml(r.platforms || 'no platform') + '</span><span class="lib-chip ' + (r.status === 'posted' ? 'done' : 'recent') + '">' + escapeHtml(stateName(r)) + '</span></div>').join('') + '</div>';
+}
+function campAdsHtml(n) {
+  const cs = (CAMP_ADS || []).filter(c => canonCampaign(c.campaign) === n);
+  if (!cs.length) return '<div class="cmp-empty">No ads yet.</div>';
+  const lab = { running: 'Running', scheduled: 'Starts soon', ended: 'Ended', paused: 'Paused' };
+  return '<div class="cmp-list">' + cs.map(c => '<div class="cmp-row"><span class="cmp-d">' + escapeHtml(lab[c.phase] || c.phase) + '</span><span class="cmp-t">' + escapeHtml(c.campaign) + '</span><span class="lib-chip">' + gbpC(c.spend_gbp) + ' of ' + gbpC(c.budget_gbp) + (c.budget_is_daily ? ' a day' : '') + '</span><span class="lib-chip">' + Number(c.impressions || 0).toLocaleString('en-GB') + ' seen</span><span class="lib-chip">' + Number(c.link_clicks || 0).toLocaleString('en-GB') + ' clicks</span></div>').join('') + '</div>';
+}
+function campDraftsHtml(n) {
+  const ds = (CAMP_DRAFTS || []).filter(d => (canonCampaign(d.campaign) || d.campaign) === n);
+  if (!ds.length) return '<div class="cmp-empty">No draft ads.</div>';
+  const pill = { draft: 'Draft', approved: 'Approved: Claude builds it', live: 'Live', rejected: 'Rejected' };
+  return ds.map(d => '<div class="cmp-draft" data-did="' + d.id + '"><div class="cmp-dh"><b>' + escapeHtml(d.title || 'Draft ad') + '</b><span class="lib-chip ' + (d.status === 'live' ? 'done' : 'recent') + '">' + escapeHtml(pill[d.status] || d.status || 'Draft') + '</span></div>' +
+    (d.primary_text ? '<pre class="cmp-copy">' + escapeHtml(d.primary_text) + '</pre>' : '') +
+    '<div class="cmp-facts">' + [d.headline ? 'Headline: ' + escapeHtml(d.headline) : '', d.audience ? 'Audience: ' + escapeHtml(d.audience) : '', d.budget_gbp ? 'Budget: ' + gbpC(d.budget_gbp) : '', (d.starts || d.ends) ? 'Runs: ' + escapeHtml((d.starts || '?') + ' to ' + (d.ends || '?')) : '', d.link ? 'Link: ' + escapeHtml(d.link) : ''].filter(Boolean).join(' · ') + '</div>' +
+    (d.video_url ? '<video controls preload="none" playsinline src="' + String(d.video_url).replace(/"/g, '&quot;') + '"></video>' : (d.image_url ? '<img src="' + String(d.image_url).replace(/"/g, '&quot;') + '" alt="" style="max-width:240px;display:block;margin:6px 0">' : '')) +
+    '<div class="cmp-btns">' + (d.status === 'draft' ? '<button class="btn cmp-ok">Approve</button><button class="btn secondary cmp-no">Reject</button>' : (d.status === 'approved' ? '<button class="btn secondary cmp-back">Back to draft</button>' : (d.status === 'rejected' ? '<button class="btn secondary cmp-back">Back to draft</button>' : ''))) + '</div></div>').join('');
+}
+
 // ---------- Campaigns tab (17 Oct 2026, Andy) ----------
 // Finished launch posts grouped by campaign (SC Content Library rows with kind "campaign"). Each card holds the clip, the caption for every
 // platform, the first comment and a "Schedule" button (opens the Repost form pre-filled, makes a DRAFT: nothing posts until you approve it).
@@ -1925,19 +1991,32 @@ async function renderHype() {
 }
 async function renderCampaigns() {
   const main = document.getElementById('main');
-  if (LIB === null) { main.innerHTML = '<div class="loading">Loading campaigns…</div>'; await loadLibrary(); if (VIEW !== 'campaigns') return; }
-  const all = libraryItems().filter(i => i.camp);
-  const names = Array.from(new Set(all.map(i => i.camp))).sort();
+  if (LIB === null || CAMP_ADS === null || CAMP_DRAFTS === null) { main.innerHTML = '<div class="loading">Loading campaigns…</div>'; await Promise.all([LIB === null ? loadLibrary() : null, loadCampExtras()]); if (VIEW !== 'campaigns') return; }
+  const all = libraryItems().filter(i => i.camp).map(i => Object.assign(i, { campKey: canonCampaign(i.camp) || i.camp }));
+  const names = Array.from(new Set([].concat(all.map(i => i.campKey), ROWS.map(campaignOf).filter(Boolean), (CAMP_ADS || []).map(c => canonCampaign(c.campaign)).filter(Boolean), (CAMP_DRAFTS || []).map(d => canonCampaign(d.campaign) || d.campaign).filter(Boolean)))).sort();
   if (CAMPF.name && names.indexOf(CAMPF.name) === -1) CAMPF.name = '';
-  const shown = all.filter(i => !CAMPF.name || i.camp === CAMPF.name);
-  document.getElementById('counts').textContent = shown.length + ' / ' + all.length + ' campaign posts';
+  const shown = all.filter(i => !CAMPF.name || i.campKey === CAMPF.name);
+  document.getElementById('counts').textContent = names.length + ' campaigns';
   const groups = names.filter(n => !CAMPF.name || n === CAMPF.name);
   main.innerHTML = '<div id="hypeBox"></div>' +
     '<div class="lib-bar"><select id="campName"><option value="">All campaigns</option>' + names.map(n => '<option' + (n === CAMPF.name ? ' selected' : '') + '>' + escapeHtml(n) + '</option>').join('') + '</select>' +
+    '<button class="btn secondary" id="campReload">Refresh</button>' +
     '<span class="lib-help">Schedule makes a draft in the calendar. Nothing posts until you set it "approved". The first comment is added by hand after posting.</span></div>' +
-    (groups.length ? groups.map(n => '<h3 class="camp-h">' + escapeHtml(n) + '</h3><div class="lib-grid">' + shown.filter(i => i.camp === n).map(campCard).join('') + '</div>').join('') : '<div class="loading">No campaign posts yet.</div>');
+    (groups.length ? groups.map(n => '<h3 class="camp-h">' + escapeHtml(n) + '</h3>' +
+      '<div class="cmp-sec"><h4>Calendar posts</h4>' + campPostsHtml(n) + '</div>' +
+      '<div class="cmp-sec"><h4>Ads</h4>' + campAdsHtml(n) + '</div>' +
+      '<div class="cmp-sec"><h4>Draft ads</h4>' + campDraftsHtml(n) + '</div>' +
+      (shown.some(i => i.campKey === n) ? '<div class="cmp-sec"><h4>Clips and captions</h4><div class="lib-grid" data-camp="' + escapeHtml(n) + '">' + shown.filter(i => i.campKey === n).map(campCard).join('') + '</div></div>' : '')).join('') : '<div class="loading">No campaigns yet.</div>');
   document.getElementById('campName').onchange = e => { CAMPF.name = e.target.value; renderCampaigns(); };
+  document.getElementById('campReload').onclick = async () => { main.innerHTML = '<div class="loading">Loading campaigns…</div>'; await loadCampExtras(true); renderCampaigns(); };
   renderHype();
+  main.querySelectorAll('.cmp-row[data-pid]').forEach(el => { el.onclick = () => { const r = ROWS.find(x => String(x.id) === el.dataset.pid); if (r) openDrawer(r); }; });
+  main.querySelectorAll('.cmp-draft').forEach(el => {
+    const id = Number(el.dataset.did);
+    const ok = el.querySelector('.cmp-ok'); if (ok) ok.onclick = () => campDraftStatus(id, 'approved');
+    const no = el.querySelector('.cmp-no'); if (no) no.onclick = () => campDraftStatus(id, 'rejected');
+    const bk = el.querySelector('.cmp-back'); if (bk) bk.onclick = () => campDraftStatus(id, 'draft');
+  });
   main.querySelectorAll('.camp-card').forEach(card => {
     const it = all.find(i => i.key === card.dataset.key); if (!it) return;
     card.querySelector('.camp-sched').onclick = () => openRepost(it);
