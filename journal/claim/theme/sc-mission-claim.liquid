@@ -1,0 +1,158 @@
+{% raw %}
+<style>
+@font-face{font-family:Bangers;src:url(https://raw.githubusercontent.com/StiffCompetition/sc-assets/271deb634d821d78f6d086fea799592a537d5ee8/journal/claim/Bangers.ttf);font-display:swap}@font-face{font-family:Oswald;src:url(https://raw.githubusercontent.com/StiffCompetition/sc-assets/271deb634d821d78f6d086fea799592a537d5ee8/journal/claim/Oswald.ttf);font-weight:200 700;font-display:swap}
+.rte{display:none!important}
+#scm{max-width:1100px;margin:0 auto;font-family:Oswald,'Arial Narrow',sans-serif;color:#111}
+#scm *{box-sizing:border-box}
+#scm .hd{background:#fff;border:6px solid #111;box-shadow:8px 8px 0 #111;padding:22px 18px;text-align:center;margin-bottom:26px}
+#scm .hd h2{font-family:Bangers,Impact,sans-serif;font-size:clamp(34px,7vw,64px);letter-spacing:2px;margin:0 0 6px;line-height:1;color:#111}
+#scm .hd p{margin:0 auto;max-width:640px;font-size:17px;line-height:1.35;font-weight:500}
+#scm .strip{display:flex;gap:4px;justify-content:center;margin:14px 0 4px;flex-wrap:nowrap}
+#scm .strip svg{width:clamp(18px,5.6vw,34px);height:auto}
+#scm .cnt{font-weight:700;letter-spacing:3px;font-size:14px}
+#scm .login{background:#ed1c24;color:#fff;border:6px solid #111;box-shadow:8px 8px 0 #111;padding:22px;text-align:center;margin-bottom:26px}
+#scm .login b{display:block;font-family:Bangers,Impact,sans-serif;font-size:34px;letter-spacing:2px;margin-bottom:8px;font-weight:400}
+#scm .btn{display:inline-block;background:#ffc400;color:#111;border:5px solid #111;box-shadow:5px 5px 0 #111;font:700 20px/1 Oswald,sans-serif;letter-spacing:3px;padding:14px 22px;text-decoration:none;cursor:pointer;text-transform:uppercase;margin:6px 6px 0 0}
+#scm .btn:active{transform:translate(3px,3px);box-shadow:2px 2px 0 #111}
+#scm .btn.alt{background:#fff}
+#scm .btn.go{background:#7cc02f}
+#scm .btn[disabled]{opacity:.55;cursor:wait}
+#scm .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(min-width:700px){#scm .grid{grid-template-columns:repeat(4,1fr)}}
+#scm .tile{position:relative;border:5px solid #111;box-shadow:6px 6px 0 #111;background:#fff;cursor:pointer;padding:0;text-align:left;font:inherit;overflow:hidden;display:block;width:100%}
+#scm .tile .top{padding:10px 70px 6px 10px;color:#fff;background:var(--c);min-height:92px}
+#scm .tile .mn{font-family:Bangers,Impact,sans-serif;font-size:26px;letter-spacing:2px;line-height:1;text-shadow:2px 2px 0 #111}
+#scm .tile .ph{font-weight:700;font-size:12px;letter-spacing:1.5px;line-height:1.25;margin-top:6px;text-shadow:1px 1px 0 #111}
+#scm .tile .st{padding:8px 10px;font-weight:700;letter-spacing:2px;font-size:14px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+#scm .tile.done .st{background:#111;color:#ffc400}
+#scm .tile img{position:absolute;right:-6px;top:10px;width:64px;height:64px;border-radius:50%;border:4px solid #111;background:#fff;object-fit:cover;object-position:top}
+#scm .ov{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:99999;display:none;overflow:auto;padding:14px}
+#scm .ov.on{display:block}
+#scm .box{max-width:560px;margin:0 auto;background:#fff;border:6px solid #111;box-shadow:8px 8px 0 #111;padding:14px;position:relative}
+#scm .x{position:absolute;right:8px;top:8px;width:42px;height:42px;border:4px solid #111;background:#ed1c24;color:#fff;font:700 22px/1 Oswald,sans-serif;cursor:pointer;z-index:2}
+#scm canvas{width:100%;height:auto;display:block;border:4px solid #111;background:#ddd}
+#scm .nm{display:flex;gap:8px;align-items:center;margin:12px 0 4px;flex-wrap:wrap}
+#scm .nm label{font-weight:700;letter-spacing:2px;font-size:14px}
+#scm .nm input{flex:1;min-width:140px;border:4px solid #111;padding:10px;font:700 18px Oswald,sans-serif;letter-spacing:1px;text-transform:uppercase}
+#scm .rw{background:#fff4c2;border:5px dashed #111;padding:12px;margin:12px 0;line-height:1.35}
+#scm .rw b{font-family:Bangers,Impact,sans-serif;font-size:26px;letter-spacing:2px;font-weight:400;display:block}
+#scm .code{display:inline-block;background:#111;color:#ffc400;font:700 24px/1 Oswald,sans-serif;letter-spacing:3px;padding:10px 14px;margin:6px 8px 6px 0;user-select:all}
+#scm .msg{font-weight:700;letter-spacing:1px;margin:8px 0;min-height:22px}
+#scm .note{font-size:14px;margin-top:14px;text-align:center;opacity:.8}
+@media print{body *{visibility:hidden}#scm #scprint,#scm #scprint *{visibility:visible}#scm #scprint{position:absolute;left:0;top:0;width:100%}}
+</style>
+<div id="scm"><div id="scroot"></div>
+<div class="ov" id="scov"><div class="box"><button class="x" id="scx" aria-label="Close">X</button><div id="scbox"></div></div></div>
+<img id="scprint" alt="" style="display:none"></div>
+<script>
+(function(){
+var BASE='https://raw.githubusercontent.com/StiffCompetition/sc-assets/271deb634d821d78f6d086fea799592a537d5ee8/journal/claim/';
+var API='https://n8n-production-afc2.up.railway.app/webhook/sc-mission';
+var CH={MW:{B:'#7cc02f',Bd:'#3f6b12',L:'#e6f5c8'},RA:{B:'#2a8cf0',Bd:'#174f94',L:'#d3e8ff'},HH:{B:'#ffb300',Bd:'#8a5200',L:'#fff0b8'},SW:{B:'#98a6c4',Bd:'#3c4560',L:'#e8edf8'},VP:{B:'#14b88a',Bd:'#0b6a50',L:'#c9f5e6'},TG:{B:'#3b6df0',Bd:'#1d3f9e',L:'#d6e1ff'}};
+var SIX=['MW','RA','HH','SW','VP','TG'];
+var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var M=[null,
+['MW','INITIALIZATION','Structural sag eliminated. Peak verticality established.','IF IT AIN\'T RIGID, IT AIN\'T RIGHT.'],
+['HH','HARDWARE DEPLOYMENT','Results driven home. Objective fully seated.','DRIVE IT DEEP. DRIVE IT HOME.'],
+['TG','GRIP CONTROL','Unyielding pressure kept on every asset.','HOLD ON UNTIL IT HURTS.'],
+['VP','THE COILING','Competition constricted. No room left to escape.','WRAP, TRAP, AND NEVER SNAP.'],
+['SW','SLICK MANEUVERS','Friction reduced in every theatre.','ZERO FRICTION. TOTAL SUCCESS.'],
+['RA','DOCKING OPS','Deep-port position secured. Full capacity checked.','DEEP DOCKING. FULL CAPACITY.'],
+['MW','PEAK RIGIDITY','Structure reinforced for mid-year stress.','STAND TALL OR STAND ASIDE.'],
+['HH','IMPACT TESTING','Breakthroughs tested to full depth.','POUND THE RESISTANCE TO DUST.'],
+['TG','TENSION STRIKE','Maximum squeeze applied to every objective.','LOCK IT IN. NEVER LET GO.'],
+['VP','TORQUE MAX','Full uncoiled power unleashed.','COIL TIGHT. STRIKE RIGHT.'],
+['SW','FLUID VELOCITY','The effortless slide to victory, mastered.','GLIDE THROUGH THE COMPETITION.'],
+['RA','MISSION COMPLETE','Mission hardened. A full year at attention.','DOCKING COMPLETE. MISSION HARDENED.']];
+var SCV=window.SCV||null,state={claims:{}},imgs={},fontsReady=null,cur=0,root=document.getElementById('scroot');
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function starSvg(on){return '<svg viewBox="0 0 100 100"><polygon points="50,6 62,38 96,38 68,58 79,92 50,71 21,92 32,58 4,38 38,38" fill="'+(on?'#ffc400':'#d9d9d9')+'" stroke="#111" stroke-width="6" stroke-linejoin="round"/></svg>'}
+function nclaims(){var n=0;for(var k in state.claims)n++;return n}
+function post(body){body.cid=SCV.id;body.sig=SCV.sig;return fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()})}
+function render(){
+ var h='<div class="hd"><h2>CLAIM YOUR MISSION</h2><p>Finished a month in your Field Journal? Claim it here, keep the certificate in your Stiff Vault, and unlock your reward. Finish all 12 for A Year at Attention.</p><div class="strip">';
+ var n=nclaims();for(var i=1;i<=12;i++)h+=starSvg(!!state.claims[i]);
+ h+='</div><div class="cnt">'+n+' OF 12 CLAIMED</div></div>';
+ if(!SCV)h+='<div class="login"><b>SIGN IN TO CLAIM</b><div>Your free Stiff Competition account keeps every certificate in your Stiff Vault. No order number needed.</div><a class="btn" href="/account/login?return_url='+encodeURIComponent('/pages/mission-claim')+'">Sign in or create account</a></div>';
+ h+='<div class="grid">';
+ for(var m=1;m<=12;m++){var c=CH[M[m][0]],done=!!state.claims[m];
+  h+='<button class="tile'+(done?' done':'')+'" data-m="'+m+'" style="--c:'+c.Bd+'"><div class="top"><div class="mn">'+(m===12?'A YEAR AT ATTENTION':MN[m-1].toUpperCase())+'</div><div class="ph">PHASE '+(m<10?'0':'')+m+': '+M[m][1]+'</div></div><img src="'+BASE+M[m][0]+'.png" alt=""><div class="st"><span>'+(done?'CLAIMED':'CLAIM')+'</span><span>'+(done?'★':'›')+'</span></div></button>';}
+ h+='</div><div class="note">Your certificates and reward codes live here whenever you sign in.</div>';
+ root.innerHTML=h;
+ var t=root.querySelectorAll('.tile');for(var j=0;j<t.length;j++)t[j].onclick=function(){openMonth(+this.getAttribute('data-m'))};
+}
+function loadImg(u){return new Promise(function(res){if(imgs[u])return res(imgs[u]);var i=new Image();i.crossOrigin='anonymous';i.onload=function(){imgs[u]=i;res(i)};i.onerror=function(){res(null)};i.src=u})}
+function loadAll(){if(fontsReady)return fontsReady;var p=[];
+ try{var f1=new FontFace('SCBang','url('+BASE+'Bangers.ttf)'),f2=new FontFace('SCOsw','url('+BASE+'Oswald.ttf)',{weight:'200 700'});p.push(f1.load().then(function(f){document.fonts.add(f)}),f2.load().then(function(f){document.fonts.add(f)}))}catch(e){}
+ SIX.forEach(function(k){p.push(loadImg(BASE+k+'.png'))});p.push(loadImg(BASE+'logo.png'));
+ fontsReady=Promise.all(p);return fontsReady}
+function sp(ctx,t,x,y,ls,al){var w=0,i;for(i=0;i<t.length;i++)w+=ctx.measureText(t[i]).width+ls;w-=ls;var s=al==='c'?x-w/2:x;ctx.textAlign='left';for(i=0;i<t.length;i++){ctx.fillText(t[i],s,y);s+=ctx.measureText(t[i]).width+ls}return w}
+function spw(ctx,t,ls){var w=0;for(var i=0;i<t.length;i++)w+=ctx.measureText(t[i]).width+ls;return w-ls}
+function stroked(ctx,t,x,y,ls,lw,fill,sh){var w=spw(ctx,t,ls),s=x-w/2,i,ch;ctx.lineJoin='round';ctx.textAlign='left';
+ function pass(dx,dy,mode,col,lwid){var xx=s+dx;for(i=0;i<t.length;i++){ch=t[i];if(mode==='s'){ctx.lineWidth=lwid;ctx.strokeStyle=col;ctx.strokeText(ch,xx,y+dy)}else{ctx.fillStyle=col;ctx.fillText(ch,xx,y+dy)}xx+=ctx.measureText(ch).width+ls}}
+ if(sh){pass(sh,sh,'s','#111',lw);pass(sh,sh,'f','#111')}
+ pass(0,0,'s','#111',lw);pass(0,0,'f',fill)}
+function box(ctx,x,y,w,h,fill,bw,sh,rad,shc){if(sh){ctx.fillStyle=shc||'#111';rr(ctx,x+sh,y+sh,w,h,rad);ctx.fill()}ctx.fillStyle='#111';rr(ctx,x,y,w,h,rad);ctx.fill();ctx.fillStyle=fill;rr(ctx,x+bw,y+bw,w-2*bw,h-2*bw,Math.max(0,rad-bw));ctx.fill()}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function star(ctx,cx,cy,R,on){var i,a,r,p=[];ctx.beginPath();for(i=0;i<10;i++){r=i%2?R*.42:R;a=-Math.PI/2+i*Math.PI/5;ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a))}ctx.closePath();
+ if(on){ctx.lineJoin='round';ctx.lineWidth=R*.15;ctx.strokeStyle='#111';ctx.stroke();ctx.fillStyle='#ffc400';ctx.fill();ctx.beginPath();for(i=0;i<10;i++){r=(i%2?R*.42:R)*.6;a=-Math.PI/2+i*Math.PI/5;ctx.lineTo(cx+r*Math.cos(a)-R*.06,cy+r*Math.sin(a)-R*.06)}ctx.closePath();ctx.fillStyle='#ffe680';ctx.fill()}
+ else{ctx.fillStyle='#2c313c';ctx.fill();ctx.setLineDash([R*.25,R*.2]);ctx.lineWidth=R*.1;ctx.strokeStyle='#6b7280';ctx.lineJoin='round';ctx.stroke();ctx.setLineDash([])}}
+function circ(ctx,x,y,r,fill){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill()}
+function chip(ctx,cx,cy,r,k,bd){circ(ctx,cx+8,cy+8,r+12,'rgba(0,0,0,.3)');circ(ctx,cx,cy,r+12,'#111');circ(ctx,cx,cy,r+6,'#ffc400');circ(ctx,cx,cy,r,bd);circ(ctx,cx,cy,r-10,'#fff');ctx.save();ctx.beginPath();ctx.arc(cx,cy,r-10,0,Math.PI*2);ctx.clip();var s=(r-10)*2,im=imgs[BASE+k+'.png'];if(im)ctx.drawImage(im,cx-(r-10),cy+(r-10)-s,s,s);ctx.restore()}
+function fmtDate(iso){var d=iso?new Date(iso):new Date();var mo=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];return d.getDate()+' '+mo[d.getMonth()]+' '+d.getFullYear()}
+function drawCert(cv,m,name,dateIso){
+ var ctx=cv.getContext('2d'),W=1240,H=1754;cv.width=W;cv.height=H;var year=m===12,d=M[m],ch=d[0],C=CH[ch],B=C.B,Bd=C.Bd,L=C.L,i,a;
+ var dark=year;if(year){B='#15181c';Bd='#15181c';L='#4a525e'}
+ ctx.fillStyle=L;ctx.fillRect(0,0,W,H);ctx.fillStyle=year?'#15181c':B;
+ for(i=0;i<48;i++){a=i*Math.PI/12.0*0.5*2;var a0=-Math.PI/2+i*Math.PI/12,a1=a0+Math.PI/24;ctx.beginPath();ctx.moveTo(620,666);ctx.arc(620,666,3000,a0,a1);ctx.closePath();ctx.fill()}
+ ctx.fillStyle='rgba(0,0,0,.14)';for(var gy=11;gy<H;gy+=22)for(var gx=11;gx<W;gx+=22){ctx.beginPath();ctx.arc(gx,gy,3,0,6.3);ctx.fill()}
+ ctx.lineWidth=12;ctx.strokeStyle='#111';ctx.strokeRect(6,6,1228,1742);
+ box(ctx,64,64,1112,270,'#fff',9,12,8);var lg=imgs[BASE+'logo.png'];if(lg){var lh=225,lw=lh*lg.width/lg.height;ctx.save();ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowOffsetY=5;ctx.drawImage(lg,620-lw/2,64+(270-lh)/2,lw,lh);ctx.restore()}
+ ctx.font='700 46px SCOsw,Oswald,sans-serif';var kt='STIFF COMPETITION FIELD JOURNAL',kw=spw(ctx,kt,4)+52+12;box(ctx,620-kw/2,350,kw,84,'#fff',6,6,0);ctx.fillStyle='#111';sp(ctx,kt,620,410,4,'c');
+ ctx.font='118px SCBang,Bangers,Impact,sans-serif';stroked(ctx,year?'A YEAR AT ATTENTION':'MISSION ACCOMPLISHED',620,528,2,9,'#fff',8);
+ if(!year){var cx=620,cy=785;circ(ctx,cx+16,cy+16,253,'rgba(0,0,0,.3)');circ(ctx,cx,cy,253,'#111');circ(ctx,cx,cy,239,'#ffc400');circ(ctx,cx,cy,225,'#111');
+  var g=ctx.createRadialGradient(cx,cy-0.15*426,0,cx,cy-0.15*426,0.78*300);g.addColorStop(0,'#fff');g.addColorStop(1,B);circ(ctx,cx,cy,213,g);ctx.save();ctx.beginPath();ctx.arc(cx,cy,213,0,6.3);ctx.clip();var im=imgs[BASE+ch+'.png'];if(im)ctx.drawImage(im,cx-213,cy+213-426,426,426);ctx.restore()}
+ else{var pos=[[170,640],[170,800],[170,960],[1070,640],[1070,800],[1070,960]];SIX.forEach(function(k,j){chip(ctx,pos[j][0],pos[j][1],80,k,CH[k].Bd)});
+  for(i=0;i<32;i++){a=i*Math.PI/16;ctx.beginPath();ctx.arc(620+Math.cos(a)*172,800+Math.sin(a)*172,15,0,6.3);ctx.fillStyle='#ffc400';ctx.fill();ctx.lineWidth=5;ctx.strokeStyle='#111';ctx.stroke()}
+  circ(ctx,620,800,163,'#111');circ(ctx,620,800,153,'#ffc400');circ(ctx,620,800,128+3,'#111');var g2=ctx.createRadialGradient(620,770,0,620,770,150);g2.addColorStop(0,'#fffbe0');g2.addColorStop(1,'#ffe27a');circ(ctx,620,800,128,g2);
+  ctx.beginPath();ctx.arc(620,800,112,0,6.3);ctx.setLineDash([3,12]);ctx.lineCap='round';ctx.lineWidth=5;ctx.strokeStyle='#ed1c24';ctx.stroke();ctx.setLineDash([]);ctx.lineCap='butt';
+  ctx.font='700 150px SCOsw,Oswald,sans-serif';var g3=ctx.createLinearGradient(0,690,0,820);g3.addColorStop(0,'#fff6b0');g3.addColorStop(.45,'#ffc400');g3.addColorStop(1,'#ff8a00');
+  ctx.lineJoin='round';ctx.textAlign='center';ctx.lineWidth=13;ctx.strokeStyle='#8a0f15';ctx.strokeText('52',627+3,818+5);ctx.fillStyle='#8a0f15';ctx.fillText('52',630,823);ctx.strokeStyle='#111';ctx.strokeText('52',620,818);ctx.fillStyle='#111';ctx.fillText('52',620,818);ctx.fillStyle=g3;ctx.fillText('52',620,818);
+  ctx.fillStyle='#111';ctx.fillRect(496,832,248,70);ctx.fillStyle='#ed1c24';ctx.fillRect(503,839,234,56);ctx.font='48px SCBang,Bangers,sans-serif';stroked(ctx,'WEEKS',620,884,4,3,'#fff',0)}
+ ctx.font='190px SCBang,Bangers,Impact,sans-serif';stroked(ctx,year?'THE YEAR':MN[m-1].toUpperCase(),620,1190,4,12,'#fff',10);
+ box(ctx,120,1235,1000,62,'#ed1c24',6,7,0);ctx.font='700 36px SCOsw,Oswald,sans-serif';ctx.fillStyle='#fff';sp(ctx,year?'★ 12 MISSIONS · 52 WEEKS ★':'PHASE '+(m<10?'0':'')+m+': '+d[1],620,1281,7,'c');
+ ctx.fillStyle='rgba(0,0,0,.4)';rr(ctx,48,1320,1160,112,56);ctx.fill();ctx.fillStyle='#111';rr(ctx,40,1312,1160,112,56);ctx.fill();ctx.fillStyle='#15181c';rr(ctx,43,1315,1154,106,53);ctx.fill();
+ var lit=Math.min(12,m);if(year)lit=12;for(i=0;i<12;i++)star(ctx,104+i*(1032/11),1368,46,i<lit);
+ box(ctx,70,1440,1100,146,'#fff',8,10,0);ctx.font='700 28px SCOsw,Oswald,sans-serif';ctx.fillStyle='#111';sp(ctx,'AWARDED TO',620,1490,8,'c');
+ ctx.font='78px SCBang,Bangers,Impact,sans-serif';var nm=(name||'RECRUIT').toUpperCase().slice(0,24);while(spw(ctx,nm,3)>1040&&ctx.font.indexOf('px')>0){var sz=parseInt(ctx.font)-4;ctx.font=sz+'px SCBang,Bangers,Impact,sans-serif'}ctx.fillStyle=year?'#111':Bd;sp(ctx,nm,620,1568,3,'c');
+ box(ctx,70,1602,1100,100,'#fff',6,6,0);var l1=year?'Keeping it up for 52 weeks.':d[2],l2=year?'Firm, upright and ready for duty.':'“'+d[3]+'”';
+ ctx.font='700 32px SCOsw,Oswald,sans-serif';while(spw(ctx,l1.toUpperCase(),2)>1040){ctx.font=(parseInt(ctx.font)-2)+'px SCOsw,Oswald,sans-serif'}ctx.fillStyle=year?'#111':Bd;sp(ctx,l1.toUpperCase(),620,1649,2,'c');
+ ctx.font='700 28px SCOsw,Oswald,sans-serif';ctx.fillStyle='#111';sp(ctx,l2.toUpperCase(),620,1687,2,'c');
+ ctx.font='600 20px SCOsw,Oswald,sans-serif';ctx.fillStyle=dark?'#fff':'#111';sp(ctx,fmtDate(dateIso),70,1738,4,'l');var no='NO. SC-'+(m<10?'0':'')+m+'-'+String(SCV&&SCV.id||'0000').slice(-4);var nw=spw(ctx,no,4);sp(ctx,no,1170-nw,1738,4,'l');
+}
+function dl(cv,m){cv.toBlob(function(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='stiff-competition-mission-'+(m<10?'0':'')+m+'.png';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500)},'image/png')}
+function shareC(cv,m,msg){cv.toBlob(function(b){var f=new File([b],'stiff-competition-mission-'+m+'.png',{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Stiff Competition Field Journal',text:'Mission claimed. Still standing.'}).catch(function(){})}else{dl(cv,m);msg.textContent='Sharing is not available on this device, so the certificate was downloaded.'}},'image/png')}
+function printC(cv){var p=$('scprint');p.src=cv.toDataURL('image/png');p.style.display='block';setTimeout(function(){window.print();setTimeout(function(){p.style.display='none'},800)},150)}
+function fmtExp(iso){var d=new Date(iso);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+function openMonth(m){cur=m;var ov=$('scov'),bx=$('scbox');ov.classList.add('on');var c=state.claims[m];
+ var nm=''; try{nm=localStorage.getItem('scm_name')||''}catch(e){} nm=nm||(SCV&&SCV.name)||'';
+ bx.innerHTML='<div class="msg" id="scmsg">Loading certificate...</div><canvas id="sccv"></canvas><div class="nm"><label for="scname">NAME ON CERTIFICATE</label><input id="scname" maxlength="24" value="'+esc(nm)+'"></div><div id="scact"></div>';
+ var cv=$('sccv'),msg=$('scmsg'),inp=$('scname');
+ function redraw(){loadAll().then(function(){drawCert(cv,m,inp.value||(SCV&&SCV.name)||'Recruit',c&&c.claimed_at);msg.textContent=''})}
+ inp.oninput=function(){try{localStorage.setItem('scm_name',inp.value)}catch(e){}redraw()};redraw();acts();
+ function acts(){var a=$('scact');
+  if(!SCV){a.innerHTML='<a class="btn" href="/account/login?return_url='+encodeURIComponent('/pages/mission-claim')+'">Sign in to claim</a>';return}
+  if(!state.claims[m]){a.innerHTML='<div class="rw"><b>MISSION '+(m<10?'0':'')+m+': '+M[m][1]+'</b>Finished this month in your journal? Claim it to lock in your certificate and unlock your reward.</div><button class="btn go" id="scgo">Claim this mission</button>';
+   $('scgo').onclick=function(){var btn=this;btn.disabled=true;msg.textContent='Claiming...';post({action:'claim',month:m}).then(function(r){if(r&&r.ok&&r.claim){state.claims[m]=r.claim;c=r.claim;render();msg.textContent='';redraw();acts()}else{msg.textContent='That did not go through. Please try again.';btn.disabled=false}}).catch(function(){msg.textContent='Connection problem. Please try again.';btn.disabled=false})}}
+  else{var cl=state.claims[m],yr=m===12;a.innerHTML='<button class="btn" id="scd">Download</button><button class="btn alt" id="scs">Share</button><button class="btn alt" id="scp">Print</button><div class="rw"><b>'+(yr?'20% OFF NEXT YEAR\'S JOURNAL':'YOUR REWARD: 10% OFF')+'</b><span class="code">'+esc(cl.code)+'</span><div>One use, just for you. Expires '+esc(fmtExp(cl.code_expires))+'. Enter it at checkout at stiffcompetition.shop.</div></div><div class="rw"><b>FREE DOWNLOAD</b>Grab your free Stiff Stickers pack: <a href="/products/stiff-stickers-free-30" style="font-weight:700;color:#111">get the stickers</a></div>';
+   $('scd').onclick=function(){dl(cv,m)};$('scs').onclick=function(){shareC(cv,m,msg)};$('scp').onclick=function(){printC(cv)}}}
+}
+$('scx').onclick=function(){$('scov').classList.remove('on')};$('scov').onclick=function(e){if(e.target===this)this.classList.remove('on')};
+render();
+if(SCV){post({action:'load'}).then(function(r){if(r&&r.ok){state.claims={};(r.claims||[]).forEach(function(c){state.claims[c.month]=c});render()}}).catch(function(){})}
+window.__scm={drawCert:drawCert,loadAll:loadAll};
+})();
+</script>
+
+{% endraw %}
