@@ -720,6 +720,7 @@ async function load() {
     loadChannels();
     loadLocks();
     loadAds(false);
+    loadStickerStats();
     if (!eg) fetch(EG_LIST).then(r => r.ok ? r.json() : null).then(d => { if (d && !eg) { eg = d; renderTabs(); } }).catch(() => {});
   } catch (e) {
     $('list').innerHTML = '<div class="error-state">Could not load (' + esc(e.message) + '). Check the workflow SC - Marketing Actions API (list) is active.</div>';
@@ -821,6 +822,26 @@ function tabCount(v) {
 
 function goTab(name) { view = name; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); window.scrollTo(0, 0); }
 
+// Sticker and GIF numbers (11 Nov 2026, Andy): SC - Sticker Stats API (webhook sc-sticker-stats), refreshed each Monday.
+let ss = null;
+function ssFmt(n) { n = Number(n || 0); return n >= 100000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : n.toLocaleString('en-GB'); }
+function loadStickerStats() { fetch(BASE + 'sc-sticker-stats?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(d => { if (d && d.ok) { ss = d; renderKeyRow(); } }).catch(() => {}); }
+function openStickerStats() {
+  if (!ss) return;
+  let dlg = $('ssDlg');
+  if (!dlg) { dlg = document.createElement('dialog'); dlg.id = 'ssDlg'; document.body.appendChild(dlg); }
+  const grp = g => '<h3 style="margin:14px 0 4px;font-size:16px">' + esc(g.title) + '</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 18px;font-variant-numeric:tabular-nums;font-size:14px">'
+    + '<b></b><b style="text-align:right">Total</b><b style="text-align:right">7 days</b>'
+    + g.items.map(i => '<span>' + esc(i.item) + '</span><span style="text-align:right">' + ssFmt(i.total) + '</span><span style="text-align:right">' + ssFmt(i.last7) + '</span>').join('')
+    + '<b>All</b><b style="text-align:right">' + ssFmt(g.total) + '</b><b style="text-align:right">' + ssFmt(g.last7) + '</b></div>'
+    + (g.prevLast7 !== null && g.prevLast7 !== undefined ? '<p style="margin:6px 0 0;font-size:12.5px;color:var(--grey)">7 days a week ago: ' + ssFmt(g.prevLast7) + '</p>' : '');
+  dlg.innerHTML = '<div class="dlg" style="min-width:min(92vw,460px)"><h2 style="margin:0">Stickers and GIFs</h2><p style="margin:0;font-size:12.5px;color:var(--grey)">Counted ' + esc(ss.week) + ', refreshed every Monday. GIPHY views are plays, not downloads.</p>'
+    + ss.groups.map(grp).join('') + '<div class="foot"><button type="button" class="btn" id="ssClose">Close</button></div></div>';
+  $('ssClose').onclick = () => dlg.close();
+  dlg.onclick = e => { if (e.target === dlg) dlg.close(); };
+  dlg.showModal();
+}
 // Key figures in the pinned header (10 Nov 2026, Andy): locks in use, red alerts, tasks waiting on Andy, ad spend vs limit.
 function renderKeyRow() {
   const el = $('keyrow'); if (!el) return;
@@ -832,7 +853,10 @@ function renderKeyRow() {
   h += chip(reds ? 'red' : 'green', 'Red alerts', reds || 'none', 'Alerts', '');
   h += chip(wait ? 'amber' : 'green', 'Waiting on you', wait, 'Tasks', '');
   if (ads) { h += chip('', 'Ad spend', adGbp(ads.total_spend_gbp), 'Ads', 'Updated ' + adAgo(ads.updated_at)); }
+  // 11 Nov 2026 (Andy): sticker downloads and GIPHY views in the header, total and last 7 days; a click opens the detail.
+  if (ss && ss.groups) ss.groups.forEach(g => { h += '<button type="button" class="kchip" data-ss="1" title="Open the detail"><span class="kl">' + (g.source === 'GIPHY' ? 'GIPHY views' : 'Sticker downloads') + '</span><b>' + ssFmt(g.total) + '</b><span class="kl">· 7 days</span><b>' + ssFmt(g.last7) + '</b></button>'; });
   el.innerHTML = h;
+  el.querySelectorAll('[data-ss]').forEach(b => b.onclick = openStickerStats);
   el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goTab(b.dataset.go));
 }
 function renderTabs() {
