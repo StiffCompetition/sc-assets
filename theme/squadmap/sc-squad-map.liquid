@@ -61,7 +61,7 @@ if(me){
  var px=((0.5-me.x/100*S)/(1-S))*100;
  var py=((0.5*0.75-me.y/100*S*AR)/(0.75-S*AR))*100;
  sec.innerHTML='<h2 class="mwp-h">Where he lives</h2><div class="sqm-row">'+
- '<button type="button" class="sqm-thumb" aria-haspopup="dialog" aria-label="Open the squad map" style="background-image:url('+IMG+');background-size:'+(S*100)+'% auto;background-position:'+px.toFixed(2)+'% '+py.toFixed(2)+'%"><span class="sqm-ring"></span><span class="sqm-zoom">Tap for the full map</span></button>'+
+ '<button type="button" class="sqm-thumb" aria-haspopup="dialog" aria-label="Open the squad map" style="background-image:url('+IMG+');background-size:'+(S*100)+'% auto;background-position:'+px.toFixed(2)+'% '+py.toFixed(2)+'%"><span class="sqm-ring"></span></button>'+
  '<div class="sqm-txt"><span class="sqm-lab">Home patch</span><p class="sqm-hood">'+esc(me.a)+'</p><p class="sqm-p">'+esc(me.n)+' lives in '+esc(me.a)+', London. Pinned on Major Wood’s board.</p><button type="button" class="sqm-btn">See where the squad lives</button></div></div>';
  var anchor=document.querySelector('.mwp-six')||null;
  if(anchor)anchor.parentNode.insertBefore(sec,anchor);else{var m=document.querySelector('.mwp-main')||document.body;m.appendChild(sec)}
