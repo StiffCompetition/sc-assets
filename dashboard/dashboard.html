@@ -1072,8 +1072,9 @@ const SNIPPETS = [
   ['Claude style: Director mode', 'Director mode. Reply in one line, results only, zero padding. Yes/no questions get "Yes" or "No". Never show research or reasoning. Finished work = "ready, publish it" + link. Only add detail if Andy asks.'],
   ['Stiff Competition project instructions (top line)', 'Reply to Andy in one line, results only. Yes/no gets Yes or No. Research stays with you; he asks if he wants detail.']
 ];
+const WEB_MANAGER_CHAT = 'https://claude.ai/chat/13c5e0eb-5e03-410f-99b3-45fb94f18758';
 function pagesHtml() {
-  return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px">' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>'
+  return '<div style="display:flex;flex-direction:column;gap:10px;max-width:420px"><a class="btn go" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + WEB_MANAGER_CHAT + '">Web Manager chat</a>' + PAGE_LINKS.map(p => '<a class="btn" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + SHOP + p[1] + '">' + esc(p[0]) + '</a>').join('') + '</div>'
     + '<h2 style="margin:22px 0 8px;font-size:19px">Copy texts</h2><div style="display:flex;flex-direction:column;gap:10px;max-width:640px">'
     + SNIPPETS.map((x, i) => '<div class="card"><div class="body"><div class="title">' + esc(x[0]) + '</div><div class="step" style="margin-top:4px">' + esc(x[1]) + '</div></div><div class="acts"><button class="btn small" data-snip="' + i + '">Copy</button></div></div>').join('') + '</div>';
 }
