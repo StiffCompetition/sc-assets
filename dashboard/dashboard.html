@@ -1560,7 +1560,7 @@ function adCard(c) {
 }
 function renderAds() {
   loadAds(false);
-  let h = '<div class="adhead"><div><h2>Ads</h2><p class="sub">' + (ads ? 'Figures from Meta, updated ' + esc(adAgo(ads.updated_at)) + ' (Refresh reads Meta now)' : '') + ' <button class="btn small ghost" id="ad_reload">Refresh</button></p></div>';
+  let h = '<div class="adhead"><div><h2>Ads</h2><p class="sub">' + (ads ? 'Figures from Meta, updated ' + esc(adAgo(ads.updated_at)) + ' (Refresh reads Meta now)' : '') + ' <button class="btn small ghost" id="ad_reload">Refresh</button> <a class="btn small" target="_blank" rel="noopener" href="https://claude.ai/code/session_01VcXawAVnGicgUp3tQqyx1n">Talk to the Content Manager</a></p></div>';
   if (ads) { h += '<div class="adcap"><div class="t"><span>All ads spent</span><span><b>' + adGbp(ads.total_spend_gbp) + '</b></span></div></div>'; }
   h += '</div>';
   if (!ads && adsLoading) h += '<p style="color:var(--grey)">Collecting the ads…</p>';
