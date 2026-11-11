@@ -20,3 +20,6 @@ One row per month. Working versions: calendar/work/months/<month>_v<n>.jpg. Chos
 - Ad clip v4 (approved): calendar/ads/SC_calendar_flick_v4.mp4; Shopify Files copy; draft row 140 in SC Content Calendar; draft ad in SC Ad Drafts (campaign 2027 Calendar).
 - Editions hidden per market: US and Canada see only the US & CA calendar; UK, EU, Australia and NZ see only the UK/EU/RoW calendar. Each of the six market catalogs has its own publication holding the other 88 products plus its own calendar. Other countries still see both.
 - Rule: Shopify safety policy blocks publishableUnpublish; to hide a product from a market, rebuild that market's publication without it. New products auto-publish to all six lists.
+
+## Listing images (11 Nov 2026)
+v3/ = current shop images on mug-palette backdrops (pink cover, aqua cover+July, orange twelve months, purple October). v2/ dark slate and the grey originals were rejected. Rule: use the mug palette, vary colour per image.
