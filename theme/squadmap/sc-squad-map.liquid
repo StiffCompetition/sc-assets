@@ -51,7 +51,7 @@ var C=[
 var AR=1912/1500;
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}
 function mapHtml(cur){
- return '<div class="sqm-map"><img src="'+IMG+'" alt="Major Wood’s notice board: a street map of London with a pin in each squad member’s neighbourhood" loading="lazy">'+
+ return '<div class="sqm-map"><img src="'+IMG+'" alt="Major Wood’s notice board: a street map of London with a pin for each Stiff Competition squad member: Kennington, Walthamstow, Peckham, Shoreditch, Soho and Wapping" loading="lazy">'+
  C.map(function(c){return '<a class="sqm-hot'+(c.h===cur?' cur':'')+'" href="/pages/'+c.h+'" style="left:'+c.x+'%;top:'+c.y+'%" aria-label="'+esc(c.n)+', '+esc(c.a)+'" title="'+esc(c.n)+' · '+esc(c.a)+'" data-h="'+c.h+'"></a>'}).join('')+'</div>';
 }
 var me=null;C.forEach(function(c){if(c.h===H)me=c});
