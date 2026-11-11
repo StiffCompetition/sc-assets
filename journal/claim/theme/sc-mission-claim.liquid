@@ -77,7 +77,7 @@ function render(){
  if(!SCV)h+='<div class="login"><b>SIGN IN TO CLAIM</b><div>Your free Stiff Competition account keeps every certificate in your Stiff Vault. No order number needed.</div><a class="btn" href="/account/login?return_url='+encodeURIComponent('/pages/mission-claim')+'">Sign in or create account</a></div>';
  h+='<div class="grid">';
  for(var m=1;m<=12;m++){var c=CH[M[m][0]],done=!!state.claims[m];
-  h+='<button class="tile'+(done?' done':'')+'" data-m="'+m+'" style="--c:'+c.Bd+'"><div class="top"><div class="mn">'+(m===12?'A YEAR AT ATTENTION':MN[m-1].toUpperCase())+'</div><div class="ph">PHASE '+(m<10?'0':'')+m+': '+M[m][1]+'</div></div><img src="'+BASE+M[m][0]+'.png" alt=""><div class="st"><span>'+(done?'CLAIMED':'CLAIM')+'</span><span>'+(done?'★':'›')+'</span></div></button>';}
+  h+='<button class="tile'+(done?' done':'')+'" data-m="'+m+'" style="--c:'+c.Bd+'"><div class="top"><div class="mn">'+(m===12?'A YEAR AT ATTENTION':MN[m-1].toUpperCase())+'</div><div class="ph">PHASE '+(m<10?'0':'')+m+': '+M[m][1]+'</div></div><img src="'+BASE+M[m][0]+'.png" alt=""><div class="st"><span>'+(done?'VIEW':'CLAIM')+'</span><span>'+(done?'★':'›')+'</span></div></button>';}
  h+='</div><div class="note">Your certificates and reward codes live here whenever you sign in.</div>';
  root.innerHTML=h;
  var t=root.querySelectorAll('.tile');for(var j=0;j<t.length;j++)t[j].onclick=function(){openMonth(+this.getAttribute('data-m'))};
