@@ -1,0 +1,21 @@
+{% raw %}
+<script>
+(function(){
+var API='https://n8n-production-afc2.up.railway.app/webhook/sc-mission';
+var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var busy=false,data=null;
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function star(on){return '<svg viewBox="0 0 100 100" style="width:clamp(20px,6vw,30px);height:auto"><polygon points="50,6 62,38 96,38 68,58 79,92 50,71 21,92 32,58 4,38 38,38" fill="'+(on?'#ffc400':'#d9d9d9')+'" stroke="#111" stroke-width="6" stroke-linejoin="round"/></svg>'}
+function html(){var cl={},n=0,i,now=Date.now();(data||[]).forEach(function(c){cl[c.month]=c;n++});
+ var s='<div style="display:flex;gap:3px;flex-wrap:wrap;margin:8px 0">';for(i=1;i<=12;i++)s+=star(!!cl[i]);s+='</div>';
+ var live='';(data||[]).forEach(function(c){if(c.code&&new Date(c.code_expires).getTime()>now)live+='<div style="margin:6px 0"><b>'+esc(c.code)+'</b> <span style="opacity:.75">('+(c.month===12?'20% off next year\'s journal':'10% off')+', until '+esc(new Date(c.code_expires).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}))+')</span></div>'});
+ return '<div class="hs__box" id="scvm"><p class="hs__boxt">My Mission Claims</p><p class="hs__boxp">'+n+' of 12 missions claimed</p>'+s+(live?'<div style="margin:8px 0 12px">'+live+'</div>':'')+'<a class="hs__btn hs__btn--wide" href="/pages/mission-claim">'+(n?'Claim or view my certificates':'Claim a mission')+'</a></div>'}
+function inject(){if(!window.SCV||document.getElementById('scvm'))return;var boxes=document.querySelectorAll('.hs__boxt'),t=null;for(var i=0;i<boxes.length;i++){if(/My Rigidity Assessment/i.test(boxes[i].textContent)){t=boxes[i].parentNode;break}}
+ if(!t||!t.parentNode)return;var d=document.createElement('div');d.innerHTML=html();t.parentNode.insertBefore(d.firstChild,t.nextSibling)}
+function refresh(){var e=document.getElementById('scvm');if(e){var d=document.createElement('div');d.innerHTML=html();e.parentNode.replaceChild(d.firstChild,e)}}
+function load(){if(!window.SCV||busy||data)return;busy=true;fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'load',cid:window.SCV.id,sig:window.SCV.sig})}).then(function(r){return r.json()}).then(function(r){busy=false;if(r&&r.ok){data=r.claims||[];refresh()}}).catch(function(){busy=false})}
+var mo=new MutationObserver(function(){if(window.SCV&&!document.getElementById('scvm')){inject();load()}});
+mo.observe(document.body,{childList:true,subtree:true});inject();load();
+})();
+</script>
+{% endraw %}
