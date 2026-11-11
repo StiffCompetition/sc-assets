@@ -15,3 +15,8 @@ One row per month. Working versions: calendar/work/months/<month>_v<n>.jpg. Chos
 | Oct | Rear Admiral | sunset deck on the boat (swapped here from June by Andy 10 Nov: looks like October weather) | APPROVED | approved/jun_rear_admiral_latest_jun_v1.jpg |
 | Nov | Hammerin' Hanky | SPARKS FLY, building-site steel beam, angle grinder, sunset (moved here from September by Andy 10 Nov) | approved | approved/nov_hammerin_hanky_sparks_fly_approved_sep_v4.jpg |
 | Dec | ALL SIX characters | Christmas party (Andy 10 Nov: end of the year is all six; Rear Admiral keeps June only) | APPROVED 10 Nov (v6) | approved/dec_all_six_christmas_pub_approved_v6.jpg |
+
+## Shop setup record (10 Nov 2026)
+- Ad clip v4 (approved): calendar/ads/SC_calendar_flick_v4.mp4; Shopify Files copy; draft row 140 in SC Content Calendar; draft ad in SC Ad Drafts (campaign 2027 Calendar).
+- Editions hidden per market: US and Canada see only the US & CA calendar; UK, EU, Australia and NZ see only the UK/EU/RoW calendar. Each of the six market catalogs has its own publication holding the other 88 products plus its own calendar. Other countries still see both.
+- Rule: Shopify safety policy blocks publishableUnpublish; to hide a product from a market, rebuild that market's publication without it. New products auto-publish to all six lists.
