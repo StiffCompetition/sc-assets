@@ -16,15 +16,17 @@ im.paste(p.resize((W,ph),Image.LANCZOS),(0,TB))
 L=B+mm(12); Rr=W-B-mm(12)   # 12 mm inside trim
 y=ph+TB+mm(7)
 sy=H-B-mm(23)
-MF=f(mm(17)); asc=MF.getmetrics()[0]; yb=y+asc   # shared baseline
+MF=f(mm(17)); asc=MF.getmetrics()[0]; yb=y+asc
 mname=calendar.month_name[month].upper()
+def ctr(txt,font):   # ink centre offset above baseline (anchor ls)
+    bb=font.getbbox(txt,anchor='ls'); return (bb[1]+bb[3])/2
+mid=yb+ctr(mname,MF)     # common horizontal axis = centre of the month name ink
 d.text((L,yb),mname,font=MF,fill=INK,anchor='ls')
 mw=d.textlength(mname,font=MF)
-d.text((L+mw+mm(5),yb),'2027',font=f(mm(12)),fill=ACC,anchor='ls')
+YF=f(mm(12)); d.text((L+mw+mm(5),mid-ctr('2027',YF)),'2027',font=YF,fill=ACC,anchor='ls')
 ft=f(mm(9)); cs=mm(9)
 while d.textlength(caption,font=ft)>(Rr-L-mw-mm(40)): cs-=2; ft=f(cs)
-capM=0.73*mm(17); capC=0.73*cs   # cap heights
-d.text((Rr,yb-capM/2+capC/2),caption,font=ft,fill=ACC,anchor='rs')
+d.text((Rr,mid-ctr(caption,ft)),caption,font=ft,fill=ACC,anchor='rs')
 gy=y+mm(24); hdr=['MON','TUE','WED','THU','FRI','SAT','SUN'] if monday else ['SUN','MON','TUE','WED','THU','FRI','SAT']
 cw=(Rr-L)/7; rh=mm(float(os.environ.get('ROWH','19.5')))
 for i,h in enumerate(hdr): d.text((L+cw*i+cw/2,gy+mm(4)),h,font=f(mm(3.6)),fill=GRY,anchor='mm')
