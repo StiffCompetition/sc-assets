@@ -1,0 +1,87 @@
+{%- comment -%} Squad map: small map block on the six character pages + pop-up, and the Squad Map page. Image: assets/sc-squad-map.jpg {%- endcomment -%}
+<div id="sqm-data" data-img="{{ 'sc-squad-map.jpg' | asset_url }}" data-handle="{{ page.handle }}" hidden></div>
+<style>
+.sqm{border-top:2px solid var(--c5,#e6d3a0);margin-top:24px;padding:32px 0 8px}
+.sqm-row{display:flex;flex-wrap:wrap;gap:24px;align-items:center;margin-top:16px}
+.sqm-thumb{position:relative;flex:0 1 380px;width:100%;max-width:380px;aspect-ratio:4/3;border:3px solid var(--c5,#e6d3a0);background-color:#e9e2c8;background-repeat:no-repeat;cursor:pointer;display:block;padding:0;overflow:hidden;font:inherit}
+.sqm-thumb:hover,.sqm-thumb:focus-visible{border-color:var(--c2,#94601a)}
+.sqm-ring{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:4px solid var(--c3,#ffd54a);box-shadow:0 0 0 3px var(--c1,#6b3f06),0 0 14px 4px rgba(255,213,74,.7);animation:sqmP 1.8s ease-in-out infinite;pointer-events:none}
+.sqm-zoom{position:absolute;right:8px;bottom:8px;background:var(--c1,#6b3f06);color:var(--c4,#fff6d6);font-family:var(--face-m,monospace);font-size:12px;text-transform:uppercase;padding:5px 9px;letter-spacing:.04em}
+.sqm-txt{flex:1 1 240px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.sqm-lab{font-family:var(--face-m,monospace);font-size:12px;text-transform:uppercase;color:var(--c2,#94601a)}
+.sqm-hood{font-family:var(--face-d,'Oswald',sans-serif);font-weight:700;font-size:40px;line-height:1.05;text-transform:uppercase;color:var(--c1,#6b3f06);margin:0}
+.sqm-p{margin:0;font-size:15px;line-height:1.5}
+.sqm-btn{align-self:flex-start;background:var(--c1,#6b3f06);color:var(--c4,#fff6d6);border:0;cursor:pointer;font-family:var(--face-d,'Oswald',sans-serif);font-size:16px;letter-spacing:.04em;text-transform:uppercase;padding:12px 20px}
+.sqm-btn:hover,.sqm-btn:focus-visible{background:var(--c2,#94601a)}
+.sqm-modal{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.84);display:none;align-items:center;justify-content:center;padding:12px}
+.sqm-modal.on{display:flex}
+.sqm-box{position:relative;width:min(94vw,calc((100vh - 70px)*.7845));max-width:760px}
+.sqm-map{position:relative;width:100%;aspect-ratio:1500/1912;background:#222}
+.sqm-map img{display:block;width:100%;height:100%;object-fit:cover}
+.sqm-hot{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid rgba(255,213,74,.0);display:block;text-decoration:none;transition:border-color .15s,background .15s}
+.sqm-hot:hover,.sqm-hot:focus-visible{border-color:#ffd54a;background:rgba(255,213,74,.28);outline:none}
+.sqm-hot.cur{border-color:#ffd54a;animation:sqmP 1.8s ease-in-out infinite}
+.sqm-hot.cur::after{content:"YOU ARE HERE";position:absolute;left:50%;top:100%;transform:translateX(-50%);white-space:nowrap;background:#6b3f06;color:#fff6d6;font:600 10px/1 var(--face-m,monospace);padding:4px 6px;margin-top:2px}
+.sqm-x{position:absolute;right:-4px;top:-46px;background:#fff6d6;color:#6b3f06;border:0;width:40px;height:40px;border-radius:50%;font-size:22px;line-height:1;cursor:pointer;font-weight:700}
+.sqm-cap{position:absolute;left:0;right:0;bottom:-34px;text-align:center;color:#fff6d6;font:600 13px/1.2 var(--face-m,monospace);text-transform:uppercase}
+.sqm-list{list-style:none;margin:18px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.sqm-list a{display:flex;flex-direction:column;gap:2px;text-decoration:none;border:1px solid var(--c5,#e6d3a0);background:var(--c4,#fff6d6);padding:12px;color:var(--c1,#6b3f06)}
+.sqm-list b{font-family:var(--face-d,'Oswald',sans-serif);font-size:20px;text-transform:uppercase}
+.sqm-list span{font-family:var(--face-m,monospace);font-size:12px;text-transform:uppercase;color:var(--c2,#94601a)}
+.sqm-list a:hover{border-color:var(--c2,#94601a)}
+.sqm-page{max-width:760px;margin:0 auto}
+.sqm-page .sqm-map{border:3px solid #e6d3a0}
+.sqm-page .sqm-hot{border-color:rgba(255,213,74,.9);animation:sqmP 2.2s ease-in-out infinite}
+@keyframes sqmP{50%{transform:scale(1.14)}}
+@media(prefers-reduced-motion:reduce){.sqm-ring,.sqm-hot.cur,.sqm-page .sqm-hot{animation:none}}
+@media(max-width:600px){.sqm-hood{font-size:32px}.sqm-thumb{max-width:none}.sqm-list{grid-template-columns:repeat(2,minmax(0,1fr))}.sqm-hot{width:40px;height:40px;margin:-20px 0 0 -20px}}
+body.sqm-lock{overflow:hidden}
+</style>
+{% raw %}
+<script>
+(function(){
+var d=document.getElementById('sqm-data');if(!d)return;
+var IMG=d.getAttribute('data-img'),H=d.getAttribute('data-handle');
+var C=[
+{h:'major-wood',n:'Major Wood',a:'Kennington',x:48.2,y:61.3},
+{h:'the-rear-admiral',n:'The Rear Admiral',a:'Wapping',x:69.4,y:47.7},
+{h:'hammerin-hanky',n:'Hammerin’ Hanky',a:'Walthamstow',x:69.4,y:17.8},
+{h:'slick-willy',n:'Slick Willy',a:'Soho',x:40.5,y:44.1},
+{h:'the-velvet-python',n:'The Velvet Python',a:'Shoreditch',x:58.5,y:36.9},
+{h:'the-grip',n:'The Grip',a:'Peckham',x:65.3,y:69.9}];
+var AR=1912/1500;
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}
+function mapHtml(cur){
+ return '<div class="sqm-map"><img src="'+IMG+'" alt="Major Wood’s notice board: a street map of London with a pin in each squad member’s neighbourhood" loading="lazy">'+
+ C.map(function(c){return '<a class="sqm-hot'+(c.h===cur?' cur':'')+'" href="/pages/'+c.h+'" style="left:'+c.x+'%;top:'+c.y+'%" aria-label="'+esc(c.n)+', '+esc(c.a)+'" title="'+esc(c.n)+' · '+esc(c.a)+'" data-h="'+c.h+'"></a>'}).join('')+'</div>';
+}
+var me=null;C.forEach(function(c){if(c.h===H)me=c});
+if(me){
+ var sec=document.createElement('section');sec.className='sqm';
+ var S=2.6;
+ var px=((0.5-me.x/100*S)/(1-S))*100;
+ var py=((0.5*0.75-me.y/100*S*AR)/(0.75-S*AR))*100;
+ sec.innerHTML='<h2 class="mwp-h">Where he lives</h2><div class="sqm-row">'+
+ '<button type="button" class="sqm-thumb" aria-haspopup="dialog" aria-label="Open the squad map" style="background-image:url('+IMG+');background-size:'+(S*100)+'% auto;background-position:'+px.toFixed(2)+'% '+py.toFixed(2)+'%"><span class="sqm-ring"></span><span class="sqm-zoom">Tap for the full map</span></button>'+
+ '<div class="sqm-txt"><span class="sqm-lab">Home patch</span><p class="sqm-hood">'+esc(me.a)+'</p><p class="sqm-p">'+esc(me.n)+' lives in '+esc(me.a)+', London. Pinned on Major Wood’s board.</p><button type="button" class="sqm-btn">See where the squad lives</button></div></div>';
+ var anchor=document.querySelector('.mwp-six')||null;
+ if(anchor)anchor.parentNode.insertBefore(sec,anchor);else{var m=document.querySelector('.mwp-main')||document.body;m.appendChild(sec)}
+ var modal=document.createElement('div');modal.className='sqm-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Where the squad lives');
+ modal.innerHTML='<div class="sqm-box"><button type="button" class="sqm-x" aria-label="Close map">×</button>'+mapHtml(me.h)+'<div class="sqm-cap">Tap a pin to meet the squad</div></div>';
+ document.body.appendChild(modal);
+ var last=null;
+ function open(){last=document.activeElement;modal.classList.add('on');document.body.classList.add('sqm-lock');modal.querySelector('.sqm-x').focus();var im=modal.querySelector('img');if(im)im.loading='eager'}
+ function close(){modal.classList.remove('on');document.body.classList.remove('sqm-lock');if(last&&last.focus)last.focus()}
+ sec.querySelectorAll('.sqm-thumb,.sqm-btn').forEach(function(b){b.addEventListener('click',open)});
+ modal.querySelector('.sqm-x').addEventListener('click',close);
+ modal.addEventListener('click',function(e){if(e.target===modal)close()});
+ modal.querySelector('.sqm-hot.cur').addEventListener('click',function(e){e.preventDefault();close()});
+ document.addEventListener('keydown',function(e){if(!modal.classList.contains('on'))return;if(e.key==='Escape')close();if(e.key==='Tab'){var f=[].slice.call(modal.querySelectorAll('button,a'));var i=f.indexOf(document.activeElement);e.preventDefault();f[(i+(e.shiftKey?-1:1)+f.length)%f.length].focus()}});
+}else if(H==='squad-map'){
+ var t=document.getElementById('sqmap-inline');if(!t)return;
+ t.className='sqm-page';
+ t.innerHTML=mapHtml('')+'<ul class="sqm-list">'+C.map(function(c){return '<li><a href="/pages/'+c.h+'"><b>'+esc(c.n)+'</b><span>'+esc(c.a)+'</span></a></li>'}).join('')+'</ul>';
+}
+})();
+</script>
+{% endraw %}
