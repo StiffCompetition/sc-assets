@@ -820,7 +820,7 @@ function renderKeyRow() {
   let h = chip(nLocks ? 'amber' : 'green', 'Locks in use', nLocks === null ? '…' : (nLocks || 'none'), 'Tasks', locks && locks.length ? locks.map(l => l.file).join(', ') : 'Nothing locked');
   h += chip(reds ? 'red' : 'green', 'Red alerts', reds || 'none', 'Alerts', '');
   h += chip(wait ? 'amber' : 'green', 'Waiting on you', wait, 'Tasks', '');
-  if (ads) { const cap = ads.spend_cap_gbp || 18; h += chip(ads.total_spend_gbp >= cap * 0.9 ? 'red' : '', 'Ad spend', adGbp(ads.total_spend_gbp) + ' of ' + adGbp(cap), 'Ads', 'Updated ' + adAgo(ads.updated_at)); }
+  if (ads) { h += chip('', 'Ad spend', adGbp(ads.total_spend_gbp), 'Ads', 'Updated ' + adAgo(ads.updated_at)); }
   el.innerHTML = h;
   el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goTab(b.dataset.go));
 }
@@ -1560,14 +1560,20 @@ function adCard(c) {
 }
 function renderAds() {
   loadAds(false);
-  let h = '<div class="adhead"><div><h2>Ads</h2><p class="sub">' + (ads ? 'Figures from Meta, updated ' + esc(adAgo(ads.updated_at)) + ' (refreshes hourly)' : '') + ' <button class="btn small ghost" id="ad_reload">Refresh</button></p></div>';
-  if (ads) { const cap = ads.spend_cap_gbp || 18, pc = Math.min(100, Math.round(ads.total_spend_gbp / cap * 100)); h += '<div class="adcap"><div class="t"><span>All ads spent</span><span><b>' + adGbp(ads.total_spend_gbp) + '</b> of ' + adGbp(cap) + ' limit</span></div><div class="adbar"><i style="width:' + pc + '%"></i></div></div>'; }
+  let h = '<div class="adhead"><div><h2>Ads</h2><p class="sub">' + (ads ? 'Figures from Meta, updated ' + esc(adAgo(ads.updated_at)) + ' (Refresh reads Meta now)' : '') + ' <button class="btn small ghost" id="ad_reload">Refresh</button></p></div>';
+  if (ads) { h += '<div class="adcap"><div class="t"><span>All ads spent</span><span><b>' + adGbp(ads.total_spend_gbp) + '</b></span></div></div>'; }
   h += '</div>';
   if (!ads && adsLoading) h += '<p style="color:var(--grey)">Collecting the ads…</p>';
   else if (!ads) h += '<p style="color:var(--c-today)">' + esc(adsErr || 'No ads yet.') + '</p>';
   else h += ads.campaigns.map(adCard).join('');
   $('list').innerHTML = h;
-  const b = $('ad_reload'); if (b) b.onclick = () => { ads = null; loadAds(true); render(); };
+  const b = $('ad_reload'); if (b) b.onclick = () => {
+    b.disabled = true; b.textContent = 'Reading Meta…';
+    fetch(BASE + 'sc-ads-refresh', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+      .catch(e => { adsErr = 'Meta did not answer (' + e.message + '). Showing the last saved figures.'; })
+      .finally(() => { ads = null; loadAds(true); render(); });
+  };
 }
 // ---- Overview tab (8 Nov 2026, Andy): the figures and health lines in one place (sales channels, baskets, GIF promotion, what is in use).
 // ---- Overview tab (8 Nov 2026, Andy): every statistic in one place from SC - Overview API, each as yesterday · change · running total.
