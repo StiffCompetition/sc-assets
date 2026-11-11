@@ -536,6 +536,7 @@
   .adcard { padding: 9px 12px; margin-bottom: 8px; border-radius: 8px; border-left-width: 5px; }
   .adtop { margin-bottom: 4px; gap: 8px; } .adtop h3 { font-size: 16px; } .adpill { font-size: 11px; padding: 1px 9px; }
   /* Lights (11 Nov 2026, Andy): red = attack first, amber = watch, green = working, grey = nothing to do */
+  details.adold { margin-top: 18px; } details.adold > summary { cursor: pointer; color: var(--grey); font-weight: 600; margin-bottom: 12px; }
   .lamp { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: #9aa5b1; vertical-align: -2px; margin-right: 8px; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #d5dbe1; } .lamp.red { background: #d93025; } .lamp.amber { background: #f2a600; } .lamp.green { background: #1e9e4a; }
   .adcard.lred { border-left-color: #d93025; } .adcard.lamber { border-left-color: #f2a600; } .adcard.lgreen { border-left-color: #1e9e4a; }
   .adwin { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 4px 0 10px; } .adwin .big { font-family: var(--display); font-size: 34px; font-weight: 600; line-height: 1; } .adwin .lab { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--grey); } .adwin .per { font-size: 14px; color: var(--grey); }
@@ -1608,7 +1609,11 @@ function renderAds() {
   h += '</div>';
   if (!ads && adsLoading) h += '<p style="color:var(--grey)">Collecting the ads…</p>';
   else if (!ads) h += '<p style="color:var(--c-today)">' + esc(adsErr || 'No ads yet.') + '</p>';
-  else h += ads.campaigns.map(adCard).join('');
+  else {
+    const live = ads.campaigns.filter(c => c.phase === 'running' || c.phase === 'scheduled'), old = ads.campaigns.filter(c => !(c.phase === 'running' || c.phase === 'scheduled'));
+    h += live.length ? live.map(adCard).join('') : '<p style="color:var(--grey)">No ads are running or waiting to start.</p>';
+    if (old.length) h += '<details class="adold"><summary>Old and paused (' + old.length + ')</summary>' + old.map(adCard).join('') + '</details>';
+  }
   $('list').innerHTML = h;
   const b = $('ad_reload'); if (b) b.onclick = () => {
     b.disabled = true; b.textContent = 'Reading Meta…';
