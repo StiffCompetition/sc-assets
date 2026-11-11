@@ -436,6 +436,11 @@
   @keyframes handpulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(255, 213, 74, .35); } 50% { box-shadow: 0 0 0 7px rgba(255, 213, 74, .12); } } @keyframes spin { to { transform: rotate(360deg); } }
   .tnum { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); margin-right: 8px; vertical-align: middle; }
   .trow2.you:has(.mark.hand) { background: #fff8dc; border-color: #ead78a; }
+  /* 11 Nov 2026 (Andy): a Collectors say quote is a normal task that shows the written words with OK and Reject; task search box above the list. */
+  .qcard { margin-top: 6px; } .qtext { font-size: 16px; line-height: 1.45; background: #fff; border: 1px solid var(--line); border-left: 4px solid #ed1c24; border-radius: 8px; padding: 10px 14px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .qmeta { font-size: 13px; color: var(--muted); margin-top: 4px; } .qmeta .stars { color: #e0a100; letter-spacing: 1px; }
+  .btn.rej { background: #fff; color: #c62828; border-color: #c62828; } .btn.rej:hover { background: #fdecea; }
+  .tsearch { margin: 0 0 10px; } .tsearch input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; }
   .sitem.hand .sn { background: #ffd54a; color: #5a3d00; } .light.hand { background: #fff8dc; border-color: #ead78a; } .light.hand .ld { background: #ffd54a; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 0 0 3px rgba(255, 213, 74, .35); }
   .ogroup.hand .group-title { color: #8a6100; }
   .lights { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -1421,6 +1426,31 @@ function stateMark(r) {
 }
 const num = r => '<span class="tnum">#' + esc(r.id) + '</span>';
 const handedItems = () => workItems().filter(r => handed(r) && !isHidden(r));
+// 11 Nov 2026 (Andy): quote approval is a normal task that shows the written words with OK and Reject (OK = go yes, Reject = Done, which SC - Collector Quote Publish reads every 15 minutes).
+const isQuote = r => r.type === 'QUOTE' && r.status !== 'Done';
+function quoteParts(r) {
+  const n = String(r.notes || '');
+  const m = n.match(/Notes:\s*"([\s\S]*)"\s+-\s+([^\n]*?)\.\s+Rating\s+(\d)\/5\.\s+Order\s+(\S+?)\.?\s*$/m);
+  if (m) return { text: m[1], who: m[2], rating: Number(m[3]), order: m[4] };
+  const p = parseNotes(r.notes);
+  return { text: (p && p.notes) || (r.next_step && r.next_step !== 'none' ? r.next_step : ''), who: '', rating: 0, order: '' };
+}
+function quoteCard(r) {
+  const q = quoteParts(r), prod = String(r.title || '').replace(/^Collectors say:\s*/i, '').replace(/^.*? on /, '');
+  return '<div class="qcard"><div class="qtext">' + esc(q.text) + '</div><div class="qmeta">' + esc(q.who || prod) + (q.rating ? ' · <span class="stars">' + '★'.repeat(q.rating) + '☆'.repeat(5 - q.rating) + '</span>' : '') + (q.order ? ' · order ' + esc(q.order) : '') + (q.who ? ' · ' + esc(prod) : '') + '</div></div>';
+}
+const quoteBtns = r => r.go === 'yes'
+  ? '<span class="am">Approved: goes on the shop within 15 minutes</span>'
+  : '<button class="btn small go" data-act="qok">OK: put on the shop</button><button class="btn small rej" data-act="qno">Reject</button>';
+// Task search (11 Nov 2026, Andy): by task number or any words in the title, next step or notes; every task, open or done.
+let sq = '';
+function searchHtml() { return '<div class="tsearch"><input id="tsrch" type="search" placeholder="Search by task number or title" autocomplete="off" value="' + esc(sq) + '"></div>'; }
+function searchResults() {
+  const q = sq.trim().toLowerCase().replace(/^#/, ''), terms = q.split(/\s+/).filter(Boolean);
+  const hit = r => String(r.id) === q || (/^\d+$/.test(q) && String(r.id).startsWith(q)) || terms.every(t => (String(r.title || '') + ' ' + String(r.next_step || '') + ' ' + String(r.notes || '')).toLowerCase().includes(t));
+  const list = rows.filter(r => r.status !== 'Removed' && hit(r)).sort((a, b) => (String(b.id) === q) - (String(a.id) === q) || (a.status === 'Done') - (b.status === 'Done') || Number(b.id) - Number(a.id));
+  return '<div class="ogroup"><div class="group-title">Search <span class="cnt">' + list.length + '</span></div>' + (list.length ? list.slice(0, 40).map(r => line(r)).join('') + (list.length > 40 ? '<div class="empty" style="padding:10px 0">First 40 of ' + list.length + ': type more to narrow.</div>' : '') : '<div class="empty" style="padding:10px 0">No task matches.</div>') + '</div>';
+}
 function line(r, opts) {
   opts = opts || {};
   const isA = needsYou(r), red = r.type === 'ALERT' && aRed(r);
@@ -1428,14 +1458,14 @@ function line(r, opts) {
   const late = r.due && r.due < today();
   const o = r.outcome && openOutcomes().find(x => String(x.id) === String(r.outcome));
   return '<div class="trow2' + (isA ? ' you' : ' cl') + (red ? ' red' : '') + (r.status === 'Done' ? ' done' : '') + (opts.compact ? ' compact' : '') + '" data-id="' + esc(r.id) + '">'
-    + '<div class="t1">' + stateMark(r) + num(r) + '<span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isA ? (working(r) ? 'Working on it' : 'Back to you') : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b class="ttl" data-act="focus" title="Open with everything related">' + esc(r.title) + '</b>'
+    + '<div class="t1">' + stateMark(r) + num(r) + '<span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isQuote(r) ? (r.go === 'yes' ? 'Approved' : 'Approve quote') : isA ? (working(r) ? 'Working on it' : 'Back to you') : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b class="ttl" data-act="focus" title="Open with everything related">' + esc(r.title) + '</b>'
     + (r.waiting_on ? '<span class="chip wait">waiting: ' + esc(r.waiting_on) + '</span>' : '') + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
     + (opts.why ? '<span class="chip why">' + esc(opts.why) + '</span>' : '') + (!opts.compact && o && !ofilter ? '<span class="chip">' + esc(o.title) + '</span>' : '')
     + '<span class="am">' + esc(funcOf(r)) + '</span></div>'
-    + (act ? '<div class="t2">' + esc(act) + '</div>' : '')
-    + '<div class="tb">' + taskBtn(r) + chatBtn(r)
+    + (isQuote(r) ? quoteCard(r) : (act ? '<div class="t2">' + esc(act) + '</div>' : ''))
+    + '<div class="tb">' + (isQuote(r) ? quoteBtns(r) + chatBtn(r) : taskBtn(r) + chatBtn(r)
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
-    + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : '')
+    + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : ''))
     + (opts.compact ? '' : outcomeSel(r))
     + '<button class="btn small ghost" data-act="pin">' + (isPinned(r) ? 'Unpin' : 'Pin') + '</button>'
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
@@ -1469,10 +1499,12 @@ function focusHtml(r) {
 }
 function renderNow() {
   const os = openOutcomes();
-  let h = '<div class="obd">' + sideHtml() + '<section class="work">' + inUseHtml() + managerBar() + workingStrip();
+  const srch = !!sq.trim();
+  let h = '<div class="obd">' + sideHtml() + '<section class="work">' + searchHtml() + inUseHtml() + managerBar() + workingStrip();
   const fr = focusId && rows.find(x => String(x.id) === String(focusId));
   if (!fr && ofilter && os.some(x => String(x.id) === ofilter && /audience/i.test(x.title))) loadEngage();
-  if (fr) h += focusHtml(fr);
+  if (srch) h += searchResults();
+  else if (fr) h += focusHtml(fr);
   else {
     if (outForm) h += outcomeFormHtml();
     if (ofilter === 'handed') h += lineGroup('Back to you: Claude is waiting on your answer', handedItems().sort((a, b) => String(b.handed_at || '').localeCompare(String(a.handed_at || ''))), 'hand');
@@ -1491,10 +1523,11 @@ function renderNow() {
   }
   h += '</section></div>';
   $('list').innerHTML = h;
-  if (!fr && ofilter === 'alerts') wireAlerts();
-  if (!fr && ofilter === 'routine') wireRoutine();
-  if (!fr && ofilter === 'workstreams') renderRelaunch();
-  if (!fr && ofilter && $('list').querySelector('.egc')) { wireEngage(); const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; eg = null; render(); }; }
+  const ts = $('tsrch'); if (ts) ts.oninput = e => { const pos = e.target.selectionStart; sq = e.target.value; render(); const i = $('tsrch'); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (x) {} } };
+  if (!fr && !srch && ofilter === 'alerts') wireAlerts();
+  if (!fr && !srch && ofilter === 'routine') wireRoutine();
+  if (!fr && !srch && ofilter === 'workstreams') renderRelaunch();
+  if (!fr && !srch && ofilter && $('list').querySelector('.egc')) { wireEngage(); const b = $('gp_reload'); if (b) b.onclick = () => { gp = null; eg = null; render(); }; }
   $('list').querySelectorAll('.sitem, .otile').forEach(b => b.onclick = () => { const k = b.dataset.of; focusId = null; if (k === '+') { outForm = true; outEdit = null; ofilter = ''; render(); const i = $('of_title'); if (i) i.focus(); return; } ofilter = k; render(); window.scrollTo(0, 0); });
   wireMgr();
   if ($('of_edit')) $('of_edit').onclick = () => { outEdit = os.find(x => String(x.id) === ofilter) || null; outForm = true; render(); };
@@ -1507,6 +1540,8 @@ function renderNow() {
   }
   $('list').querySelectorAll('.trow2').forEach(c => {
     const r = rows.find(x => String(x.id) === c.dataset.id); if (!r) return;
+    const qo = c.querySelector('[data-act=qok]'); if (qo) qo.onclick = () => save(Object.assign({}, r, { go: 'yes', owner: 'Claude', status: 'Next', next_step: 'Approved by Andy. Goes on the shop within 15 minutes.', waiting_on: '', handed_at: '' }));
+    const qn = c.querySelector('[data-act=qno]'); if (qn) qn.onclick = () => save(Object.assign({}, r, { go: '', status: 'Done', done_on: today(), next_step: 'Kept off the shop.', waiting_on: '', handed_at: '' }));
     const g = c.querySelector('[data-act=go]'); if (g) g.onclick = () => save(Object.assign({}, r, { go: r.go === 'yes' ? '' : 'yes' }));
     const d = c.querySelector('[data-act=done]'); if (d) d.onclick = () => save(Object.assign({}, r, { status: 'Done', done_on: today(), next_step: 'none' }));
     c.querySelector('[data-act=edit]').onclick = () => openDlg(r);
