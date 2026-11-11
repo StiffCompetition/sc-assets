@@ -535,6 +535,11 @@
   .adcap { min-width: 240px; } .adbar { height: 6px; margin-top: 3px; }
   .adcard { padding: 9px 12px; margin-bottom: 8px; border-radius: 8px; border-left-width: 5px; }
   .adtop { margin-bottom: 4px; gap: 8px; } .adtop h3 { font-size: 16px; } .adpill { font-size: 11px; padding: 1px 9px; }
+  /* Lights (11 Nov 2026, Andy): red = attack first, amber = watch, green = working, grey = nothing to do */
+  .lamp { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: #9aa5b1; vertical-align: -2px; margin-right: 8px; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #d5dbe1; } .lamp.red { background: #d93025; } .lamp.amber { background: #f2a600; } .lamp.green { background: #1e9e4a; }
+  .adcard.lred { border-left-color: #d93025; } .adcard.lamber { border-left-color: #f2a600; } .adcard.lgreen { border-left-color: #1e9e4a; }
+  .adwin { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 4px 0 10px; } .adwin .big { font-family: var(--display); font-size: 34px; font-weight: 600; line-height: 1; } .adwin .lab { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--grey); } .adwin .per { font-size: 14px; color: var(--grey); }
+  .adrow .lamp { width: 10px; height: 10px; margin-right: 6px; box-shadow: none; }
   .adverdict { font-size: 14.5px; font-weight: 600; margin: 2px 0 6px; } .adverdict.bad { color: #c62828; } .adverdict.good { color: var(--c-done); } .adverdict.watch { color: #b9770e; } .adverdict.early, .adverdict.waiting, .adverdict.paused, .adverdict.done { color: var(--ink); }
   .adspend { margin: 0 0 6px; } .adspend .t { font-size: 13px; } .adspend .t b { font-size: 15px; }
   .adgrid { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 5px; }
@@ -1579,8 +1584,10 @@ function adCard(c) {
   const pct = c.budget_gbp ? Math.min(100, Math.round(c.spend_gbp / c.budget_gbp * 100)) : 0;
   const bud = c.budget_is_daily ? adGbp(c.budget_gbp) + ' a day' : adGbp(c.budget_gbp);
   const st = (v, l) => '<div class="adstat"><div class="v">' + v + '</div><div class="l">' + l + '</div></div>';
-  let h = '<section class="adcard ' + esc(c.phase) + '"><div class="adtop"><h3>' + esc(c.campaign) + '</h3><span class="adpill ' + esc(c.phase) + '">' + esc(label) + '</span></div>';
+  const lt = c.light || 'grey';
+  let h = '<section class="adcard ' + esc(c.phase) + ' l' + esc(lt) + '"><div class="adtop"><h3><span class="lamp ' + esc(lt) + '" title="' + esc(c.light_why || '') + '"></span>' + esc(c.campaign) + '</h3><span class="adpill ' + esc(c.phase) + '">' + esc(label) + '</span></div>';
   if (c.verdict) h += '<div class="adverdict ' + esc(c.state || '') + '">' + esc(c.verdict) + '</div>';
+  if (c.success) h += '<div class="adwin"><span class="big">' + adN(c.success.value) + '</span><span class="lab">' + esc(c.success.label) + '</span>' + (c.success.per ? '<span class="per">' + adGbp(c.success.per) + ' ' + esc(c.success.per_label) + '</span>' : '') + (c.success.label === 'Quiz finishes' && c.success.value === 0 ? '<span class="per">counting from now on</span>' : '') + '</div>';
   h += '<div class="adspend"><div class="t"><span><b>' + adGbp(c.spend_gbp) + '</b> spent</span><span>budget ' + esc(bud) + '</span></div>' + (c.budget_is_daily ? '' : '<div class="adbar"><i style="width:' + pct + '%"></i></div>') + '</div>';
   h += '<div class="adgrid">'
     + st(c.phase === 'scheduled' ? '0' : (c.phase === 'paused' ? '—' : (c.days_run ? adDays(c.days_run) : 'Not yet')), 'Run so far')
@@ -1591,7 +1598,7 @@ function adCard(c) {
     + st(c.cpc_gbp === null ? '—' : adCpc(c.cpc_gbp), 'Per click')
     + st(c.ctr_pct === null ? '—' : Number(c.ctr_pct).toFixed(2) + '%', 'Click rate') + '</div>';
   if (c.ads.length > 1) h += '<details class="adads"><summary>' + c.ads.length + ' ads in this campaign</summary><div class="adrow h"><span>Ad</span><span>Spent</span><span>Impr.</span><span>Clicks</span><span>CPC</span><span>Rate</span></div>'
-    + c.ads.map(a => '<div class="adrow"><span>' + esc(a.name) + '</span><span>' + adGbp(a.spend_gbp) + '</span><span>' + adN(a.impressions) + '</span><span>' + adN(a.link_clicks) + '</span><span>' + (a.link_clicks ? adCpc(a.cpc_gbp) : '—') + '</span><span>' + (a.impressions ? Number(a.ctr_pct).toFixed(2) + '%' : '—') + '</span></div>').join('') + '</details>';
+    + c.ads.map(a => '<div class="adrow"><span><i class="lamp ' + esc(a.light || 'grey') + '" title="' + esc(a.light_why || '') + '"></i>' + esc(a.name) + '</span><span>' + adGbp(a.spend_gbp) + '</span><span>' + adN(a.impressions) + '</span><span>' + adN(a.link_clicks) + '</span><span>' + (a.link_clicks ? adCpc(a.cpc_gbp) : '—') + '</span><span>' + (a.impressions ? Number(a.ctr_pct).toFixed(2) + '%' : '—') + '</span></div>').join('') + '</details>';
   return h + '</section>';
 }
 function renderAds() {
