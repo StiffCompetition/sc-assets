@@ -18,7 +18,7 @@
 .sqm-box{position:relative;width:min(94vw,calc((100vh - 70px)*.7845));max-width:760px}
 .sqm-map{position:relative;width:100%;aspect-ratio:1500/1912;background:#222}
 .sqm-map img{display:block;width:100%;height:100%;object-fit:cover}
-.sqm-hot{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid rgba(255,213,74,.0);display:block;text-decoration:none;transition:border-color .15s,background .15s}
+.sqm-hot{position:absolute;border-radius:8px;cursor:pointer;border:3px solid rgba(255,213,74,.0);display:block;text-decoration:none;transition:border-color .15s,background .15s}
 .sqm-hot:hover,.sqm-hot:focus-visible{border-color:#ffd54a;background:rgba(255,213,74,.28);outline:none}
 .sqm-hot.cur{border-color:#ffd54a;animation:sqmP 1.8s ease-in-out infinite}
 .sqm-x{position:absolute;right:-4px;top:-46px;background:#fff6d6;color:#6b3f06;border:0;width:40px;height:40px;border-radius:50%;font-size:22px;line-height:1;cursor:pointer;font-weight:700}
@@ -33,7 +33,7 @@
 .sqm-page .sqm-hot{border-color:rgba(255,213,74,.9);animation:sqmP 2.2s ease-in-out infinite}
 @keyframes sqmP{50%{transform:scale(1.14)}}
 @media(prefers-reduced-motion:reduce){.sqm-ring,.sqm-hot.cur,.sqm-page .sqm-hot{animation:none}}
-@media(max-width:600px){.sqm-hood{font-size:32px}.sqm-thumb{max-width:none}.sqm-list{grid-template-columns:repeat(2,minmax(0,1fr))}.sqm-hot{width:40px;height:40px;margin:-20px 0 0 -20px}}
+@media(max-width:600px){.sqm-hood{font-size:32px}.sqm-thumb{max-width:none}.sqm-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 body.sqm-lock{overflow:hidden}
 </style>
 {% raw %}
@@ -48,11 +48,12 @@ var C=[
 {h:'slick-willy',n:'Slick Willy',a:'Soho',x:40.5,y:44.1},
 {h:'the-velvet-python',n:'The Velvet Python',a:'Shoreditch',x:58.5,y:36.9},
 {h:'the-grip',n:'The Grip',a:'Peckham',x:65.3,y:69.9}];
+var R={'major-wood':[40.67,57.01,14.67,10.46],'the-rear-admiral':[54.93,43.93,28.00,10.46],'hammerin-hanky':[55.33,14.12,27.33,9.94],'slick-willy':[30.40,40.79,19.60,9.41],'the-velvet-python':[44.00,33.47,28.67,9.41],'the-grip':[57.33,65.90,16.00,9.94]};
 var AR=1912/1500;
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}
 function mapHtml(cur){
  return '<div class="sqm-map"><img src="'+IMG+'" alt="Major Wood’s notice board: a street map of London with a pin for each Stiff Competition squad member: Kennington, Walthamstow, Peckham, Shoreditch, Soho and Wapping" loading="lazy">'+
- C.map(function(c){return '<a class="sqm-hot'+(c.h===cur?' cur':'')+'" href="/pages/'+c.h+'" style="left:'+c.x+'%;top:'+c.y+'%" aria-label="'+esc(c.n)+', '+esc(c.a)+'" title="'+esc(c.n)+' · '+esc(c.a)+'" data-h="'+c.h+'"></a>'}).join('')+'</div>';
+ C.map(function(c){return '<a class="sqm-hot'+(c.h===cur?' cur':'')+'" href="/pages/'+c.h+'" style="left:'+R[c.h][0]+'%;top:'+R[c.h][1]+'%;width:'+R[c.h][2]+'%;height:'+R[c.h][3]+'%" aria-label="'+esc(c.n)+', '+esc(c.a)+'" title="'+esc(c.n)+' · '+esc(c.a)+'" data-h="'+c.h+'"></a>'}).join('')+'</div>';
 }
 var me=null;C.forEach(function(c){if(c.h===H)me=c});
 if(me){
