@@ -30,6 +30,6 @@ for n,k,cap,ch,cry in M:
     acc='%02X%02X%02X'%(round(r*255),round(g*255),round(b*255))
     if k=='may': acc='C2185B'
     import os
-    env=dict(os.environ); env['MARK']={2:'14:heart',3:'17:shamrock'}.get(n,''); env['PW']=sys.argv[3]; env['PH']=sys.argv[4]; env['ROWH']=sys.argv[5]; env['TOPBAND']='14'; env['MARKTXT']={2:"Valentine's Day",3:"St Patrick's Day"}.get(n,'')
+    env=dict(os.environ); env['MARK']={2:'14:heart',3:'17:shamrock'}.get(n,''); env['PW']=sys.argv[3]; env['PH']=sys.argv[4]; env['ROWH']=sys.argv[5]; env['TOPBAND']='14'; env.setdefault('TITLE','2'); env.setdefault('NOYEAR','1'); env['MARKTXT']={2:"Valentine's Day",3:"St Patrick's Day"}.get(n,'')
     subprocess.run(['python3','page6.py',src,f'{OUT}/{n:02d}_{k}.jpg',str(n),cap,ch,cry,MON,acc],check=True,capture_output=True,env=env)
     print(n,k,acc,src.split('/')[-1])
