@@ -549,6 +549,20 @@
   details.adads { margin-top: 6px; } .adrow { padding: 4px 0; font-size: 13px; }
   .backbtn { text-decoration: none; display: inline-block; }
   @media (max-width: 760px) { .adrow { grid-template-columns: minmax(110px, 1.4fr) repeat(3, minmax(48px, 1fr)); } .adrow span:nth-child(n+5) { display: none; } .adcap { min-width: 0; width: 100%; } }
+
+  /* 12 Nov 2026 (Andy): every task list is one full-width table: Task | Current status | Next action | Who acts next. The title opens the task's chat; Start chat appears where none exists yet. */
+  .trow2 { display: grid; grid-template-columns: minmax(0, 32%) minmax(0, 16%) minmax(0, 34%) minmax(0, 18%); gap: 6px 16px; align-items: start; }
+  .trow2 .tb { grid-column: 1 / -1; margin-top: 4px; }
+  .thead { display: grid; grid-template-columns: minmax(0, 32%) minmax(0, 16%) minmax(0, 34%) minmax(0, 18%); gap: 16px; padding: 0 14px 4px; font-size: 12px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .trow2 .c-task { font-size: 16px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .trow2 .c-task .ttl { color: var(--accent, #185fa5); text-decoration: none; cursor: pointer; } .trow2 .c-task .ttl:hover { text-decoration: underline; }
+  .trow2 .startchat { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; text-decoration: none; white-space: nowrap; }
+  .trow2 .c-status { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
+  .trow2 .spill { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 10px; background: #e8edf3; color: #33475b; }
+  .trow2 .spill.sp-Next { background: #e3effc; color: #185fa5; } .trow2 .spill.sp-Waiting { background: #fbf0d6; color: #7a5300; } .trow2 .spill.sp-Done { background: #e2f1e4; color: #2a6a35; } .trow2 .spill.sp-Today { background: #f3e6fb; color: #6a2f8a; }
+  .trow2 .c-next { font-size: 15px; color: #222; overflow-wrap: anywhere; } .trow2 .c-next .none { color: var(--muted); }
+  .trow2 .c-who { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; } .trow2 .c-who .who-tag { margin-right: 0; } .trow2 .c-who .am { font-size: 12px; color: var(--muted); margin-left: 0; display: block; }
+  @media (max-width: 900px) { .thead { display: none; } .trow2 { grid-template-columns: 1fr; } .trow2 .c-who .am { display: none; } }
 </style>
 </head>
 <body>
@@ -1526,26 +1540,32 @@ function line(r, opts) {
   const act = r.next_step && r.next_step !== 'none' && r.next_step !== r.title ? r.next_step : '';
   const late = r.due && r.due < today();
   const o = r.outcome && openOutcomes().find(x => String(x.id) === String(r.outcome));
+  const cl = safeUrl(r.chat_link);
+  const titleLink = '<a class="ttl" target="_blank" rel="noopener" href="' + esc(cl || chatUrl(r)) + '" title="' + (cl ? 'Open this task\'s chat' : 'Start a chat for this task') + '">' + esc(r.title) + '</a>' + (cl ? '' : '<a class="startchat" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">Start chat</a>');
+  const whoTxt = r.status === 'Done' ? 'Done' : isQuote(r) ? (r.go === 'yes' ? 'Approved' : 'Approve quote') : isA ? (working(r) ? 'Working on it' : 'Back to you') : (r.go === 'yes' ? 'Claude' : 'Claude · not approved');
   return '<div class="trow2' + (isA ? ' you' : ' cl') + (red ? ' red' : '') + (r.status === 'Done' ? ' done' : '') + (opts.compact ? ' compact' : '') + '" data-id="' + esc(r.id) + '">'
-    + '<div class="t1">' + stateMark(r) + num(r) + '<span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + (r.status === 'Done' ? 'Done' : isQuote(r) ? (r.go === 'yes' ? 'Approved' : 'Approve quote') : isA ? (working(r) ? 'Working on it' : 'Back to you') : (r.go === 'yes' ? 'Claude' : 'Claude · not approved')) + '</span><b class="ttl" data-act="focus" title="Open with everything related">' + esc(r.title) + '</b>'
+    + '<div class="c-task">' + stateMark(r) + num(r) + titleLink + '</div>'
+    + '<div class="c-status"><span class="spill sp-' + esc(r.status) + '">' + esc(r.status) + '</span>'
     + (r.waiting_on ? '<span class="chip wait">waiting: ' + esc(r.waiting_on) + '</span>' : '') + (r.due ? '<span class="chip due' + (late ? ' late' : '') + '">' + esc(r.due) + '</span>' : '')
-    + (opts.why ? '<span class="chip why">' + esc(opts.why) + '</span>' : '') + (!opts.compact && o && !ofilter ? '<span class="chip">' + esc(o.title) + '</span>' : '')
-    + '<span class="am">' + esc(funcOf(r)) + '</span></div>'
-    + (isQuote(r) ? quoteCard(r) : (act ? '<div class="t2">' + esc(act) + '</div>' : ''))
-    + '<div class="tb">' + (isQuote(r) ? quoteBtns(r) + chatBtn(r) : taskBtn(r) + chatBtn(r)
+    + (opts.why ? '<span class="chip why">' + esc(opts.why) + '</span>' : '') + (!opts.compact && o && !ofilter ? '<span class="chip">' + esc(o.title) + '</span>' : '') + '</div>'
+    + '<div class="c-next">' + (isQuote(r) ? quoteCard(r) : (act ? esc(act) : '<span class="none">None</span>')) + '</div>'
+    + '<div class="c-who"><span class="who-tag ' + (isA ? 'andy' : 'claude') + '">' + esc(whoTxt) + '</span><span class="am">' + esc(funcOf(r)) + '</span></div>'
+    + '<div class="tb">' + (isQuote(r) ? quoteBtns(r) : taskBtn(r)
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
     + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : ''))
     + (opts.compact ? '' : outcomeSel(r))
+    + '<button class="btn small ghost" data-act="focus" title="Open with everything related">Related</button>'
     + '<button class="btn small ghost" data-act="pin">' + (isPinned(r) ? 'Unpin' : 'Pin') + '</button>'
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
 }
+const THEAD = '<div class="thead"><span>Task</span><span>Current status</span><span>Next action</span><span>Who acts next</span></div>';
 const lineSort = (a, b) => ((b.type === 'ALERT' && aRed(b)) ? 1 : 0) - ((a.type === 'ALERT' && aRed(a)) ? 1 : 0) || (needsYou(b) ? 1 : 0) - (needsYou(a) ? 1 : 0) || rank[a.status] - rank[b.status] || Number(a.id) - Number(b.id);
 function lineGroup(title, list, cls) {
-  return '<div class="ogroup' + (cls ? ' ' + cls : '') + '"><div class="group-title">' + esc(title) + ' <span class="cnt">' + list.length + '</span></div>' + (list.length ? list.slice().sort(lineSort).map(r => line(r)).join('') : '<div class="empty" style="padding:10px 0">Nothing here.</div>') + '</div>';
+  return '<div class="ogroup' + (cls ? ' ' + cls : '') + '"><div class="group-title">' + esc(title) + ' <span class="cnt">' + list.length + '</span></div>' + (list.length ? THEAD + list.slice().sort(lineSort).map(r => line(r)).join('') : '<div class="empty" style="padding:10px 0">Nothing here.</div>') + '</div>';
 }
 function byFunction(list) {
   const g = {}; list.forEach(r => { const f = funcOf(r); (g[f] = g[f] || []).push(r); });
-  return Object.keys(g).sort().map(f => '<div class="fgroup"><div class="ftitle">' + esc(f) + ' <span class="cnt">' + g[f].length + '</span></div>' + g[f].sort(lineSort).map(r => line(r)).join('') + '</div>').join('');
+  return Object.keys(g).sort().map(f => '<div class="fgroup"><div class="ftitle">' + esc(f) + ' <span class="cnt">' + g[f].length + '</span></div>' + THEAD + g[f].sort(lineSort).map(r => line(r)).join('') + '</div>').join('');
 }
 function workingStrip() {
   const ps = pins().map(id => rows.find(r => String(r.id) === id)).filter(r => r && r.status !== 'Removed');
