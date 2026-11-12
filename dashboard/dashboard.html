@@ -843,6 +843,33 @@ function openStickerStats() {
   dlg.onclick = e => { if (e.target === dlg) dlg.close(); };
   dlg.showModal();
 }
+// 12 Nov 2026 (Andy): Christmas last-order dates, internal only. Lines '- Product | Market | Channels | Last order | Source' under 'DATES:' in row 493.
+function xmasDates() {
+  const r = rows.find(x => String(x.id) === '493'); if (!r) return [];
+  const t = String(r.notes || ''); const k = t.indexOf('DATES:'); if (k < 0) return [];
+  const yr = new Date().getFullYear();
+  return t.slice(k + 6).split('\n').map(l => l.trim()).filter(l => l.startsWith('- ')).map(l => {
+    const p = l.slice(2).split('|').map(x => x.trim());
+    const when = p[3] || 'pending'; const dt = /^\d{1,2}\s+[A-Za-z]{3}/.test(when) ? new Date(when + ' ' + yr) : null;
+    return { product: p[0] || '', market: p[1] || '', channels: p[2] || '', when, source: p[4] || '', date: dt && !isNaN(dt) ? dt : null };
+  });
+}
+function openXmasDates() {
+  const xd = xmasDates(); const nowD = new Date(); nowD.setHours(0, 0, 0, 0);
+  const sorted = xd.slice().sort((a, b) => (a.date ? a.date : 8.64e15) - (b.date ? b.date : 8.64e15));
+  let dlg = $('xmDlg');
+  if (!dlg) { dlg = document.createElement('dialog'); dlg.id = 'xmDlg'; dlg.style.width = 'min(94vw, 860px)'; dlg.style.maxWidth = '94vw'; document.body.appendChild(dlg); }
+  const row = d => { const past = d.date && d.date < nowD; const days = d.date ? Math.round((d.date - nowD) / 86400000) : null;
+    const col = !d.date ? 'var(--grey)' : past ? '#9aa5b1' : days <= 7 ? '#c62828' : days <= 14 ? '#b9770e' : '#1b5e20';
+    return '<tr style="' + (past ? 'text-decoration:line-through;color:#9aa5b1' : '') + '"><td style="font-weight:600;color:' + col + ';white-space:nowrap">' + esc(d.when) + (days !== null && !past ? ' <span style="font-weight:400;color:var(--grey)">(' + days + 'd)</span>' : '') + '</td><td>' + esc(d.product) + '</td><td>' + esc(d.market) + '</td><td>' + esc(d.channels) + '</td><td style="color:var(--grey);font-size:12.5px">' + esc(d.source) + '</td></tr>'; };
+  dlg.innerHTML = '<div class="dlg" style="width:100%;box-sizing:border-box"><h2 style="margin:0">Christmas last-order dates</h2><p style="margin:2px 0 10px;font-size:12.5px;color:var(--grey)">Internal only, never shown to customers. Order on or before the date to arrive by 23 Dec. Kept by task #493 (sales channels).</p>'
+    + '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:14px"><thead><tr style="text-align:left;border-bottom:1px solid var(--line)"><th style="padding:4px 10px 4px 0">Last order</th><th style="padding:4px 10px 4px 0">Product</th><th style="padding:4px 10px 4px 0">Market</th><th style="padding:4px 10px 4px 0">Channels</th><th>Source</th></tr></thead><tbody>'
+    + sorted.map(row).join('').replace(/<td/g, '<td style="padding:5px 10px 5px 0;vertical-align:top"').replace(/style="padding:5px 10px 5px 0;vertical-align:top" style="/g, 'style="padding:5px 10px 5px 0;vertical-align:top;')
+    + '</tbody></table></div><div class="foot"><button type="button" class="btn" id="xmClose">Close</button></div></div>';
+  $('xmClose').onclick = () => dlg.close();
+  dlg.onclick = e => { if (e.target === dlg) dlg.close(); };
+  dlg.showModal();
+}
 // Key figures in the pinned header (10 Nov 2026, Andy): locks in use, red alerts, tasks waiting on Andy, ad spend vs limit.
 function renderKeyRow() {
   const el = $('keyrow'); if (!el) return;
@@ -854,14 +881,21 @@ function renderKeyRow() {
   h += chip(reds ? 'red' : 'green', 'Red alerts', reds || 'none', 'Alerts', '');
   h += chip(wait ? 'amber' : 'green', 'Waiting on you', wait, 'Tasks', '');
   if (ads) { h += chip('', 'Ad spend', adGbp(ads.total_spend_gbp), 'Ads', 'Updated ' + adAgo(ads.updated_at)); }
-  // 12 Nov 2026 (Andy): Christmas last-order dates (internal) in the header, read from the HEADER: line of row 493 (owned by the sales-channels chat).
-  const xr = rows.find(r => String(r.id) === '493');
-  const xm = xr && /^HEADER:\s*(.+)$/m.exec(String(xr.notes || ''));
-  if (xm) h += '<button type="button" class="kchip xmas" data-go="Tasks" title="Internal only. Source: task #493 (sales channels)"><span class="kl">Xmas last order</span><b>' + esc(xm[1].trim()) + '</b></button>';
+  // 12 Nov 2026 (Andy): Christmas last-order dates for every product (internal only). The chip shows the next cut-off; a click opens the full list.
+  // Data: the DATES block in row 493's notes, owned by the sales-channels chat.
+  const xd = xmasDates();
+  if (xd.length) {
+    const nowD = new Date(); nowD.setHours(0, 0, 0, 0);
+    const next = xd.filter(d => d.date && d.date >= nowD).sort((a, b) => a.date - b.date)[0];
+    const days = next ? Math.round((next.date - nowD) / 86400000) : null;
+    const cls = next ? (days <= 7 ? 'red' : days <= 14 ? 'amber' : 'xmas') : 'xmas';
+    h += '<button type="button" class="kchip ' + cls + '" data-xmas="1" title="Internal only. Click for every product"><span class="kl">Xmas last order</span><b>' + (next ? esc(next.when) + ' · ' + esc(next.product.replace(/\s*\(.*\)/, '')) + ' ' + esc(next.market) + ' (' + days + ' days)' : 'all passed') + '</b></button>';
+  }
   // 11 Nov 2026 (Andy): sticker downloads and GIPHY views in the header, total and last 7 days; a click opens the detail.
   if (ss && ss.groups) ss.groups.forEach(g => { h += '<button type="button" class="kchip" data-ss="1" title="Open the detail"><span class="kl">' + (g.source === 'GIPHY' ? 'GIPHY views' : 'Sticker downloads') + '</span><b>' + ssFmt(g.total) + '</b><span class="kl">· 7 days</span><b>' + ssFmt(g.last7) + '</b></button>'; });
   el.innerHTML = h;
   el.querySelectorAll('[data-ss]').forEach(b => b.onclick = openStickerStats);
+  el.querySelectorAll('[data-xmas]').forEach(b => b.onclick = openXmasDates);
   el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goTab(b.dataset.go));
 }
 function renderTabs() {
