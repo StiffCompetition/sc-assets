@@ -1,0 +1,74 @@
+{%- comment -%} 12 Nov 2026 (row 504): the printable gift notification. Reads ?to= &from= &p= from the address and draws the card. {%- endcomment -%}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Stardos+Stencil:wght@700&display=swap" rel="stylesheet">
+<div class="sg-page">
+  <div class="sg-card" id="sg-card"><div class="sg-in">
+    <img class="sg-logo" src="https://cdn.shopify.com/s/files/1/0661/7428/7966/files/sc-cert-wordmark-trim.png" alt="Stiff Competition">
+    <div class="sg-rule"><span class="sg-line"></span><span class="sg-lab">OFFICIAL DISPATCH FROM HQ</span><span class="sg-line"></span></div>
+    <div class="sg-big sg-black" id="sg-orders">ORDERS FOR</div>
+    <div class="sg-name" id="sg-to">&nbsp;</div>
+    <div class="sg-dbl"></div>
+    <div class="sg-mid"><span id="sg-from">YOUR FRIEND</span> HAS AUTHORISED</div>
+    <div class="sg-mid">THE DEPLOYMENT OF</div>
+    <div class="sg-prod" id="sg-prod">ONE GIFT</div>
+    <div class="sg-mid">TO YOUR CUSTODY.</div>
+    <div class="sg-small">STAND BY FOR DELIVERY.</div>
+    <div class="sg-foot">
+      <div class="sg-sign"><div class="sg-signname" id="sg-signname">&nbsp;</div><div class="sg-signline"></div><div class="sg-signlab">AUTHORISED BY</div></div>
+      <svg class="sg-stamp" viewBox="0 0 200 200" aria-hidden="true"><defs><path id="sg-arc" d="M100,100 m-72,0 a72,72 0 1,1 144,0 a72,72 0 1,1 -144,0"/></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#d62830" stroke-width="5"/><circle cx="100" cy="100" r="78" fill="none" stroke="#d62830" stroke-width="2"/>
+        <polygon fill="#d62830" points="100,62 108,88 136,88 113,104 122,130 100,114 78,130 87,104 64,88 92,88"/>
+        <text font-family="Oswald,sans-serif" font-weight="700" font-size="17" fill="#d62830"><textPath href="#sg-arc" startOffset="0" textLength="440" lengthAdjust="spacing">DEPLOYMENT AUTHORISED ·</textPath></text></svg>
+      <div class="sg-bottom">YOUR COPY IS ON ITS WAY.<br>STIFFCOMPETITION.SHOP</div>
+    </div>
+  </div></div>
+  <p class="sg-actions"><button type="button" class="button button--primary" onclick="window.print()">Print or save as PDF</button></p>
+</div>
+<style>
+  .sg-page{max-width:620px;margin:0 auto;padding:2rem 1.2rem 4rem}
+  .sg-card{container-type:inline-size;width:100%;aspect-ratio:210/297;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.25)}
+  .sg-in{position:relative;box-sizing:border-box;height:100%;border:1cqw solid #1a3caa;padding:2.6cqw 6cqw 0;text-align:center;color:#111;font-family:'Oswald','Arial Narrow',sans-serif;font-weight:700;overflow:hidden}
+  .sg-in:before{content:"";position:absolute;inset:1.4cqw;border:.3cqw solid #d62830;pointer-events:none}
+  .sg-logo{display:block;width:52cqw;margin:5cqw auto 3cqw}
+  .sg-rule{display:flex;align-items:center;gap:2cqw;justify-content:center;margin-bottom:5cqw}
+  .sg-line{flex:1;height:.2cqw;background:#111}
+  .sg-lab{font-size:2.6cqw;letter-spacing:.9cqw}
+  .sg-big{font-family:'Stardos Stencil',serif;font-size:7cqw;letter-spacing:.5cqw;line-height:1}
+  .sg-name{font-family:'Stardos Stencil',serif;font-size:12.5cqw;line-height:1.15;color:#1a3caa;margin:1cqw 0 2cqw;white-space:nowrap;border-bottom:0}
+  .sg-dbl{height:.4cqw;background:#111;box-shadow:0 .9cqw 0 -.1cqw #d62830;margin:2cqw 1cqw 4cqw}
+  .sg-mid{font-size:3.9cqw;letter-spacing:.6cqw;line-height:1.5}
+  .sg-prod{font-family:'Stardos Stencil',serif;font-size:8cqw;color:#d62830;line-height:1.25;margin:2.5cqw 0 1cqw;white-space:nowrap}
+  .sg-small{font-size:3cqw;letter-spacing:.5cqw;color:#555;margin-top:2.5cqw}
+  .sg-foot{position:absolute;left:6cqw;right:6cqw;bottom:2.6cqw;display:flex;align-items:flex-end;justify-content:space-between}
+  .sg-sign{width:34cqw;text-align:left;margin-bottom:11cqw}
+  .sg-signname{font-family:'Stardos Stencil',serif;font-size:4.2cqw;color:#1a3caa;line-height:1.2;min-height:5cqw}
+  .sg-signline{height:.28cqw;background:#111}
+  .sg-signlab{font-size:1.9cqw;letter-spacing:.2cqw;margin-top:1cqw}
+  .sg-stamp{width:21cqw;height:21cqw;transform:rotate(-9deg);margin-bottom:11cqw}
+  .sg-bottom{position:absolute;left:0;right:0;bottom:1.2cqw;text-align:center;font-size:1.8cqw;letter-spacing:.6cqw;color:#555;line-height:1.7}
+  .sg-actions{text-align:center;margin-top:2rem}
+  @page{size:A4;margin:0}
+  @media print{
+    body *{visibility:hidden}
+    .sg-card,.sg-card *{visibility:visible}
+    .sg-card{position:fixed;left:0;top:0;width:210mm;height:297mm;box-shadow:none;margin:0}
+  }
+</style>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  function clean(v, n) { return String(v || '').replace(/[<>]/g, '').trim().slice(0, n); }
+  var to = clean(q.get('to'), 24), from = clean(q.get('from'), 24), p = clean(q.get('p'), 60);
+  if (to) document.getElementById('sg-to').textContent = to.toUpperCase();
+  else { document.getElementById('sg-to').innerHTML = '&nbsp;'; document.getElementById('sg-to').style.borderBottom = '.3cqw solid #111'; document.getElementById('sg-to').style.margin = '1cqw 14cqw 1.5cqw'; }
+  if (from) { document.getElementById('sg-from').textContent = from.toUpperCase(); document.getElementById('sg-signname').textContent = from; }
+  document.getElementById('sg-prod').textContent = (p ? p : 'one gift').toUpperCase();
+  function fit(id, max) {
+    var el = document.getElementById(id), box = el.parentNode, s = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > box.clientWidth - 2 * parseFloat(getComputedStyle(box).paddingLeft) + 3 && s > 8) { s -= 1; el.style.fontSize = s + 'px'; }
+  }
+  function run() { fit('sg-to'); fit('sg-prod'); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(run); else run();
+  window.addEventListener('resize', function () { document.getElementById('sg-to').style.fontSize = ''; document.getElementById('sg-prod').style.fontSize = ''; run(); });
+})();
+</script>

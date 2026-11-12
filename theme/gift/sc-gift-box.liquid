@@ -1,0 +1,16 @@
+{%- comment -%} 12 Nov 2026 (row 504): optional gift boxes on every product page; saved on the order as line item properties Gift for, Gift from, Gift email, Send on. {%- endcomment -%}
+<details class="sc-gift">
+  <summary>Sending this as a gift?</summary>
+  <p class="sc-gift__intro">They receive an official dispatch from HQ: "Orders for ... {{ product.title | split: '(' | first | strip | escape }} is deployed to your custody."</p>
+  <label class="sc-gift__f">Their first name<input type="text" name="properties[Gift for]" maxlength="24" autocomplete="off"></label>
+  <label class="sc-gift__f">Your name<input type="text" name="properties[Gift from]" maxlength="24" autocomplete="off"></label>
+  <label class="sc-gift__f">Their email (we send it to them)<input type="email" name="properties[Gift email]" maxlength="120" autocomplete="off"></label>
+  <label class="sc-gift__f">Send it on (blank = straight away)<input type="date" name="properties[Send on]" min="{{ 'now' | date: '%Y-%m-%d' }}"></label>
+</details>
+<style>
+  .sc-gift{margin:0 0 1.5rem;border:1px solid rgba(var(--color-foreground),.25);padding:1rem 1.4rem}
+  .sc-gift summary{cursor:pointer;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:1.3rem}
+  .sc-gift__intro{margin:1rem 0;font-size:1.3rem;line-height:1.4;opacity:.8}
+  .sc-gift__f{display:block;margin:0 0 1rem;font-size:1.25rem}
+  .sc-gift__f input{display:block;width:100%;margin-top:.3rem;padding:.9rem 1rem;font:inherit;font-size:1.5rem;border:1px solid rgba(var(--color-foreground),.4);background:#fff;color:#111;border-radius:0}
+</style>
