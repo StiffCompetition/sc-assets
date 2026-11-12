@@ -1536,7 +1536,7 @@ function searchResults() {
   const q = sq.trim().toLowerCase().replace(/^#/, ''), terms = q.split(/\s+/).filter(Boolean);
   const hit = r => String(r.id) === q || (/^\d+$/.test(q) && String(r.id).startsWith(q)) || terms.every(t => (String(r.title || '') + ' ' + String(r.next_step || '') + ' ' + String(r.notes || '')).toLowerCase().includes(t));
   const list = rows.filter(r => r.status !== 'Removed' && hit(r)).sort((a, b) => (String(b.id) === q) - (String(a.id) === q) || (a.status === 'Done') - (b.status === 'Done') || Number(b.id) - Number(a.id));
-  return '<div class="ogroup"><div class="group-title">Search <span class="cnt">' + list.length + '</span></div>' + (list.length ? list.slice(0, 40).map(r => line(r)).join('') + (list.length > 40 ? '<div class="empty" style="padding:10px 0">First 40 of ' + list.length + ': type more to narrow.</div>' : '') : '<div class="empty" style="padding:10px 0">No task matches.</div>') + '</div>';
+  return '<div class="ogroup"><div class="group-title">Search <span class="cnt">' + list.length + '</span></div>' + (list.length ? THEAD + list.slice(0, 40).map(r => line(r)).join('') + (list.length > 40 ? '<div class="empty" style="padding:10px 0">First 40 of ' + list.length + ': type more to narrow.</div>' : '') : '<div class="empty" style="padding:10px 0">No task matches.</div>') + '</div>';
 }
 function line(r, opts) {
   opts = opts || {};
@@ -1574,13 +1574,13 @@ function byFunction(list) {
 function workingStrip() {
   const ps = pins().map(id => rows.find(r => String(r.id) === id)).filter(r => r && r.status !== 'Removed');
   if (!ps.length) return '';
-  return '<div class="ogroup pinned"><div class="group-title">Working on <span class="cnt">' + ps.length + '</span></div>' + ps.map(r => line(r, { compact: true })).join('') + '</div>';
+  return '<div class="ogroup pinned"><div class="group-title">Working on <span class="cnt">' + ps.length + '</span></div>' + THEAD + ps.map(r => line(r, { compact: true })).join('') + '</div>';
 }
 function nextForYou() {
   const os = openOutcomes(); const pos = o => { const i = os.findIndex(x => String(x.id) === String(o)); return i < 0 ? 99 : i; };
   const list = workItems().filter(r => needsYou(r) && !isHidden(r) && r.outcome).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : (a.due || '9') > (b.due || '9') ? 1 : pos(a.outcome) - pos(b.outcome) || lineSort(a, b)).slice(0, 3);
   if (!list.length) return '';
-  return '<div class="ogroup"><div class="group-title">Next for you</div>' + list.map(r => line(r, { compact: true })).join('') + '</div>';
+  return '<div class="ogroup"><div class="group-title">Next for you</div>' + THEAD + list.map(r => line(r, { compact: true })).join('') + '</div>';
 }
 function focusHtml(r) {
   const p = parseNotes(r.notes);
