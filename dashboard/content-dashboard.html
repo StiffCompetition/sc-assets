@@ -550,8 +550,10 @@ function fmtLabel(r) { const m = String((r && r.panel_notes) || '').match(/Campa
 const FORMAT_COLOR = { 'Day Greeting': '#E0A100', 'Wisdom': '#2E7D32', 'Character Lore': '#8E24AA', 'Travel the World': '#0288D1', 'Brand Lore': '#C62828', 'Product': '#EF6C00', 'NFT': '#00897B', 'Dare to Buy': '#D81B60', 'Gift Guide': '#1B8A3A', 'Salute': '#5E35B1', 'Campaign': '#F5B800', 'Launch': '#2081E2' };
 const CHAR_COLOR = { 'Major Wood': '#556B2F', 'The Rear Admiral': '#1E3A8A', "Hammerin' Hanky": '#FF7A00', 'The Grip': '#1E5BD8', 'Slick Willy': '#111111', 'The Velvet Python': '#6B2FA0', 'SC Logo': '#555555' };
 // Brand posts are filed under "SC Logo" for the pipeline; on screen they read "All 6" (Roll Call) or "Brand".
-function charLabel(c, r) { return c === 'SC Logo' ? (r && isRollCall(r.notes) ? 'All 6' : 'Brand') : (c || ''); }
-function charTag(c, r) { return '<span class="char-tag" style="background:' + (CHAR_COLOR[c] || '#777') + '">' + escapeHtml(charLabel(c, r)) + '</span>'; }
+// 12 Nov 2026 (Andy): a campaign post is labelled with its campaign (Christmas ad campaign), never with a character.
+function campLabel(r) { const c = r && (r.format === 'Launch' || r.format === 'Campaign') ? campaignOf(r) : ''; return c ? (c === 'Christmas 2026' ? 'Christmas ad campaign' : c) : ''; }
+function charLabel(c, r) { return campLabel(r) || (c === 'SC Logo' ? (r && isRollCall(r.notes) ? 'All 6' : 'Brand') : (c || '')); }
+function charTag(c, r) { return '<span class="char-tag" style="background:' + (campLabel(r) ? '#B71C1C' : (CHAR_COLOR[c] || '#777')) + '">' + escapeHtml(charLabel(c, r)) + '</span>'; }
 function typeDot(f) { return '<span class="type-dot" style="background:' + (FORMAT_COLOR[f] || '#999') + '"></span>'; }
 function dayName(r) { return r.day_of_week || new Date(r.post_date).toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'long' }); }
 function needsYou(r) { return cardStage(r).you; }   // amber tint on every post waiting for Andy (10 Oct 2026)
