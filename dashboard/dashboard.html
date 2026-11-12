@@ -563,6 +563,10 @@
   .trow2 .c-next { font-size: 15px; color: #222; overflow-wrap: anywhere; } .trow2 .c-next .none { color: var(--muted); }
   .trow2 .c-who { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; } .trow2 .c-who .who-tag { margin-right: 0; } .trow2 .c-who .am { font-size: 12px; color: var(--muted); margin-left: 0; display: block; }
   @media (max-width: 900px) { .thead { display: none; } .trow2 { grid-template-columns: 1fr; } .trow2 .c-who .am { display: none; } }
+  /* 12 Nov 2026 (Andy): task pages use the whole screen width; the open-task view stacks the related list under the task instead of squeezing it. */
+  main.board { max-width: none; padding-left: 20px; padding-right: 20px; }
+  .obd { grid-template-columns: 210px minmax(0, 1fr); gap: 20px; }
+  .focus { grid-template-columns: minmax(0, 1fr); } .focus .frel { max-height: none; }
 </style>
 </head>
 <body>
