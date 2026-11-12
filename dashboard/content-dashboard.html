@@ -680,7 +680,9 @@ function pressCards() {
   const fset = FILTERS.format;
   if (other || (fset.size && !fset.has('Press'))) return [];
   const showPR = document.getElementById('showPostedRejected').checked;
-  return showPR ? PRESS_ITEMS : PRESS_ITEMS.filter(p => p.state !== 'posted');
+  // 12 Nov 2026 (Andy): nothing dated before today that has not been posted stays on the calendar.
+  const today = londonYmd(new Date());
+  return showPR ? PRESS_ITEMS : PRESS_ITEMS.filter(p => { let ok = true; try { ok = londonYmd(p.post_date) >= today; } catch (e) {} return p.state !== 'posted' && ok; });
 }
 function makePressCard(p) {
   const card = document.createElement('div');
