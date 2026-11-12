@@ -806,7 +806,7 @@ function fromBox(r) {
   let clip = '';
   if (r.format === 'Dare to Buy') clip = 'Three slides and an X image made from the product photo.';
   else if (r.format === 'Gift Guide') clip = 'Holiday gift guide slides and an X image made at zero cost from the shop\'s own product photos (sc-assets giftguide/).';
-  else if (r.format === 'Salute') clip = 'The Major Wood salute master clip over the salute\'s theme background, with the announcer voice, name and shop hooks.';
+  else if (r.format === 'Salute') clip = 'A fresh Major Wood clip made from the approved start image, with the announcer voice, impact sound, on-screen text and the logo ending.';
   else if (r.format === 'NFT') clip = 'The character\'s NFT template clip, with the shop NFT and its ticker.';
   else if (r.format === 'Brand Lore') clip = clipName(r);
   else if (isRollCall(n)) clip = clipName(r);
@@ -1143,8 +1143,6 @@ function openDrawer(r) {
     (r.format === 'Dare to Buy' ? panelBox(r) + slidesPreview(r) + '<div class="drawer-actions" style="margin-bottom:12px"><button class="btn secondary" id="dtbAgainBtn">Make the slides again (next hook)</button></div>' :
     // Gift Guide (5 Nov 2026, Andy): holiday merch carousel made at zero cost; slides listed in the notes, no video, nothing to remake here.
     r.format === 'Gift Guide' ? panelBox(r) + slidesPreview(r) :
-    // Salute posts are built whole by SC - Salute Post Builder (master clip + theme background + voice + hooks): no brief boxes to edit.
-    r.format === 'Salute' ? panelBox(r) + (r.notes ? '<div class="field"><label>Salute (from the Salutes calendar)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
     // NFT posts are built whole by SC - NFT Post Builder (character template + NFT + ticker): no brief boxes to edit.
     r.format === 'NFT' ? panelBox(r) + (r.notes ? '<div class="field"><label>NFT (from the shop)</label><div class="brief-part">' + escapeHtml(r.notes) + '</div></div>' : '') :
     // Roll Call (Playbook 7.12): a locked master clip; the announcer voice-over is the only part made per post.
@@ -1297,7 +1295,6 @@ function flowOf(r) {
   if (!r) return 'standard';
   if (/REPOST:/.test(String(r.notes || ''))) return 'repost';   // Library repost: the clip is already made
   if (r.format === 'Dare to Buy' || r.format === 'Gift Guide') return 'dtb';   // still slides, no video (Gift Guide: made at zero cost, 5 Nov 2026)
-  if (r.format === 'Salute') return 'salute';            // SC - Salute Post Builder makes the whole clip
   if (r.format === 'NFT') return 'nft';                  // SC - NFT Post Builder makes the whole clip
   if (isRollCall(r.notes)) return 'rollcall';            // fixed Roll Call clip + voice-over, no start image
   if (r.format === 'Travel the World') return 'travel';  // the NFT artwork extended to 9:16 is the start image
@@ -1315,8 +1312,6 @@ const FLOW = {
     help: 'Roll Call Characters and Roll Call Comic: "text approved" makes the video straight away from the fixed clip and the announcer voice-over (about 5-15 min, no start image), back as "clip ready for your approval". "approved" is your final sign-off: the post is scheduled and goes out at its time.' },
   nft: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'NFT: the clip is made whole when the post is planned (the character\'s NFT template, the NFT and its ticker). "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' },
-  salute: { opts: ['draft', 'approved', 'posted', 'paused'],
-    help: 'Major Wood Salute: the clip is made whole when the post is planned (master clip, theme background, voice, name and the follow, visit and buy hooks). Check the clip and the captions, then "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' },
   repost: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'Repost (Library tab): the clip is already made, so nothing is generated. Check the captions and platforms, then "approved" schedules it for its date and time. "draft" holds it back.' },
   dtb: { opts: ['draft', 'approved', 'posted', 'paused'],
@@ -1383,7 +1378,7 @@ async function postNow(r) {
 
 // Remake (12 Oct 2026, Andy): marks the post rejected, then sends the same slot to the planner, which reuses a rejected post in place and
 // runs SC Concept Creator on it again. The product, promotable item and poster clip are read back from the post itself.
-const REMAKE_COST = { 'Day Greeting': '$0.57', 'Wisdom': '$0.57', 'Character Lore': '$0.57', 'Brand Lore': '$0.58', 'Product': '$0.50', 'Travel the World': '$0.47', 'NFT': '$0.06', 'Salute': '$0.06' };
+const REMAKE_COST = { 'Day Greeting': '$0.57', 'Wisdom': '$0.57', 'Character Lore': '$0.57', 'Brand Lore': '$0.58', 'Product': '$0.50', 'Travel the World': '$0.47', 'NFT': '$0.06', 'Salute': '$0.60' };
 async function remakeRow(r) {
   const statusEl = document.getElementById('saveStatus');
   const notes = String(r.notes || ''), pnotes = String(r.panel_notes || '');
@@ -1591,7 +1586,7 @@ async function saveRow(r) {
     platforms: document.getElementById('f_platforms').value,
     status: (s => s === 'approved' ? 'scheduled' : s)((document.querySelector('.status-btn.active') || {}).dataset ? document.querySelector('.status-btn.active').dataset.value : 'draft'),
     // NFT posts carry the NFT Post Builder's record (Source, NFT title, template, shop link), not a brief: kept exactly as written.
-    notes: (r.format === 'NFT' || r.format === 'Salute') ? (r.notes || '') : composeNotes(r.notes || ''),
+    notes: (r.format === 'NFT') ? (r.notes || '') : composeNotes(r.notes || ''),
     caption_instagram: (document.getElementById('f_caption_instagram') || {}).value,
     caption_x: (document.getElementById('f_caption_x') || {}).value,
     caption_facebook: (document.getElementById('f_caption_facebook') || {}).value
@@ -2505,7 +2500,7 @@ async function openAdhoc() {
     { const ap = document.getElementById('adProduct'); const av = ap.value; ap.innerHTML = productOptions(f === 'Dare to Buy' && av.indexOf('promo:') === 0 ? '' : av, f === 'Dare to Buy'); }
     if (f === 'Dare to Buy' && document.getElementById('adTime').value === '18:00') document.getElementById('adTime').value = '19:00';
     const n = (f === 'Day Greeting' || f.indexOf('Brand Lore') === 0 || dow === 0) ? leftFor(f === 'Day Greeting' && dow !== 0 ? DAY_CHAR[dow] : 'SC Logo', f) : leftOther(DAY_CHAR[dow], f);
-    const info = f === 'Salute' ? 'Major Wood, at the time set for the salute (London). The finished clip appears for review in about 2 minutes.' : f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (any of the six, the day\'s character included). As many a day as you like, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
+    const info = f === 'Salute' ? 'Major Wood, at the time set for the salute (London). Its brief is written in a chat; you then approve the start image and the clip.' : f === 'Dare to Buy' ? 'The product\'s own character, chosen below with the product (any of the six, the day\'s character included). As many a day as you like, 19:00 London by default. The three slides and the X image appear for review in about a minute.' : f === 'Product' ? 'Chosen below with the product.' : f === 'NFT' ? 'Chosen below (Rotate = any character with a template except the day\'s). A random shop NFT is picked and the finished clip appears for review in about 2 minutes.' : f === 'Day Greeting' ? (dow === 0 ? 'SC Logo + featured character (Sunday greeting)' : DAY_CHAR[dow] + ' (the day\'s character)') + (n === null ? '' : ' - ' + n + ' left') : (f.indexOf('Brand Lore') === 0 ? ([0, 5, 6].indexOf(dow) !== -1 ? 'SC Logo' + (n === null ? '' : ' - ' + n + ' lines left') : 'Brand Lore runs on Friday, Saturday or Sunday - pick one of those days.') : (dow === 0 ? 'Sunday belongs to Brand Lore - pick another day.' : 'Chosen below (Rotate = any character except ' + DAY_CHAR[dow] + ', the day\'s character)' + (n === null ? '' : ' - ' + n + ' left')));
     document.getElementById('adCharInfo').textContent = info;
   };
   ['adFormat', 'adDate'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
