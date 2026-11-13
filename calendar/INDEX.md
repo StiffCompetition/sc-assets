@@ -23,3 +23,6 @@ One row per month. Working versions: calendar/work/months/<month>_v<n>.jpg. Chos
 
 ## Listing images (11 Nov 2026)
 v3/ = current shop images on mug-palette backdrops (pink cover, aqua cover+July, orange twelve months, purple October). v2/ dark slate and the grey originals were rejected. Rule: use the mug palette, vary colour per image.
+
+## QR on month pages (13 Nov 2026)
+Footer of the 12 month pages in both PDFs carries a 16 mm QR to stiffcompetition.shop (utm_source=cal27) beside the STIFF COMPETITION line; cover and blank page unchanged. Built by patching the footer of the previous pages.
