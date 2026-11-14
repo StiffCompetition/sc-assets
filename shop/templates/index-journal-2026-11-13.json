@@ -304,12 +304,6 @@
             "show_dynamic_checkout": false,
             "show_gift_card_recipient": false
           }
-        },
-        "more": {
-          "type": "custom_liquid",
-          "settings": {
-            "custom_liquid": "<a href=\"{{ section.settings.product.url }}\" style=\"text-decoration:underline;font-size:1.4rem\">See inside the journal</a>"
-          }
         }
       },
       "block_order": [
@@ -318,8 +312,7 @@
         "price",
         "about",
         "picker",
-        "buy",
-        "more"
+        "buy"
       ],
       "settings": {
         "product": "stiff-competition-field-journal",
@@ -334,7 +327,12 @@
         "enable_video_looping": false,
         "padding_top": 24,
         "padding_bottom": 24
-      }
+      },
+      "custom_css": [
+        ".product-form__submit{background:#e5261b !important;color:#fff !important;border:0 !important;border-radius:999px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}",
+        ".product-form__submit:after,.product-form__submit:before{box-shadow:none !important}",
+        ".product-form__submit:hover{background:#c41f15 !important}"
+      ]
     }
   },
   "order": [
