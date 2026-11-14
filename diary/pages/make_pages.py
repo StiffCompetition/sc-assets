@@ -15,7 +15,7 @@ chars=[
  ("slick_willy","kaushan-script",(244,200,20),(255,255,255),(250,248,240),"lined",
   "My Brand Journal",
   ["Dear Diary,","14 views today. Up 3.","Quit job number 3.","It slid right off me.","Dream big. Sell bigger."],58,(36,36,44)),
- ("velvet_python","great-vibes",(78,34,92),(206,170,70),(248,240,230),"plain",
+ ("velvet_python","playfair-display-italic",(78,34,92),(206,170,70),(248,240,230),"plain",
   "Dear Diary",
   ["Everyone was rushing again.","I strolled. A velvet pace.","Pressed one leaf.","Shoes still absent.","Yours, the Velvet Python"],60,(62,28,76)),
  ("the_grip","gloria-hallelujah",(24,42,92),(244,206,40),(244,240,230),"lined",

@@ -7,7 +7,7 @@ cfg={
  "rear_admiral":("parisienne",(24,36,92),(650,150,1030,750),"Ship's Log",["Day 1 on dry land.","Set sail at dawn for the","post office. Returned with","one stamp. A fine haul.","The duck is unimpressed."],38),
  "hanky":("permanent-marker",(60,60,66),(130,150,540,740),"SITE NOTES",["Mon. Fixed it. Again.","Heavy tool ready by 7.","Boss says stop saying that.","Cups of tea: 6"],30),
  "slick_willy":("kaushan-script",(30,30,36),(630,190,980,720),"My Brand Journal",["Dear Diary,","14 views today. Up 3.","Quit job number 3.","It slid right off me.","Dream big. Sell bigger."],34),
- "velvet_python":("great-vibes",(70,30,110),(660,150,1040,760),"Dear Diary",["Everyone was rushing again.","I strolled. A velvet pace.","Pressed one leaf.","Shoes still absent.","Yours, the Velvet Python"],42),
+ "velvet_python":("playfair-display-italic",(70,30,110),(660,150,1040,760),"Dear Diary",["Everyone was rushing again.","I strolled. A velvet pace.","Pressed one leaf.","Shoes still absent.","Yours, the Velvet Python"],36),
  "the_grip":("gloria-hallelujah",(34,40,72),(625,170,980,730),"Dear Diary",["Helped a man open a jar.","The jar is now in 3 pieces.","Bought him a new jar.","Hugged my bear. Good day."],28),
 }
 out=[]
