@@ -6,7 +6,7 @@ chars=[
  ("major_wood","just-another-hand",(84,92,56),(200,168,70),(244,238,222),"grid",
   "DAILY ORDERS LOG",
   ["0600 HOURS. ROSE. STOOD.","0601 HOURS. STOOD SOME MORE.","0615 HOURS. ORDER: BUY MILK.","0640 HOURS. MILK NOT FOUND.","0641 HOURS. SEARCHING AISLES.","STATUS: EXCELLENT."],60,(30,34,22)),
- ("rear_admiral","parisienne",(24,40,84),(206,170,70),(246,240,224),"plain",
+ ("rear_admiral","libre-baskerville-italic",(24,40,84),(206,170,70),(246,240,224),"plain",
   "Ship's Log",
   ["Day 1 on dry land.","Set sail at dawn for the","post office. Returned with","one stamp. A fine haul.","The duck is unimpressed."],60,(22,32,70)),
  ("hanky","permanent-marker",(230,196,30),(60,60,60),(240,236,222),"lined",

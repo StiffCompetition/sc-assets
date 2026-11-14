@@ -4,7 +4,7 @@ from scipy.signal import find_peaks
 F="/home/claude/fonts_work/"
 cfg={
  "major_wood":("just-another-hand",(28,30,26),(650,150,1040,760),"DAILY ORDERS LOG",["0600 HOURS. ROSE. STOOD.","0601 HOURS. STOOD SOME MORE.","0615 HOURS. ORDER: BUY MILK.","0640 HOURS. MILK NOT FOUND.","0641 HOURS. SEARCHING AISLES.","STATUS: EXCELLENT."],44),
- "rear_admiral":("parisienne",(24,36,92),(650,150,1030,750),"Ship's Log",["Day 1 on dry land.","Set sail at dawn for the","post office. Returned with","one stamp. A fine haul.","The duck is unimpressed."],38),
+ "rear_admiral":("libre-baskerville-italic",(24,36,92),(650,150,1030,750),"Ship's Log",["Day 1 on dry land.","Set sail at dawn for the","post office. Returned with","one stamp. A fine haul.","The duck is unimpressed."],38),
  "hanky":("permanent-marker",(60,60,66),(130,150,540,740),"SITE NOTES",["Mon. Fixed it. Again.","Heavy tool ready by 7.","Boss says stop saying that.","Cups of tea: 6"],30),
  "slick_willy":("kaushan-script",(30,30,36),(630,190,980,720),"My Brand Journal",["Dear Diary,","14 views today. Up 3.","Quit job number 3.","It slid right off me.","Dream big. Sell bigger."],34),
  "velvet_python":("playfair-display-italic",(70,30,110),(660,150,1040,760),"Dear Diary",["Everyone was rushing again.","I strolled. A velvet pace.","Pressed one leaf.","Shoes still absent.","Yours, the Velvet Python"],36),

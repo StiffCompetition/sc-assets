@@ -5,7 +5,7 @@ Use as the image-to-image source for every diary clip/GIF/image so books stay id
 | Character | Font (on page) | Ink colour | Pen shown | Notes |
 |---|---|---|---|---|
 | Major Wood | Just Another Hand, CAPS, stroke 1 | near-black (28,30,26) | thick chisel-tip marker | daily orders log |
-| Rear Admiral | Parisienne | navy (24,36,92) | fine fountain pen | Ship's Log |
+| Rear Admiral | Libre Baskerville Italic (changed from Parisienne 14 Nov 2026, readability) | navy (24,36,92) | fine fountain pen | Ship's Log |
 | Hanky | Permanent Marker | grey (60,60,66) | carpenter's pencil on RIGHT page, writing on LEFT page | font vs pencil still open with Andy |
 | Slick Willy | Kaushan Script | black (30,30,36) | brush pen | My Brand Journal |
 | Velvet Python | Playfair Display Italic (changed from Great Vibes 14 Nov 2026, readability) | purple (70,30,110) | calligraphy fountain pen, NO leaf | |
