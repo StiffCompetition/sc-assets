@@ -1684,7 +1684,7 @@ function adCard(c) {
   const lt = c.light || 'grey';
   let h = '<section class="adcard ' + esc(c.phase) + ' l' + esc(lt) + '"><div class="adtop"><h3><span class="lamp ' + esc(lt) + '" title="' + esc(c.light_why || '') + '"></span>' + esc(c.campaign) + '</h3><span class="adpill ' + esc(c.phase) + '">' + esc(label) + '</span></div>';
   if (c.verdict) h += '<div class="adverdict ' + esc(c.state || '') + '">' + esc(c.verdict) + '</div>';
-  if (c.success) h += '<div class="adwin"><span class="big">' + adN(c.success.value) + '</span><span class="lab">' + esc(c.success.label) + '</span>' + (c.success.per ? '<span class="per">' + adGbp(c.success.per) + ' ' + esc(c.success.per_label) + '</span>' : '') + (c.success.label === 'Quiz finishes' && c.success.value === 0 ? '<span class="per">counting from now on</span>' : '') + '</div>';
+  if (c.success) h += '<div class="adwin"><span class="big">' + adN(c.success.value) + '</span><span class="lab">' + esc(c.success.label) + '</span>' + (c.success.per ? '<span class="per">' + adGbp(c.success.per) + ' ' + esc(c.success.per_label) + '</span>' : '') + (c.success.label === 'Quiz finishes' && c.success.value === 0 ? '<span class="per">counting from now on</span>' : '') + (c.success.label === 'Sales' ? '<span class="per">' + adGbp(c.success.revenue_gbp || 0) + ' sold · ' + adN(c.success.clicks || 0) + ' clicks</span>' : '') + '</div>';
   // 14 Nov 2026 (Andy): show total budget, total spend and daily spend (a daily-budget ad shows its allowance so far).
   const totBudTxt = c.budget_is_daily ? adGbp(c.total_budget_gbp || 0) + ' so far' : adGbp(c.budget_gbp);
   const perDayTxt = (c.spend_per_day_gbp === null || c.spend_per_day_gbp === undefined) ? '—' : adGbp(c.spend_per_day_gbp);
