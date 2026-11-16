@@ -495,6 +495,35 @@
   .oclosed { margin-top: 18px; } .oclosed summary { cursor: pointer; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
   @media (max-width: 760px) { .ocard { grid-template-columns: 36px minmax(0, 1fr); } .oacts { grid-column: 1 / -1; justify-content: flex-start; max-width: none; } }
 
+
+  /* Social tab (15 Nov 2026, Andy): every Major Wood conversation and every post on X, Discord and the other channels, one place. Feed: SC - Conversations API (sc-conversations). */
+  .sohead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .sohead h2 { font-family: var(--display); font-weight: 600; font-size: 24px; margin: 0; } .sohead .sub { color: var(--muted); font-size: 13.5px; margin: 2px 0 0; }
+  .sobar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 12px; }
+  .sochip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+  .sochip.on { background: var(--accent, #1f4e79); border-color: var(--accent, #1f4e79); color: #fff; } .sochip .n { opacity: .65; margin-left: 5px; font-weight: 500; }
+  .sosep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+  .sosearch { border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 14px; min-width: 190px; background: var(--panel); color: var(--ink); }
+  .socard { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--c-park); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+  .socard > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+  .socard > summary::-webkit-details-marker { display: none; }
+  .socard .when { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; min-width: 118px; }
+  .socard .ttl { font-weight: 700; flex: 1 1 220px; }
+  .socard .chs { display: flex; flex-wrap: wrap; gap: 5px; }
+  .sopill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 9px; color: #fff; background: var(--c-park); text-decoration: none; }
+  .sopill.X { background: #111; } .sopill.Discord { background: #5865f2; } .sopill.Instagram { background: #c13584; } .sopill.Facebook { background: #1877f2; } .sopill.YouTube { background: #d93025; }
+  .sopill.bad { background: #b3261e; } .sopill.is-link { text-decoration: underline; }
+  .sopost { margin: 10px 0 2px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .sopost h4 { margin: 8px 0 3px; font-size: 13px; }
+  .sotext { white-space: pre-wrap; font-size: 14px; line-height: 1.45; margin: 0; }
+  .sotext a { color: var(--accent, #1f4e79); word-break: break-all; }
+  .socard.chat { border-left-color: var(--c-claude, #12a39a); }
+  .sochan { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 9px; color: #fff; background: var(--c-claude, #12a39a); }
+  .sothread { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .somsg { max-width: 82%; border-radius: 12px; padding: 7px 11px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+  .somsg small { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 2px; }
+  .somsg.cust { align-self: flex-start; background: #eef1f4; } .somsg.mw { align-self: flex-end; background: #e3efe6; } .somsg a { color: var(--accent, #1f4e79); }
+  .socard .prev { color: var(--muted); flex: 1 1 100%; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* Ads tab (10 Nov 2026, Andy): one card per campaign, big figures, spend against budget */
   .adhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
   .adhead h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; } .adhead .sub { color: var(--muted); margin: 2px 0 0; font-size: 14px; }
@@ -716,7 +745,7 @@ let fview = 'To follow';
 let showDone = false;   // 13 Oct 2026 (Andy): lines ticked today are hidden unless asked for
 let view = 'Overview';   // 8 Nov 2026 (Andy): Overview first, then Routine, Alerts, Outcomes, Tasks of the Day
 // A link can open a tab directly: .../webhook/sc-dashboard#Alerts (8 Nov 2026).
-try { let hv = decodeURIComponent(location.hash.slice(1)); if (hv === 'Orders') hv = 'Tasks'; if (hv && ['Overview','Ads','Routine','Alerts','Outcomes','Tasks','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
+try { let hv = decodeURIComponent(location.hash.slice(1)); if (hv === 'Orders') hv = 'Tasks'; if (hv && ['Overview','Ads','Social','Routine','Alerts','Outcomes','Tasks','Content','Products','Returns','Pricing','Journal','NFT Drops','Pages'].includes(hv)) view = hv; } catch (e) {}
 let who = 'Everyone';
 
 const $ = id => document.getElementById(id);
@@ -817,7 +846,7 @@ function flatShown(r) {
   return false;
 }
 function tabCount(v) {
-  if (v === 'Pages' || v === 'Outcomes' || v === 'Overview' || v === 'Ads') return '';
+  if (v === 'Pages' || v === 'Outcomes' || v === 'Overview' || v === 'Ads' || v === 'Social') return '';
   if (v === 'Content') return '';
   if (v === 'NFT Drops') return '';
   if (v === 'Engage') return eg ? (eg.cards || []).filter(c => c.status === 'draft').length || '' : '';
@@ -919,7 +948,7 @@ function renderKeyRow() {
 function renderTabs() {
   renderKeyRow();
   // 8 Nov 2026 (Andy): one board for every action (Tasks of the Day); the other tabs are build tools and data.
-  const names = ['Overview', 'Ads', 'Routine', 'Alerts', 'Outcomes', 'Tasks', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
+  const names = ['Overview', 'Ads', 'Social', 'Routine', 'Alerts', 'Outcomes', 'Tasks', 'Content', 'Products', 'Returns', 'Pricing', 'Journal', 'NFT Drops', 'Pages'];
   $('tabs').innerHTML = names.map(n => '<button class="tab' + (n === view ? ' on' : '') + (n === 'Alerts' && tabCount(n) > 0 ? ' alerttab' : '') + '" data-v="' + esc(n) + '">' + esc(n) + '<span class="n">' + tabCount(n) + '</span></button>').join('')
     + '<div class="who"><span>Who</span><select id="whoSel">' + ['Everyone', 'Andy', 'Claude'].map(o => '<option' + (o === who ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
   $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { if (b.dataset.v === 'Content') { location.href = BASE + 'sc-content'; return; } view = b.dataset.v; try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) {} render(); });
@@ -1350,7 +1379,7 @@ function render() {
   renderTabs();
   $('list').classList.toggle('wide', view === 'Content');
   $('list').classList.toggle('board', view === 'Now' || view === 'Tasks');
-  $('list').classList.toggle('wide', view === 'Overview' || view === 'Ads');
+  $('list').classList.toggle('wide', view === 'Overview' || view === 'Ads' || view === 'Social');
   if (view === 'Follow list') { renderFollow(); return; }
   if (view === 'Pages') { $('list').innerHTML = pagesHtml(); $('list').querySelectorAll('[data-snip]').forEach(b => b.onclick = () => copyText(SNIPPETS[b.dataset.snip][1], 'Copied')); return; }
   // Content tab (6 Nov 2026, Andy): the content dashboard lives here, so there is one dashboard and one link.
@@ -1368,6 +1397,7 @@ function render() {
   if (view === 'Outcomes') { renderOutcomes(); return; }
   if (view === 'Overview') { renderOverview(); return; }
   if (view === 'Ads') { renderAds(); return; }
+  if (view === 'Social') { renderSocial(); return; }
   let html = '';
   if (view === 'Done') {
     const list = rows.filter(flatShown).sort((a, b) => rank[a.status] - rank[b.status]);
@@ -1723,6 +1753,67 @@ function renderAds() {
       .catch(e => { adsErr = 'Meta did not answer (' + e.message + '). Showing the last saved figures.'; })
       .finally(() => { ads = null; loadAds(true); render(); });
   };
+}
+
+// ---- Social tab (15 Nov 2026, Andy): all conversations Major Wood has had, and every post on X, Discord and the other channels, organised by channel. Feed: SC - Conversations API (sc-conversations).
+const SOCIAL_URL = BASE + 'sc-conversations';
+let soc = null, socLoading = false, socErr = '', socPane = 'Posts', socChan = 'All', socQ = '', socTests = false;
+function loadSocial(force) {
+  if (socLoading || (soc && !force)) return;
+  socLoading = true; socErr = '';
+  fetch(SOCIAL_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(d => { soc = d && d.ok ? d : null; if (!soc) socErr = 'The Social feed gave nothing.'; }).catch(e => { socErr = 'Could not load (' + e.message + ').'; }).finally(() => { socLoading = false; if (view === 'Social') render(); });
+}
+function soLinks(t) { return esc(t).replace(/(https?:[/][/][^\s<]+)/g, '<a target="_blank" rel="noopener" href="$1">$1</a>'); }
+function soWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(iso.length === 16 ? iso + ':00' : iso);
+  if (isNaN(d)) return String(iso).slice(0, 16).replace('T', ' ');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + (iso.length > 10 ? ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
+}
+function soChips(counts, cur, attr, total) {
+  const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  return ['All'].concat(keys).map(k => '<button type="button" class="sochip' + (k === cur ? ' on' : '') + '" ' + attr + '="' + esc(k) + '">' + esc(k) + '<span class="n">' + (k === 'All' ? total : counts[k]) + '</span></button>').join('');
+}
+function soPostCard(p) {
+  const chs = p.channels.map(c => { const cls = 'sopill ' + esc(c.name) + (c.state && c.state !== 'posted' ? ' bad' : '') + (c.url ? ' is-link' : ''); return c.url ? '<a class="' + cls + '" target="_blank" rel="noopener" href="' + esc(c.url) + '" onclick="event.stopPropagation()">' + esc(c.name) + ' ↗</a>' : '<span class="' + cls + '">' + esc(c.name) + (c.state && c.state !== 'posted' ? ' · ' + esc(c.state) : '') + '</span>'; }).join('');
+  const body = p.channels.map(c => '<h4>' + esc(c.name) + (c.url ? ' · <a target="_blank" rel="noopener" href="' + esc(c.url) + '">open the post</a>' : '') + '</h4><p class="sotext">' + soLinks(c.text || p.text || '') + '</p>').join('');
+  const first = (p.channels.find(c => c.name === (socChan === 'All' ? 'X' : socChan)) || p.channels[0] || {}).text || p.text || '';
+  return '<details class="socard"><summary><span class="when">' + esc(soWhen(p.date)) + '</span><span class="ttl">' + esc(p.title) + '</span><span class="chs">' + chs + '</span><span class="prev">' + esc(String(first).split('\n')[0]) + '</span></summary><div class="sopost">' + body + (p.video_url ? '<p><a target="_blank" rel="noopener" href="' + esc(p.video_url) + '">Video</a></p>' : '') + '</div></details>';
+}
+function soChatCard(c) {
+  const m = c.messages, last = m.length ? m[m.length - 1] : null, firstC = m.find(x => x.who !== 'Major Wood');
+  const thread = m.map(x => '<div class="somsg ' + (x.who === 'Major Wood' ? 'mw' : 'cust') + '"><small>' + esc(x.who) + (x.ts ? ' · ' + esc(soWhen(x.ts)) : '') + '</small>' + soLinks(x.text) + '</div>').join('');
+  return '<details class="socard chat"><summary><span class="when">' + esc(soWhen(c.last)) + '</span><span class="ttl"><span class="sochan">' + esc(c.channel) + '</span> ' + esc(c.contact) + '</span><span class="prev">' + esc(String((firstC || last || {}).text || '').split('\n')[0]) + '</span></summary><div class="sothread">' + thread + '</div></details>';
+}
+function renderSocial() {
+  loadSocial(false);
+  let h = '<div class="sohead"><div><h2>Social</h2><p class="sub">' + (soc ? 'Posts and Major Wood conversations, newest first. Updated ' + esc(adAgo(soc.updated_at)) : '') + ' <button class="btn small ghost" id="so_reload">Refresh</button></p></div></div>';
+  if (!soc) { h += socLoading ? '<p style="color:var(--grey)">Collecting the posts and conversations…</p>' : '<p style="color:var(--c-today)">' + esc(socErr || 'Nothing yet.') + '</p>'; $('list').innerHTML = h; wireSocial(); return; }
+  const q = socQ.trim().toLowerCase();
+  const posts = soc.posts.filter(p => (socTests || !p.test));
+  const chats = soc.conversations.filter(c => (socTests || !c.test));
+  h += '<div class="sobar"><button type="button" class="sochip' + (socPane === 'Posts' ? ' on' : '') + '" data-pane="Posts">Posts<span class="n">' + posts.length + '</span></button><button type="button" class="sochip' + (socPane === 'Conversations' ? ' on' : '') + '" data-pane="Conversations">Conversations<span class="n">' + chats.length + '</span></button><span class="sosep"></span>';
+  let list;
+  if (socPane === 'Posts') {
+    const counts = {}; posts.forEach(p => p.channels.forEach(c => { counts[c.name] = (counts[c.name] || 0) + 1; }));
+    h += soChips(counts, socChan, 'data-chan', posts.length);
+    list = posts.filter(p => (socChan === 'All' || p.channels.some(c => c.name === socChan)) && (!q || (p.title + ' ' + p.text + ' ' + p.channels.map(c => c.text).join(' ')).toLowerCase().indexOf(q) >= 0)).map(soPostCard);
+  } else {
+    const counts = {}; chats.forEach(c => { counts[c.channel] = (counts[c.channel] || 0) + 1; });
+    h += soChips(counts, socChan, 'data-chan', chats.length);
+    list = chats.filter(c => (socChan === 'All' || c.channel === socChan) && (!q || (c.contact + ' ' + c.messages.map(m => m.text).join(' ')).toLowerCase().indexOf(q) >= 0)).map(soChatCard);
+  }
+  h += '<input class="sosearch" id="so_q" placeholder="Search" value="' + esc(socQ) + '"><label style="font-size:13px;color:var(--muted)"><input type="checkbox" id="so_tests"' + (socTests ? ' checked' : '') + '> Test entries</label></div>';
+  h += list.length ? list.join('') : '<p style="color:var(--grey)">Nothing matches.</p>';
+  $('list').innerHTML = h; wireSocial();
+}
+function wireSocial() {
+  const l = $('list');
+  l.querySelectorAll('[data-pane]').forEach(b => b.onclick = () => { socPane = b.dataset.pane; socChan = 'All'; render(); });
+  l.querySelectorAll('[data-chan]').forEach(b => b.onclick = () => { socChan = b.dataset.chan; render(); });
+  const q = $('so_q'); if (q) q.oninput = () => { socQ = q.value; const pos = q.selectionStart; render(); const n = $('so_q'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } };
+  const t = $('so_tests'); if (t) t.onchange = () => { socTests = t.checked; render(); };
+  const r = $('so_reload'); if (r) r.onclick = () => { soc = null; loadSocial(true); render(); };
 }
 // ---- Overview tab (8 Nov 2026, Andy): the figures and health lines in one place (sales channels, baskets, GIF promotion, what is in use).
 // ---- Overview tab (8 Nov 2026, Andy): every statistic in one place from SC - Overview API, each as yesterday · change · running total.
