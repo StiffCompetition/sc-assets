@@ -596,6 +596,8 @@
   main.board { max-width: none; padding-left: 20px; padding-right: 20px; }
   .obd { grid-template-columns: 210px minmax(0, 1fr); gap: 20px; }
   .focus { grid-template-columns: minmax(0, 1fr); } .focus .frel { max-height: none; }
+  /* 20 Nov 2026 (Andy): phone layout. The desktop sidebar width set above was overriding the phone stack, so the list and the page sat side by side. */
+  @media (max-width: 900px) { .obd { grid-template-columns: minmax(0, 1fr) !important; gap: 10px !important; } .side { position: static !important; max-height: none !important; width: auto; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding: 6px; } main, .work { min-width: 0; } }
 </style>
 </head>
 <body>
@@ -2658,17 +2660,22 @@ function todaysClips() {
   return cal.filter(c => String(c.post_date || '').slice(0, 10) === t && c.video_url && CLIP_STATUSES.includes(c.status) && /YouTube/.test(c.platforms || ''))
     .sort((a, b) => String(a.post_date).localeCompare(String(b.post_date)));
 }
+function diaryClips() {
+  if (!cal) return null;
+  return cal.filter(c => c.format === 'Diaries' && c.video_url && CLIP_STATUSES.includes(c.status))
+    .sort((a, b) => String(a.post_date).localeCompare(String(b.post_date)));
+}
 async function loadCal() {
   if (cal || calLoading) return;
   calLoading = true;
   try { const res = await fetch(CAL_URL); const d = await res.json(); cal = Array.isArray(d) ? d : (d.rows || d.data || []); }
   catch (e) { cal = []; toast('Could not load today\'s clips'); }
   calLoading = false;
-  if (view === 'Today') render();
+  if (view === 'Today' || view === 'Routine') render();
 }
 
 function clipsHtml(r) {
-  const list = todaysClips();
+  const list = r.link === 'sc:diaries-tiktok' ? diaryClips() : todaysClips();
   if (!list) return '<div class="clips"><div class="step">Loading today\'s clips…</div></div>';
   if (!list.length) return '<div class="clips"><div class="step">No finished clips for today yet.</div></div>';
   return '<div class="clips">' + list.map(c => {
@@ -2687,7 +2694,7 @@ function dlineHtml(r) {
   const cls = ticked ? ' ticked' : (waiting ? ' later' : (missed ? ' missed' : ''));
   const link = safeUrl(r.link);
   let extra = '';
-  if (r.link === 'sc:clips-today' && !waiting) extra = clipsHtml(r);
+  if ((r.link === 'sc:clips-today' || r.link === 'sc:diaries-tiktok') && !waiting) extra = clipsHtml(r);
   const acts = (r.link === 'sc:follow' ? '<button class="btn small ghost" data-da="follow">Open Influencers</button>' : '')
     + actLink(r, 'btn small ghost chatlnk')
     + chatBtn(r)
@@ -2707,7 +2714,7 @@ function dlineHtml(r) {
 function routineHtml() {
   const list = routineDue().sort((a, b) => (a.status === 'Waiting') - (b.status === 'Waiting') || (a.done_on === today()) - (b.done_on === today()) || a.id - b.id);
   const left = list.filter(r => r.status === 'Today' && r.done_on !== today()).length;
-  if (list.some(r => r.link === 'sc:clips-today' && r.status === 'Today')) loadCal();
+  if (list.some(r => (r.link === 'sc:clips-today' || r.link === 'sc:diaries-tiktok') && r.status === 'Today')) loadCal();
   const doneN = list.filter(r => r.done_on === today()).length;
   const shown = showDone ? list : list.filter(r => r.done_on !== today());
   return '<div class="routine"><h2>Today\'s routine</h2><div class="sub">' + (left ? left + ' to do today' : 'All done for today') + '</div>'
@@ -2743,7 +2750,7 @@ function wireRoutine() {
     const fo = el.querySelector('[data-da=follow]'); if (fo) fo.onclick = () => { view = 'Influencers'; render(); };
     el.querySelectorAll('.clip').forEach(ce => {
       const c = (cal || []).find(x => String(x.id) === ce.dataset.cid);
-      const cap = (c && (c.caption_instagram || c.text_content)) || '';
+      const cap = ((c && (c.caption_instagram || c.text_content)) || '').replace(/\n*Full diary: link in bio\.\n*/g, '\n\n').trim();
       ce.querySelector('[data-ca=caption]').onclick = () => toast(copyText(cap) ? 'Caption copied' : 'Could not copy');
       const pb = ce.querySelector('[data-ca=post]');
       pb.onclick = async () => {
