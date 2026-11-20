@@ -617,6 +617,7 @@
 <dialog id="dlg">
   <form method="dialog" class="dlg" id="form">
     <h2 id="dlgTitle">Add</h2>
+    <div id="dlgChat" style="margin:-4px 0 8px"></div>
     <label>What <input id="f_title" maxlength="80" required placeholder="Short and clear"></label>
     <label>Next step <input id="f_next" maxlength="100" placeholder="One line"></label>
     <div class="row">
@@ -1598,6 +1599,7 @@ function line(r, opts) {
     + '<div class="tb">' + (isQuote(r) ? quoteBtns(r) : taskBtn(r)
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
     + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : ''))
+    + chatBtn(r)
     + (opts.compact ? '' : outcomeSel(r))
     + '<button class="btn small ghost" data-act="focus" title="Open with everything related">Related</button>'
     + '<button class="btn small ghost" data-act="pin">' + (isPinned(r) ? 'Unpin' : 'Pin') + '</button>'
@@ -2287,6 +2289,7 @@ function openDlg(r, parentMission) {
   $('f_cat').innerHTML = CATEGORIES.map(c => '<option>' + c + '</option>').join('');
   $('f_status').innerHTML = STATUSES.map(c => '<option>' + c + '</option>').join('');
   $('f_parent').innerHTML = '<option value="">(none)</option>' + missions().map(m => '<option value="' + esc(m.id) + '">' + esc(m.title) + '</option>').join('');
+  $('dlgChat').innerHTML = r ? chatBtn(r) : '';
   $('f_title').value = r ? r.title : '';
   $('f_next').value = r ? r.next_step || '' : '';
   $('f_type').value = r ? (r.type || 'BUILD') : (parentMission ? 'BUILD' : 'MISSION');
