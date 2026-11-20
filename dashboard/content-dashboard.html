@@ -806,9 +806,11 @@ function fromBox(r) {
   else if (id) rows.push('<b>FROM</b> ' + escapeHtml(id) + ' &middot; <a href="' + sheet + '" target="_blank">Content spreadsheet</a>');
   else if (r.format === 'Salute' && n) rows.push('<b>FROM</b> Major Wood Salutes calendar: ' + escapeHtml(n));
   else if (r.format === 'NFT' && n) rows.push('<b>FROM</b> ' + escapeHtml(n));
+  else if (r.format === 'Gift Guide' && n) rows.push('<b>FROM</b> ' + escapeHtml((n.match(/^[^.]*\([^)]*\)/) || [n.split('.')[0]])[0]));
   else rows.push('<b>FROM</b> Not made yet - the brief is still being written.');
   let clip = '';
   if (r.format === 'Dare to Buy') clip = 'Three slides and an X image made from the product photo.';
+  else if (r.format === 'Gift Guide' && isPicturePost(r)) clip = 'The shop\'s own product photo, posted as one picture on Instagram, Facebook and X.';
   else if (r.format === 'Gift Guide') clip = 'Holiday gift guide slides and an X image made at zero cost from the shop\'s own product photos (sc-assets giftguide/).';
   else if (r.format === 'Salute') clip = 'A fresh Major Wood clip made from the approved start image, with the announcer voice, impact sound, on-screen text and the logo ending.';
   else if (r.format === 'NFT') clip = 'The character\'s NFT template clip, with the shop NFT and its ticker.';
@@ -1319,7 +1321,7 @@ const FLOW = {
   repost: { opts: ['draft', 'approved', 'posted', 'paused'],
     help: 'Repost (Library tab): the clip is already made, so nothing is generated. Check the captions and platforms, then "approved" schedules it for its date and time. "draft" holds it back.' },
   dtb: { opts: ['draft', 'approved', 'posted', 'paused'],
-    help: 'Product: Dare to Buy and Product: Gift Guide: the carousel slides and the X image are already made; there is no video. "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' }
+    help: 'Product: Gift Guide: the carousel slides and the X image, or the single product picture, are already made; there is no video. "approved" is your final sign-off: the post is scheduled and goes out at its time. "draft" holds it back.' }
 };
 function statusField(current, r) {
   // 9 Oct 2026 (Andy): one final-approval button. "approved" saves the post as scheduled, which the scheduler posts at its slot.
@@ -2157,7 +2159,8 @@ function dtbSlides(r) {
   return slides.length >= 2 ? { slides: slides, x: m[2] } : null;
 }
 // Launch picture posts (4 Nov 2026, Andy): a picture is the finished media, posted by SC - Publish Launch Post, so it is approved like a clip.
-function isPicturePost(r) { return !!(r && r.format === 'Launch' && r.image_url && !r.video_url); }
+// 20 Nov 2026 (Andy, post 152): a Gift Guide post that is one product picture (no slides, no clip) is a picture post too, approved like a clip.
+function isPicturePost(r) { return !!(r && (r.format === 'Launch' || (r.format === 'Gift Guide' && !dtbSlides(r))) && r.image_url && !r.video_url); }
 function hasMedia(r) { return !!(r && (r.video_url || dtbSlides(r) || isPicturePost(r))); }
 function isMissed(r) { return ['approved', 'scheduled'].indexOf(r.status) !== -1 && hasMedia(r) && (Date.now() - slotDue(r).getTime()) > 20 * 60000; }
 function stateName(r) {
