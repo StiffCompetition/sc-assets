@@ -1,0 +1,43 @@
+name: Free background (HF FLUX)
+# Push gifs/bgjobs/<name>.json ({"prompt","seed"}); each job runs on its own runner and the picture is committed to gifs/bg/<name>.png
+on:
+  push:
+    paths: ['gifs/bgjobs/**.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      names: ${{ steps.l.outputs.names }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "gifs/bgjobs\ngifs/bg" }
+      - id: l
+        run: |
+          n=$(for f in gifs/bgjobs/*.json; do b=$(basename "$f" .json); [ -f "gifs/bg/$b.png" ] || echo "$b"; done | jq -R . | jq -sc .)
+          echo "names=$n" >> "$GITHUB_OUTPUT"
+  bg:
+    needs: list
+    if: needs.list.outputs.names != '[]'
+    runs-on: ubuntu-latest
+    strategy: { fail-fast: false, matrix: { name: "${{ fromJson(needs.list.outputs.names) }}" } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "gifs/bgjobs\ngif-tools" }
+      - run: pip install gradio_client && python3 gif-tools/free_bg.py "gifs/bgjobs/${{ matrix.name }}.json" "${{ matrix.name }}.png"
+      - uses: actions/upload-artifact@v4
+        with: { name: "${{ matrix.name }}", path: "${{ matrix.name }}.png" }
+  save:
+    needs: bg
+    if: always() && needs.bg.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: art }
+      - run: |
+          mkdir -p gifs/bg; for d in art/*; do cp "$d"/*.png gifs/bg/ 2>/dev/null || true; done
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add gifs/bg; git diff --cached --quiet || (git commit -m "Free backgrounds from runner" && git pull -q --rebase && git push)
