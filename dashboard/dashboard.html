@@ -1088,13 +1088,50 @@ function chatBtn(r) {
     ? '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(safeUrl(r.chat_link)) + '">Open chat</a>'
     : '<a class="btn small ghost chatlnk" target="_blank" rel="noopener" href="' + esc(chatUrl(r)) + '">Ask Claude</a>';
 }
+// Later (20 Nov 2026, Andy): every task view has a Later button; the date is typed or picked in UK format (DD/MM/YYYY), stored as YYYY-MM-DD, and can be changed from the same button.
+const ukDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d.slice(8) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : (d || '');
+function parseUk(t) {
+  const m = String(t || '').trim().match(/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2}|\d{4}))?$/); if (!m) return '';
+  const y = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : new Date().getFullYear();
+  const dt = new Date(y, Number(m[2]) - 1, Number(m[1])); if (dt.getFullYear() !== y || dt.getMonth() !== Number(m[2]) - 1 || dt.getDate() !== Number(m[1])) return '';
+  return ymd(dt);
+}
+function laterBtn(r) {
+  if (r.status === 'Done') return '';
+  return isLater(r) ? '<button class="btn small ghost" data-act="later" title="Change the date this comes back">Later until ' + esc(ukDate(r.later)) + '</button>' : '<button class="btn small ghost" data-act="later" title="Hide until a date you choose">Later</button>';
+}
+function askLater(r) {
+  let dlg = document.getElementById('laterDlg');
+  if (!dlg) {
+    dlg = document.createElement('dialog'); dlg.id = 'laterDlg';
+    dlg.innerHTML = '<form method="dialog" class="dlg"><h2>Later</h2><div id="ld_t" style="margin-bottom:8px"></div>'
+      + '<label>Back on (DD/MM/YYYY) <input id="ld_in" inputmode="numeric" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off"></label>'
+      + '<div id="ld_q" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><div id="ld_h" style="font-size:13px;margin-bottom:8px"></div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn ghost" id="ld_x">Cancel</button><button type="button" class="btn go" id="ld_ok">Save</button></div></form>';
+    document.body.appendChild(dlg);
+  }
+  const add = n => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); };
+  const mon = () => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return ymd(d); };
+  const mth = () => { const d = new Date(); d.setMonth(d.getMonth() + 1); return ymd(d); };
+  const inp = dlg.querySelector('#ld_in'), hint = dlg.querySelector('#ld_h');
+  const WD = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const check = () => { const v = parseUk(inp.value); hint.textContent = !inp.value ? '' : !v ? 'Type the date like 25/11/2026' : v <= today() ? 'Pick a date after today' : WD[new Date(v + 'T12:00:00').getDay()] + ' ' + ukDate(v); return v && v > today() ? v : ''; };
+  dlg.querySelector('#ld_t').textContent = '#' + r.id + ' ' + r.title;
+  dlg.querySelector('#ld_q').innerHTML = [['Tomorrow', add(1)], ['Monday', mon()], ['1 week', add(7)], ['1 month', mth()]].map(q => '<button type="button" class="btn small ghost" data-d="' + q[1] + '">' + q[0] + '</button>').join('');
+  dlg.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { inp.value = ukDate(b.dataset.d); check(); });
+  inp.value = ukDate(isLater(r) ? r.later : add(1)); inp.oninput = check; check();
+  const go = () => { const v = check(); if (!v) { toast('Give a date after today, like ' + ukDate(add(1))); return; } dlg.close(); save(Object.assign({}, r, { later: v, outcome: '' })); };
+  dlg.querySelector('#ld_ok').onclick = go; dlg.querySelector('#ld_x').onclick = () => dlg.close();
+  inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+  dlg.showModal(); inp.focus(); inp.select();
+}
 // Outcome picker and Later button on every open task (8 Nov 2026, Andy): one tap ties a task to today's outcome or puts it back for tomorrow's stand-up.
 function outcomeSel(r) {
   if (r.status === 'Done') return '';
   const os = openOutcomes();
-  return '<select class="osel' + (r.outcome ? '' : ' none') + '" data-act="outcome" title="Outcome"><option value="">' + (isLater(r) ? 'Later (' + esc(r.later) + ')' : 'Untied') + '</option>' + os.map(o => '<option value="' + esc(o.id) + '"' + (String(o.id) === String(r.outcome) && !isHidden(r) ? ' selected' : '') + '>' + esc(o.title) + '</option>').join('') + '</select>'
+  return '<select class="osel' + (r.outcome ? '' : ' none') + '" data-act="outcome" title="Outcome"><option value="">' + (isLater(r) ? 'Later (' + esc(ukDate(r.later)) + ')' : 'Untied') + '</option>' + os.map(o => '<option value="' + esc(o.id) + '"' + (String(o.id) === String(r.outcome) && !isHidden(r) ? ' selected' : '') + '>' + esc(o.title) + '</option>').join('') + '</select>'
     + (r.owner === 'Andy' ? '<button class="btn small ghost" data-act="working" title="Toggle: you are working on this, so it drops off the waiting-on-you hand">' + (working(r) ? 'Hand up' : 'Working on it') + '</button>' : '')
-    + (isLater(r) ? '' : '<button class="btn small ghost" data-act="later" title="Back to tomorrow\'s stand-up">Later</button>')
+    + laterBtn(r)
     + (r.outcome && !isHidden(r) && !(view === 'Tasks' && ofilter === String(r.outcome)) && os.some(o => String(o.id) === String(r.outcome)) ? '<button class="btn small ghost goout" data-act="goout" title="Open this outcome on Tasks of the Day">Go to outcome →</button>' : '');
 }
 function wireOutcome(scope) {
@@ -1103,7 +1140,7 @@ function wireOutcome(scope) {
     const r = rows.find(x => String(x.id) === c.dataset.id); if (!r) return;
     const s = c.querySelector('[data-act=outcome]'); if (s) s.onchange = e => save(Object.assign({}, r, { outcome: e.target.value, later: '' }));
     const wk = c.querySelector('[data-act=working]'); if (wk) wk.onclick = () => save(Object.assign({}, r, { handed_at: working(r) ? 'now' : 'working' }));
-    const l = c.querySelector('[data-act=later]'); if (l) l.onclick = () => { const d = window.prompt('Hide this until (YYYY-MM-DD). It comes back as Untied on that day.', tomorrow()); if (!d) return; if (!/^\d{4}-\d{2}-\d{2}$/.test(d.trim()) || d.trim() <= today()) { toast('Give a date after today, like ' + tomorrow()); return; } save(Object.assign({}, r, { later: d.trim(), outcome: '' })); };
+    const l = c.querySelector('[data-act=later]'); if (l) l.onclick = () => askLater(r);
     const go = c.querySelector('[data-act=goout]'); if (go) go.onclick = () => { view = 'Tasks'; ofilter = String(r.outcome); focusId = null; try { history.replaceState(null, '', '#Tasks'); } catch (e) {} render(); window.scrollTo(0, 0); };
   });
 }
@@ -1600,7 +1637,7 @@ function line(r, opts) {
     + (!isA && r.status !== 'Done' ? '<button class="btn small' + (r.go === 'yes' ? ' ghost' : ' go') + '" data-act="go">' + (r.go === 'yes' ? 'Stop Claude' : 'Go Claude') + '</button>' : '')
     + (r.status !== 'Done' ? '<button class="btn small done" data-act="done">Done</button>' : ''))
     + chatBtn(r)
-    + (opts.compact ? '' : outcomeSel(r))
+    + (opts.compact ? laterBtn(r) : outcomeSel(r))
     + '<button class="btn small ghost" data-act="focus" title="Open with everything related">Related</button>'
     + '<button class="btn small ghost" data-act="pin">' + (isPinned(r) ? 'Unpin' : 'Pin') + '</button>'
     + '<button class="btn small ghost" data-act="edit">Edit</button></div></div>';
@@ -2289,7 +2326,8 @@ function openDlg(r, parentMission) {
   $('f_cat').innerHTML = CATEGORIES.map(c => '<option>' + c + '</option>').join('');
   $('f_status').innerHTML = STATUSES.map(c => '<option>' + c + '</option>').join('');
   $('f_parent').innerHTML = '<option value="">(none)</option>' + missions().map(m => '<option value="' + esc(m.id) + '">' + esc(m.title) + '</option>').join('');
-  $('dlgChat').innerHTML = r ? chatBtn(r) : '';
+  $('dlgChat').innerHTML = r ? chatBtn(r) + (r.status === 'Done' ? '' : laterBtn(r).replace('<button ', '<button type="button" ')) : '';
+  const lb = $('dlgChat').querySelector('[data-act=later]'); if (lb) lb.onclick = () => { $('dlg').close(); askLater(r); };
   $('f_title').value = r ? r.title : '';
   $('f_next').value = r ? r.next_step || '' : '';
   $('f_type').value = r ? (r.type || 'BUILD') : (parentMission ? 'BUILD' : 'MISSION');
