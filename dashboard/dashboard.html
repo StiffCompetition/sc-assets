@@ -720,7 +720,9 @@ async function saveOutcome(o) {
 }
 // A work item is any open task a person or Claude acts on: alerts, steps, loose tasks and Relaunch chats. Missions, daily lines, buckets, groups and system rows are containers.
 const CONTAINERS = ['MISSION', 'DAILY', 'SYSTEM', 'BUCKET', 'GROUP'];
-const workItems = () => rows.filter(r => !CONTAINERS.includes(r.type || '') && ACTIVE.includes(r.status) && whoOk(r));
+// 26 Nov 2026 (Andy): Claude manages alerts itself (daily clean-up 05:45 Bogota); only alerts that need him show and count.
+const claudeAlert = r => r.type === 'ALERT' && r.owner !== 'Andy';
+const workItems = () => rows.filter(r => !claudeAlert(r) && !CONTAINERS.includes(r.type || '') && ACTIVE.includes(r.status) && whoOk(r));
 const isLater = r => !!r.later && r.later > today();
 // 8 Nov 2026 (Andy): a task blocked by another (status Waiting with a 'Starts when / Waiting on') is hidden everywhere until it is unblocked, like Later.
 // Blocked = waiting on another task, a group or a routine step; a task waiting on Andy himself is his action and always shows (Andy, 8 Nov 2026).
@@ -859,12 +861,12 @@ function tabCount(v) {
   if (v === 'Returns') return rt.loaded ? (retOpen().length || '') : '';
   if (v === 'Pricing') return pr.loaded ? ((prFlagGroups().reduce((n, g) => n + g.list.length, 0) + prStockBad().length) || pr.rows.filter(x => prCalc(x).flag).length || '') : '';
   if (v === 'Products') return prod.loaded ? prod.runs.filter(r => /^andy_/.test(r.waiting_on || '')).length + prod.designs.filter(d => d.waiting_on === 'andy_design').length : '';
-  if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && !isHidden(r)).length;
+  if (v === 'Alerts') return rows.filter(r => r.type === 'ALERT' && !claudeAlert(r) && r.status !== 'Done' && r.status !== 'Removed' && !isHidden(r)).length;
   if (v === 'Tasks' || v === 'Now') return (handedItems().length ? '✋' + handedItems().length : '') + (workItems().filter(r => !isHidden(r) && working(r)).length ? ' ✎' + workItems().filter(r => !isHidden(r) && working(r)).length : '') + (untied().length ? ' · ' + untied().length + ' untied' : '');
   if (v === 'Today' || v === 'Routine') return routineDue().filter(r => r.status === 'Today' && r.done_on !== today()).length || '';
   const keep = view; view = v; let n;
   if (v === 'Done') n = rows.filter(flatShown).length;
-  else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length + rows.filter(r => r.type === 'ALERT' && r.status !== 'Done').length : 0);
+  else n = missions().filter(missionShown).length + (v === 'Now' ? loose().filter(r => ACTIVE.includes(r.status) && whoOk(r)).length + rows.filter(r => r.type === 'ALERT' && !claudeAlert(r) && r.status !== 'Done' && r.status !== 'Removed').length : 0);
   view = keep;
   // Influencers also counts gift-tracker people waiting on Andy: DM to send, replied, follow-up due (13 Oct 2026).
   if (v === 'Influencers' && track) n += track.filter(t => t.status === 'To send' || t.status === 'Replied' || followDue(t)).length;
@@ -924,7 +926,7 @@ function openXmasDates() {
 function renderKeyRow() {
   const el = $('keyrow'); if (!el) return;
   const nLocks = locks ? locks.length : null;
-  const reds = rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && !isHidden(r) && aRed(r)).length;
+  const reds = openAlerts().filter(aRed).length;
   const wait = rows.filter(r => r.owner === 'Andy' && ACTIVE.includes(r.status) && !isHidden(r) && !['MISSION', 'DAILY', 'ALERT', 'SYSTEM'].includes(r.type)).length;
   const chip = (cls, label, val, tab, tip) => '<button type="button" class="kchip ' + cls + '" data-go="' + tab + '" title="' + esc(tip || '') + '"><span class="kl">' + label + '</span><b>' + val + '</b></button>';
   let h = chip(nLocks ? 'amber' : 'green', 'Locks in use', nLocks === null ? '…' : (nLocks || 'none'), 'Tasks', locks && locks.length ? locks.map(l => l.file).join(', ') : 'Nothing locked');
@@ -1059,7 +1061,7 @@ function ago(iso) {
   const h = Math.floor(ms / 3600000); if (h < 1) return 'just now'; if (h < 24) return h + 'h ago';
   const d = Math.floor(h / 24); return d === 1 ? 'yesterday' : d + ' days ago';
 }
-function openAlerts() { return rows.filter(r => r.type === 'ALERT' && r.status !== 'Done' && whoOk(r) && !isHidden(r)); }
+function openAlerts() { return rows.filter(r => r.type === 'ALERT' && !claudeAlert(r) && r.status !== 'Done' && r.status !== 'Removed' && whoOk(r) && !isHidden(r)); }
 function alertStrip(list) {
   const counts = { red: list.filter(aRed).length };
   AGROUPS.slice(1).forEach(g => counts[g[0]] = list.filter(r => aGroup(r) === g[0]).length);
